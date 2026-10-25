@@ -1,0 +1,17 @@
+{
+  "name": "@touchtap/ccn",
+  "version": "0.1.0",
+  "description": "Phone notifications and approvals for Claude Code, from any terminal",
+  "homepage": "https://claudecodenotifier.com/cli",
+  "bin": { "ccn": "bin/ccn.js" },
+  "files": ["bin"],
+  "engines": { "node": ">=16" },
+  "optionalDependencies": {
+    "@touchtap/ccn-darwin-arm64": "0.1.0",
+    "@touchtap/ccn-darwin-x64": "0.1.0",
+    "@touchtap/ccn-linux-arm64": "0.1.0",
+    "@touchtap/ccn-linux-x64": "0.1.0",
+    "@touchtap/ccn-win32-arm64": "0.1.0",
+    "@touchtap/ccn-win32-x64": "0.1.0"
+  }
+}

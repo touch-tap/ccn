@@ -10,10 +10,17 @@ session is covered, however you start it.
 ## Install
 
 ```sh
-# macOS / Linux (coming with the first release)
-curl -fsSL https://claudecodenotifier.com/install.sh | sh
+# macOS / Linux, and pair in the same step with the code your phone shows
+curl -fsSL https://claudecodenotifier.com/install.sh | sh -s 482913
 
-# from source, today
+# Windows (PowerShell)
+irm https://claudecodenotifier.com/install.ps1 | iex; ccn pair 482913
+
+# Homebrew, or anyone with Node
+brew install touch-tap/tap/ccn && ccn pair 482913
+npx @touchtap/ccn pair 482913
+
+# from source
 cargo install --path .
 ```
 
@@ -73,6 +80,8 @@ echo '{"hook_event_name":"Stop","session_id":"s1","cwd":"/tmp","last_assistant_m
 ```
 
 `CCN_PRESENCE=away|present|file:<path>` pins the presence check for tests.
+
+Releasing: see [RELEASING.md](RELEASING.md).
 
 Server: [CCNotifier_Server](../CCNotifier_Server) (Cloudflare Worker). Design and roadmap: the
 "CCNotifier CLI: the multiplatform plan" doc.
