@@ -24,6 +24,7 @@ jobs:
           CCN_HOME: ${{ runner.temp }}/ccn
           CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude
           CCN_PRESENCE: present
+          CCN_NOTIFY: "off"
         run: |
           mkdir -p "$CLAUDE_CONFIG_DIR"
           echo '{"permissions":{"allow":["Bash(ls)"]}}' > "$CLAUDE_CONFIG_DIR/settings.json"
@@ -37,8 +38,13 @@ jobs:
           if [ "$RUNNER_OS" = Windows ]; then
             # setup registers the toast identity, uninstall removes it
             MSYS_NO_PATHCONV=1 reg query "$aumid" /v DisplayName
+            MSYS_NO_PATHCONV=1 reg query "$aumid" /v IconUri
+            test -s "$CCN_HOME/icon.png"
           fi
+          icon="$HOME/.local/share/icons/hicolor/256x256/apps/ccn.png"
+          if [ "$RUNNER_OS" = Linux ]; then test -s "$icon"; fi
           ./target/debug/ccn uninstall
+          test ! -e "$icon"
           if [ "$RUNNER_OS" = Windows ]; then
             if MSYS_NO_PATHCONV=1 reg query "$aumid" >/dev/null 2>&1; then echo "AUMID still registered"; exit 1; fi
           fi

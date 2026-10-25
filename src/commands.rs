@@ -158,8 +158,8 @@ fn setup_inner(replace_mac_app: bool) -> Result<()> {
     } else if report.mac_app_hooks_removed {
         println!("Removed the Mac app's hook entries; ccn handles notifications from now on.");
     }
-    if notify::register_app() {
-        println!("Registered \"Claude Code Notifier\" for Windows notifications.");
+    if let Some(line) = notify::install() {
+        println!("{line}");
     }
     Ok(())
 }
@@ -399,7 +399,7 @@ pub fn uninstall() -> Result<()> {
     let cfg = Config::load();
     let path = hookcfg::uninstall()?;
     println!("Removed ccn's hooks from {}.", path.display());
-    notify::unregister_app();
+    notify::uninstall();
     if cfg.is_paired() {
         let api = Api::new(&cfg);
         if let Ok(devices) = api.pairings() {

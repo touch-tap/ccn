@@ -12,7 +12,46 @@ pub const APP_ID: &str = "TouchTap.ccn";
 pub const FALLBACK_APP_ID: &str = r"{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe";
 pub const APP_NAME: &str = "Claude Code Notifier";
 
+/// The app icon, written to disk by `ccn setup` for the notification servers to read. macOS takes
+/// the icon of the app that posts (osascript), so the binary there goes without it.
+#[cfg(not(target_os = "macos"))]
+const ICON: &[u8] = include_bytes!("../assets/icon.png");
+
+/// Where `ccn setup` puts the icon: the hicolor theme on Linux, ccn's own folder on Windows.
+#[cfg(not(target_os = "macos"))]
+fn icon_path() -> std::path::PathBuf {
+    #[cfg(windows)]
+    {
+        crate::config::ccn_dir().join("icon.png")
+    }
+    #[cfg(not(windows))]
+    {
+        let data = std::env::var("XDG_DATA_HOME")
+            .ok()
+            .filter(|d| !d.is_empty())
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| crate::config::home_dir().join(".local").join("share"));
+        data.join("icons").join("hicolor").join("256x256").join("apps").join("ccn.png")
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn write_icon() -> Option<std::path::PathBuf> {
+    let path = icon_path();
+    std::fs::create_dir_all(path.parent()?).ok()?;
+    std::fs::write(&path, ICON).ok()?;
+    Some(path)
+}
+
+/// `CCN_NOTIFY=off` silences desktop notifications (for tests).
+fn disabled() -> bool {
+    std::env::var("CCN_NOTIFY").is_ok_and(|v| v.eq_ignore_ascii_case("off") || v == "0")
+}
+
 pub fn show(title: &str, body: &str, sound: bool) {
+    if disabled() {
+        return;
+    }
     let body = crate::session::SessionState::truncate(body, 200);
     #[cfg(target_os = "macos")]
     {
@@ -33,8 +72,13 @@ pub fn show(title: &str, body: &str, sound: bool) {
     #[cfg(target_os = "linux")]
     {
         let _ = sound;
-        let _ = Command::new("notify-send")
-            .arg("--app-name=Claude Code Notifier")
+        let mut cmd = Command::new("notify-send");
+        cmd.arg("--app-name=Claude Code Notifier");
+        let icon = icon_path();
+        if icon.exists() {
+            cmd.arg(format!("--icon={}", icon.display()));
+        }
+        let _ = cmd
             .arg(title)
             .arg(&body)
             .stdin(Stdio::null())
@@ -50,20 +94,29 @@ pub fn show(title: &str, body: &str, sound: bool) {
     }
 }
 
-/// Registers ccn's AppUserModelID for toasts (Windows only). Returns true when it did.
-pub fn register_app() -> bool {
+/// What `ccn setup` adds for desktop notifications: the icon, and on Windows the app identity
+/// toasts are shown under. Returns a line to print when it did something.
+pub fn install() -> Option<String> {
     #[cfg(windows)]
     {
-        win::register().is_ok()
+        let icon = write_icon();
+        win::register(icon.as_deref()).ok()?;
+        Some("Registered \"Claude Code Notifier\" for Windows notifications.".to_string())
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "linux")]
     {
-        false
+        write_icon().map(|p| format!("Installed the notification icon at {}.", p.display()))
+    }
+    #[cfg(not(any(windows, target_os = "linux")))]
+    {
+        None
     }
 }
 
-/// Removes what `register_app` added. Safe to call when nothing was registered.
-pub fn unregister_app() {
+/// Removes what `install` added. Safe to call when nothing was installed.
+pub fn uninstall() {
+    #[cfg(not(target_os = "macos"))]
+    let _ = std::fs::remove_file(icon_path());
     #[cfg(windows)]
     win::unregister();
 }
@@ -152,7 +205,7 @@ mod win {
         ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(app_id))?.Show(&toast)
     }
 
-    pub fn register() -> Result<(), u32> {
+    pub fn register(icon: Option<&std::path::Path>) -> Result<(), u32> {
         let path = wide(&key_path());
         let mut key: HKEY = std::ptr::null_mut();
         // SAFETY: a valid NUL-terminated path, null class and security attributes, a valid out pointer.
@@ -172,14 +225,19 @@ mod win {
         if status != ERROR_SUCCESS {
             return Err(status);
         }
-        let name = wide("DisplayName");
-        let value = wide(super::APP_NAME);
-        // SAFETY: the key is open; the data is a NUL-terminated UTF-16 string of the given byte length.
-        let status = unsafe {
-            RegSetValueExW(key, name.as_ptr(), 0, REG_SZ, value.as_ptr() as *const u8, (value.len() * 2) as u32)
-        };
+        let mut status = set_string(key, "DisplayName", super::APP_NAME);
+        if let (ERROR_SUCCESS, Some(icon)) = (status, icon) {
+            status = set_string(key, "IconUri", &icon.to_string_lossy());
+        }
         unsafe { RegCloseKey(key) };
         if status == ERROR_SUCCESS { Ok(()) } else { Err(status) }
+    }
+
+    fn set_string(key: HKEY, name: &str, value: &str) -> u32 {
+        let name = wide(name);
+        let value = wide(value);
+        // SAFETY: the key is open; the data is a NUL-terminated UTF-16 string of the given byte length.
+        unsafe { RegSetValueExW(key, name.as_ptr(), 0, REG_SZ, value.as_ptr() as *const u8, (value.len() * 2) as u32) }
     }
 
     pub fn unregister() {
