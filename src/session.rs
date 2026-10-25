@@ -47,6 +47,8 @@ pub struct SessionState {
     pub tool_at: Option<i64>,
     pub terminal: Terminal,
     pub last_card: Option<Card>,
+    /// Claude Code has shown this session the "not paired any more" message
+    pub unpaired_warned: bool,
     pub updated_at: i64,
 }
 

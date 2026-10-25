@@ -3,6 +3,8 @@
 use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
 use serde_json::{json, Value};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use crate::config::{self, Config, Settings};
@@ -11,6 +13,26 @@ use crate::config::{self, Config, Settings};
 pub struct Api {
     base: String,
     token: Option<String>,
+    /// Set when the server refused this computer's credentials on any call, including ones whose
+    /// errors the caller only logs.
+    rejected: Arc<AtomicBool>,
+}
+
+/// The server no longer accepts this computer's credentials: its record (and every pairing) is
+/// gone, for example after 60 days without use. Only `ccn pair` fixes it, so nothing retries.
+#[derive(Debug)]
+pub struct Rejected;
+
+impl std::fmt::Display for Rejected {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("this computer isn't paired any more (the server no longer recognises it). Run `ccn pair` to reconnect")
+    }
+}
+
+impl std::error::Error for Rejected {}
+
+pub fn is_rejected(err: &anyhow::Error) -> bool {
+    err.downcast_ref::<Rejected>().is_some()
 }
 
 #[derive(Deserialize, Debug)]
@@ -87,15 +109,19 @@ const QUICK: Duration = Duration::from_secs(10);
 
 impl Api {
     pub fn new(cfg: &Config) -> Api {
-        Api { base: cfg.server_url.trim_end_matches('/').to_string(), token: config::load_token(cfg) }
+        Api::build(cfg, config::load_token(cfg))
     }
 
     pub fn with_token(cfg: &Config, token: String) -> Api {
-        Api { base: cfg.server_url.trim_end_matches('/').to_string(), token: Some(token) }
+        Api::build(cfg, Some(token))
     }
 
-    pub fn has_token(&self) -> bool {
-        self.token.is_some()
+    fn build(cfg: &Config, token: Option<String>) -> Api {
+        Api { base: cfg.server_url.trim_end_matches('/').to_string(), token, rejected: Arc::default() }
+    }
+
+    pub fn was_rejected(&self) -> bool {
+        self.rejected.load(Ordering::Relaxed)
     }
 
     fn agent(timeout: Duration) -> ureq::Agent {
@@ -143,6 +169,10 @@ impl Api {
         .with_context(|| format!("{method} {path}"))?;
 
         let status = response.status().as_u16();
+        if (status == 401 || status == 403) && self.token.is_some() {
+            self.rejected.store(true, Ordering::Relaxed);
+            return Err(anyhow::Error::new(Rejected));
+        }
         let etag = response.headers().get("etag").and_then(|v| v.to_str().ok()).map(|s| s.to_string());
         let body = response.body_mut().read_to_string().unwrap_or_default();
         Ok(Reply { status, body, etag })
@@ -269,5 +299,18 @@ impl Api {
             404 => Ok(Wait::Settled("gone".to_string())),
             _ => Err(anyhow!("waiting for a response: {}", Self::error_message(&reply))),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rejection_is_recognised_through_context() {
+        let err = Err::<(), _>(anyhow::Error::new(Rejected)).context("sending the event").unwrap_err();
+        assert!(is_rejected(&err));
+        assert!(format!("{err:#}").contains("Run `ccn pair`"));
+        assert!(!is_rejected(&anyhow!("server returned 500")));
     }
 }

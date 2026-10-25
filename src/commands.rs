@@ -4,8 +4,8 @@ use anyhow::{bail, Context, Result};
 use serde_json::{json, Value};
 use std::time::Duration;
 
-use crate::api::Api;
-use crate::config::{self, Config};
+use crate::api::{self, Api};
+use crate::config::{self, Config, Unpaired};
 use crate::{hookcfg, notify, payload, presence};
 
 /// What this computer tells the server about itself. None until credentials exist.
@@ -33,8 +33,16 @@ pub fn pair(code: Option<String>, name: Option<String>, replace_mac_app: bool) -
         cfg.machine_name = Some(n);
     }
     let machine_name = cfg.machine_name();
+    // A computer the server has deleted (60 days unused) cannot come back under its old identity's
+    // pairings, so it starts over as a new one
+    let mut paired = cfg.is_paired();
+    if paired && matches!(Api::new(&cfg).me(), Err(err) if api::is_rejected(&err)) {
+        println!("This computer's old pairing has been removed, so it will be registered again.");
+        cfg.client_id = None;
+        paired = false;
+    }
     let client_id = cfg.client_id.clone().unwrap_or_else(new_id);
-    let token = config::load_token(&cfg).unwrap_or_else(new_id);
+    let token = if paired { config::load_token(&cfg).unwrap_or_else(new_id) } else { new_id() };
     let api = Api::with_token(&cfg, token.clone());
 
     let device_id = match code {
@@ -63,12 +71,12 @@ pub fn pair(code: Option<String>, name: Option<String>, replace_mac_app: bool) -
         }
         None => {
             // The original flow: this computer shows a code, the phone types it
-            let before: Vec<String> = if cfg.is_paired() {
+            let before: Vec<String> = if paired {
                 api.pairings().map(|d| d.into_iter().map(|d| d.id).collect()).unwrap_or_default()
             } else {
                 vec![]
             };
-            if !cfg.is_paired() {
+            if !paired {
                 let body = json!({
                     "id": client_id,
                     "authToken": token,
@@ -114,6 +122,7 @@ pub fn pair(code: Option<String>, name: Option<String>, replace_mac_app: bool) -
     cfg.registered_at = Some(config::now());
     cfg.save()?;
     let store = config::store_token(&cfg, &token)?;
+    Unpaired::clear();
     println!("Credentials stored in the {store} ({}).", config::ccn_dir().display());
 
     setup_inner(replace_mac_app)?;
@@ -208,18 +217,37 @@ pub fn doctor() -> Result<()> {
         Ok(()) => println!("{}server: {} reachable", yes, cfg.server_url),
         Err(err) => println!("{}server: {err:#}", no),
     }
+    let mut accepted = paired;
     if paired {
         match api.me() {
-            Ok(me) => println!(
-                "{}registered as \"{}\" ({} {}), capabilities: {}",
-                yes,
-                me.name,
-                me.client_kind.unwrap_or_else(|| "cli".to_string()),
-                me.platform.unwrap_or_else(|| config::platform().to_string()),
-                me.capabilities.unwrap_or_default().join(", ")
-            ),
-            Err(err) => println!("{}registration: {err:#}", no),
+            Ok(me) => {
+                Unpaired::clear();
+                println!(
+                    "{}registered as \"{}\" ({} {}), capabilities: {}",
+                    yes,
+                    me.name,
+                    me.client_kind.unwrap_or_else(|| "cli".to_string()),
+                    me.platform.unwrap_or_else(|| config::platform().to_string()),
+                    me.capabilities.unwrap_or_default().join(", ")
+                )
+            }
+            Err(err) if api::is_rejected(&err) => {
+                if Unpaired::load().is_none() {
+                    Unpaired::new().save();
+                }
+                println!("{}pairing: not paired any more: run `ccn pair`", no);
+                accepted = false;
+            }
+            Err(err) => {
+                if Unpaired::load().is_some() {
+                    println!("{}pairing: not paired any more: run `ccn pair`", no);
+                    accepted = false;
+                }
+                println!("{}registration: {err:#}", no);
+            }
         }
+    }
+    if accepted {
         match api.pairings() {
             Ok(devices) if devices.is_empty() => println!("{}phones: none paired yet", no),
             Ok(devices) => {

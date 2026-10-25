@@ -10,7 +10,6 @@ pub const APP_ID: &str = "TouchTap.ccn";
 /// Windows PowerShell's AUMID: always registered, so toasts still show before `ccn setup` has run.
 #[cfg_attr(not(windows), allow(dead_code))]
 pub const FALLBACK_APP_ID: &str = r"{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe";
-#[cfg_attr(not(windows), allow(dead_code))]
 pub const APP_NAME: &str = "Claude Code Notifier";
 
 pub fn show(title: &str, body: &str, sound: bool) {

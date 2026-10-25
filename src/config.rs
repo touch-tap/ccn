@@ -75,6 +75,10 @@ pub fn credentials_path() -> PathBuf {
     ccn_dir().join("credentials")
 }
 
+pub fn unpaired_path() -> PathBuf {
+    ccn_dir().join("unpaired.json")
+}
+
 /// Claude Code's user settings file. `$CLAUDE_CONFIG_DIR` overrides, as it does for Claude Code.
 pub fn claude_settings_path() -> PathBuf {
     if let Ok(dir) = std::env::var("CLAUDE_CONFIG_DIR") {
@@ -318,6 +322,52 @@ pub fn default_machine_name() -> String {
     };
     let raw = from_env.or_else(from_cmd).unwrap_or_else(|| format!("{} computer", platform()));
     raw.trim_end_matches(".local").to_string()
+}
+
+// ============================================
+// The server stopped accepting this computer
+// ============================================
+
+/// Present while the server rejects this computer's credentials. Hooks then skip the network,
+/// so they stay instant until `ccn pair` deletes it.
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default)]
+pub struct Unpaired {
+    /// When a hook first saw the rejection
+    pub since: i64,
+    /// When the server was last asked (a SessionStart re-checks once a day)
+    pub checked_at: i64,
+    /// When the desktop notification was last shown (at most once a day)
+    pub notified_at: i64,
+}
+
+impl Unpaired {
+    pub const RECHECK_AFTER: i64 = 24 * 60 * 60;
+    pub const NOTIFY_EVERY: i64 = 24 * 60 * 60;
+
+    pub fn new() -> Unpaired {
+        let now = now();
+        Unpaired { since: now, checked_at: now, notified_at: 0 }
+    }
+
+    pub fn load() -> Option<Unpaired> {
+        let text = fs::read_to_string(unpaired_path()).ok()?;
+        Some(serde_json::from_str(&text).unwrap_or_else(|_| Unpaired::new()))
+    }
+
+    pub fn save(&self) {
+        let path = unpaired_path();
+        if let Some(parent) = path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        if let Ok(text) = serde_json::to_string(self) {
+            let _ = fs::write(path, text);
+        }
+    }
+
+    pub fn clear() {
+        let _ = fs::remove_file(unpaired_path());
+    }
 }
 
 // ============================================

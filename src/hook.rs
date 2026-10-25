@@ -8,8 +8,8 @@ use std::io::Read;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
-use crate::api::{Api, Wait};
-use crate::config::{self, Config};
+use crate::api::{self, Api, Wait};
+use crate::config::{self, Config, Unpaired};
 use crate::logger::log;
 use crate::payload::{self, Input};
 use crate::session::{self, Card, SessionState};
@@ -19,6 +19,10 @@ const EVENT_TIMEOUT: Duration = Duration::from_secs(3);
 const QUICK_TIMEOUT: Duration = Duration::from_secs(2);
 const SETTINGS_MAX_AGE: i64 = 60 * 60;
 const REGISTER_MAX_AGE: i64 = 24 * 60 * 60;
+
+/// Shown in Claude Code when the server no longer knows this computer.
+pub const UNPAIRED_SYSTEM_MESSAGE: &str = "Claude Code Notifier: this computer isn't paired any more, so your phone won't get notifications. Run `ccn pair` in a terminal to reconnect.";
+const UNPAIRED_NOTIFICATION: &str = "This computer isn't paired any more. Run `ccn pair` in a terminal to reconnect.";
 
 pub fn run() -> Result<()> {
     match std::panic::catch_unwind(run_inner) {
@@ -51,24 +55,86 @@ fn run_inner() -> Result<Option<Value>> {
     let api = Api::new(&cfg);
     let mut state = SessionState::load(&session_id);
     state.touch(&input);
-    let mut ctx = Ctx { cfg, api, input, state };
 
-    match event.as_str() {
-        "SessionStart" => ctx.session_start(),
-        "UserPromptSubmit" => ctx.user_prompt(),
-        "PreToolUse" => ctx.pre_tool_use(),
-        "PermissionRequest" => ctx.permission_request(),
-        "Notification" => ctx.notification(),
-        "Stop" => ctx.stop(),
-        "SessionEnd" => ctx.session_end(),
-        other => {
-            log(&format!("ignoring event {other}"));
-            Ok(None)
+    if let Some(mut flag) = Unpaired::load() {
+        // No network while unpaired, except a once-a-day check at SessionStart in case the
+        // rejection was a server mistake. `ccn pair` deletes the flag.
+        let recheck = event == "SessionStart" && config::now() - flag.checked_at > Unpaired::RECHECK_AFTER;
+        if !(recheck && still_accepted(&api, &mut flag)) {
+            return Ok(unpaired(&cfg, &event, &mut state, flag));
+        }
+        log("the server accepts this computer again");
+    }
+
+    let mut ctx = Ctx { cfg, api, input, state };
+    let result = ctx.dispatch(&event);
+    if ctx.api.was_rejected() {
+        log(&format!("{event}: the server rejected this computer's credentials; run `ccn pair`"));
+        return Ok(unpaired(&ctx.cfg, &event, &mut ctx.state, Unpaired::new()));
+    }
+    result
+}
+
+/// Asks the server whether it accepts this computer after all. Clears the flag when it does.
+fn still_accepted(api: &Api, flag: &mut Unpaired) -> bool {
+    match api.get_settings(None, QUICK_TIMEOUT) {
+        Ok(_) => {
+            Unpaired::clear();
+            true
+        }
+        Err(err) => {
+            if !api::is_rejected(&err) {
+                log(&format!("unpaired re-check failed: {err:#}"));
+            }
+            flag.checked_at = config::now();
+            false
         }
     }
 }
 
+/// What a hook does while the server rejects this computer: a desktop notification at most once a
+/// day, and a message in Claude Code at SessionStart and on the first prompt of each session.
+fn unpaired(cfg: &Config, event: &str, state: &mut SessionState, mut flag: Unpaired) -> Option<Value> {
+    let now = config::now();
+    if cfg.desktop_notifications && now - flag.notified_at > Unpaired::NOTIFY_EVERY {
+        notify::show(notify::APP_NAME, UNPAIRED_NOTIFICATION, cfg.settings.sound());
+        flag.notified_at = now;
+    }
+    flag.save();
+    match event {
+        "SessionEnd" => {
+            SessionState::remove(&state.session_id);
+            None
+        }
+        "SessionStart" | "UserPromptSubmit" => {
+            if event == "UserPromptSubmit" && state.unpaired_warned {
+                return None;
+            }
+            state.unpaired_warned = true;
+            let _ = state.save();
+            Some(serde_json::json!({ "systemMessage": UNPAIRED_SYSTEM_MESSAGE }))
+        }
+        _ => None,
+    }
+}
+
 impl Ctx {
+    fn dispatch(&mut self, event: &str) -> Result<Option<Value>> {
+        match event {
+            "SessionStart" => self.session_start(),
+            "UserPromptSubmit" => self.user_prompt(),
+            "PreToolUse" => self.pre_tool_use(),
+            "PermissionRequest" => self.permission_request(),
+            "Notification" => self.notification(),
+            "Stop" => self.stop(),
+            "SessionEnd" => self.session_end(),
+            other => {
+                log(&format!("ignoring event {other}"));
+                Ok(None)
+            }
+        }
+    }
+
     fn input(&self) -> Input<'_> {
         Input(&self.input)
     }
@@ -86,9 +152,14 @@ impl Ctx {
         session::prune_old(7);
 
         let now = config::now();
-        if now - self.cfg.settings_fetched_at.unwrap_or(0) > SETTINGS_MAX_AGE {
+        // Registration is an unauthenticated upsert, so it would bring a deleted computer back
+        // with no phones. Only re-register once an authenticated call has just been accepted.
+        let register_due = now - self.cfg.registered_at.unwrap_or(0) > REGISTER_MAX_AGE;
+        let mut accepted = false;
+        if register_due || now - self.cfg.settings_fetched_at.unwrap_or(0) > SETTINGS_MAX_AGE {
             match self.api.get_settings(self.cfg.settings_etag.as_deref(), QUICK_TIMEOUT) {
                 Ok(Some(result)) => {
+                    accepted = true;
                     self.cfg.settings = result.settings;
                     self.cfg.settings_updated_at = result.updated_at;
                     self.cfg.settings_etag = result.etag;
@@ -96,13 +167,15 @@ impl Ctx {
                     let _ = self.cfg.save();
                 }
                 Ok(None) => {
+                    accepted = true;
                     self.cfg.settings_fetched_at = Some(now);
                     let _ = self.cfg.save();
                 }
+                Err(err) if api::is_rejected(&err) => return Err(err),
                 Err(err) => log(&format!("settings sync skipped: {err:#}")),
             }
         }
-        if now - self.cfg.registered_at.unwrap_or(0) > REGISTER_MAX_AGE {
+        if register_due && accepted {
             if let Some(identity) = crate::commands::identity(&self.cfg) {
                 match self.api.register(&identity) {
                     Ok(()) => {
@@ -294,6 +367,10 @@ impl Ctx {
                         return;
                     }
                     Ok(Wait::Pending) => {}
+                    Err(err) if api::is_rejected(&err) => {
+                        let _ = tx.send(None);
+                        return;
+                    }
                     Err(err) => {
                         log(&format!("wait error: {err:#}"));
                         std::thread::sleep(Duration::from_secs(2));
