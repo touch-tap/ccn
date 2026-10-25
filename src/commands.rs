@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use crate::api::Api;
 use crate::config::{self, Config};
-use crate::{hookcfg, payload, presence};
+use crate::{hookcfg, notify, payload, presence};
 
 /// What this computer tells the server about itself. None until credentials exist.
 pub fn identity(cfg: &Config) -> Option<Value> {
@@ -148,6 +148,9 @@ fn setup_inner(replace_mac_app: bool) -> Result<()> {
         println!("would be sent twice. Run `ccn setup --replace-mac-app` to remove them, or quit the Mac app.");
     } else if report.mac_app_hooks_removed {
         println!("Removed the Mac app's hook entries; ccn handles notifications from now on.");
+    }
+    if notify::register_app() {
+        println!("Registered \"Claude Code Notifier\" for Windows notifications.");
     }
     Ok(())
 }
@@ -368,6 +371,7 @@ pub fn uninstall() -> Result<()> {
     let cfg = Config::load();
     let path = hookcfg::uninstall()?;
     println!("Removed ccn's hooks from {}.", path.display());
+    notify::unregister_app();
     if cfg.is_paired() {
         let api = Api::new(&cfg);
         if let Ok(devices) = api.pairings() {

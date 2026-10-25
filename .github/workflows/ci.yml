@@ -33,7 +33,15 @@ jobs:
           ./target/debug/ccn setup
           grep -q '"Stop"' "$CLAUDE_CONFIG_DIR/settings.json"
           grep -q 'Bash(ls)' "$CLAUDE_CONFIG_DIR/settings.json"
+          aumid='HKCU\Software\Classes\AppUserModelId\TouchTap.ccn'
+          if [ "$RUNNER_OS" = Windows ]; then
+            # setup registers the toast identity, uninstall removes it
+            MSYS_NO_PATHCONV=1 reg query "$aumid" /v DisplayName
+          fi
           ./target/debug/ccn uninstall
+          if [ "$RUNNER_OS" = Windows ]; then
+            if MSYS_NO_PATHCONV=1 reg query "$aumid" >/dev/null 2>&1; then echo "AUMID still registered"; exit 1; fi
+          fi
           # Uninstall leaves the file exactly as it was
           test "$(tr -d ' \n\r' < "$CLAUDE_CONFIG_DIR/settings.json")" = '{"permissions":{"allow":["Bash(ls)"]}}'
 
@@ -52,6 +60,7 @@ jobs:
         shell: bash
         run: |
           mkdir dist
+          ls -l target/release/ccn target/release/ccn.exe 2>/dev/null || true
           target=$(rustc -vV | sed -n 's/^host: //p')
           target=${target/unknown-linux-gnu/unknown-linux-musl}
           if [ "$RUNNER_OS" = Windows ]; then
