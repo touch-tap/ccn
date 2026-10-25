@@ -32,14 +32,17 @@ for pair in darwin-arm64:aarch64-apple-darwin darwin-x64:x86_64-apple-darwin \
   "version": "$version",
   "description": "The ccn binary for $npm_name. Install @touchtap/ccn instead.",
   "homepage": "https://claudecodenotifier.com/cli",
+  "license": "SEE LICENSE IN LICENSE.md",
   "os": ["$os"],
   "cpu": ["$cpu"],
-  "files": ["bin"]
+  "files": ["bin", "LICENSE.md"]
 }
 JSON
+  cp "$root/LICENSE.md" "$dir/LICENSE.md"
 done
 
 cp -R "$root/npm/ccn" "$out/ccn"
+cp "$root/LICENSE.md" "$out/ccn/LICENSE.md"
 node -e '
   const fs = require("fs"), file = process.argv[1], v = process.argv[2];
   const p = JSON.parse(fs.readFileSync(file));

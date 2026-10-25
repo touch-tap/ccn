@@ -85,3 +85,7 @@ Releasing: see [RELEASING.md](RELEASING.md).
 
 Server: [CCNotifier_Server](../CCNotifier_Server) (Cloudflare Worker). Design and roadmap: the
 "CCNotifier CLI: the multiplatform plan" doc.
+
+## Licence
+
+ccn is source-available under the [PolyForm Shield License 1.0.0](LICENSE.md). You can use it, change it and share it, including at work, as long as you keep the copyright notice and don't use it to build a product that competes with Claude Code Notifier.
