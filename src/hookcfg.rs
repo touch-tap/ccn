@@ -232,6 +232,11 @@ pub fn uninstall() -> Result<PathBuf> {
     if let Some(hooks) = root.get_mut("hooks").and_then(|h| h.as_object_mut()) {
         strip(hooks, false);
     }
+    // An empty hooks section is almost always one ccn created, so leave the file as it was before
+    let empty = root.get("hooks").and_then(|h| h.as_object()).is_some_and(|h| h.is_empty());
+    if empty {
+        root.as_object_mut().map(|o| o.remove("hooks"));
+    }
     save(&path, &root)?;
     Ok(path)
 }

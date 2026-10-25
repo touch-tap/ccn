@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --locked
+      - run: cargo test --locked
+      - name: Smoke test the hook without a pairing
+        shell: bash
+        env:
+          CCN_HOME: ${{ runner.temp }}/ccn
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude
+          CCN_PRESENCE: present
+        run: |
+          mkdir -p "$CLAUDE_CONFIG_DIR"
+          echo '{"permissions":{"allow":["Bash(ls)"]}}' > "$CLAUDE_CONFIG_DIR/settings.json"
+          # An unpaired hook must exit 0 quickly and print nothing that changes Claude's behaviour
+          out=$(echo '{"hook_event_name":"Stop","session_id":"ci","cwd":"/tmp"}' | ./target/debug/ccn hook)
+          test -z "$out"
+          ./target/debug/ccn setup
+          grep -q '"Stop"' "$CLAUDE_CONFIG_DIR/settings.json"
+          grep -q 'Bash(ls)' "$CLAUDE_CONFIG_DIR/settings.json"
+          ./target/debug/ccn uninstall
+          # Uninstall leaves the file exactly as it was
+          test "$(tr -d ' \n\r' < "$CLAUDE_CONFIG_DIR/settings.json")" = '{"permissions":{"allow":["Bash(ls)"]}}'
+
+  install-scripts:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release --locked
+      - name: Package a local release and serve it
+        shell: bash
+        run: |
+          mkdir dist
+          target=$(rustc -vV | sed -n 's/^host: //p')
+          target=${target/unknown-linux-gnu/unknown-linux-musl}
+          if [ "$RUNNER_OS" = Windows ]; then
+            (cd target/release && 7z a ../../dist/ccn-$target.zip ccn.exe)
+          else
+            tar czf dist/ccn-$target.tar.gz -C target/release ccn
+          fi
+          (cd dist && (sha256sum * 2>/dev/null || shasum -a 256 *) > SHA256SUMS && cat SHA256SUMS)
+          (cd dist && python3 -m http.server 8765 >/dev/null 2>&1 &)
+          sleep 2
+      - name: install.sh
+        if: runner.os != 'Windows'
+        env:
+          CCN_DOWNLOAD_BASE: http://127.0.0.1:8765
+          CCN_INSTALL_DIR: ${{ runner.temp }}/bin
+        run: |
+          sh install/install.sh
+          "$CCN_INSTALL_DIR/ccn" --version
+      - name: install.ps1
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          CCN_DOWNLOAD_BASE: http://127.0.0.1:8765
+          CCN_INSTALL_DIR: ${{ runner.temp }}\bin
+        run: |
+          Get-Content install/install.ps1 -Raw | iex
+          ccn --version
+          # Running it again replaces the binary in place
+          Get-Content install/install.ps1 -Raw | iex
+          ccn --version
