@@ -17,7 +17,7 @@ curl -fsSL https://claudecodenotifier.com/install.sh | sh -s 482913
 irm https://claudecodenotifier.com/install.ps1 | iex; ccn pair 482913
 
 # Homebrew, or anyone with Node
-brew install touch-tap/tap/ccn && ccn pair 482913
+brew trust --formula touch-tap/tap/ccn && brew install touch-tap/tap/ccn && ccn pair 482913
 npx @touchtap/ccn pair 482913
 
 # from source
