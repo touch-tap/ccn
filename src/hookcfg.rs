@@ -306,6 +306,7 @@ mod exe_tests {
     use super::*;
 
     #[test]
+    #[cfg(unix)] // Homebrew paths are Unix paths
     fn homebrew_cellar_maps_to_the_bin_link() {
         let root = std::env::temp_dir().join(format!("ccn-brew-{}", std::process::id()));
         let cellar = root.join("Cellar/ccn/0.1.0/bin");
