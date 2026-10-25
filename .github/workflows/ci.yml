@@ -16,8 +16,21 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: Build the macOS notifier app
+        if: runner.os == 'macOS'
+        run: |
+          scripts/build-macos-notifier.sh 0.0.0 "$RUNNER_TEMP"
+          echo "CCN_NOTIFIER_APP=$RUNNER_TEMP/Claude Code Notifier.app" >> "$GITHUB_ENV"
       - run: cargo build --locked
       - run: cargo test --locked
+      - name: The notifier app is embedded and written out intact
+        if: runner.os == 'macOS'
+        env:
+          CCN_HOME: ${{ runner.temp }}/ccn-notifier
+          CCN_SERVER_URL: http://127.0.0.1:9
+        run: |
+          ./target/debug/ccn doctor | grep "desktop notifications"
+          codesign --verify --strict "$CCN_HOME/Claude Code Notifier.app"
       - name: Smoke test the hook without a pairing
         shell: bash
         env:
