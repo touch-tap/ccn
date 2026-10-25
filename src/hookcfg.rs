@@ -1,0 +1,234 @@
+//! Installs, removes and inspects ccn's entries in Claude Code's user settings file.
+//! Everything else in that file is left exactly as it was, including key order.
+
+use anyhow::{Context, Result};
+use serde_json::{json, Value};
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use crate::config;
+
+/// Event, matcher, timeout in seconds. Blocking events get a timeout above the largest hold ceiling.
+const EVENTS: &[(&str, Option<&str>, u64)] = &[
+    ("SessionStart", None, 30),
+    ("UserPromptSubmit", None, 10),
+    ("PreToolUse", None, 3660),
+    ("PermissionRequest", None, 3660),
+    ("Notification", Some("permission_prompt"), 30),
+    ("Stop", None, 700),
+    ("SessionEnd", None, 10),
+];
+
+const MAC_APP_MARKER: &str = "ccnotifier-hook.sh";
+
+pub struct InstallReport {
+    pub path: PathBuf,
+    pub exe: PathBuf,
+    pub mac_app_hooks_found: bool,
+    pub mac_app_hooks_removed: bool,
+}
+
+pub struct Status {
+    pub path: PathBuf,
+    pub installed: Vec<String>,
+    pub missing: Vec<String>,
+    pub stale_exe: bool,
+    pub mac_app_present: bool,
+}
+
+pub fn exe_path() -> Result<PathBuf> {
+    let exe = std::env::current_exe().context("finding the ccn executable")?;
+    Ok(exe.canonicalize().unwrap_or(exe))
+}
+
+fn shell_quote(path: &Path) -> String {
+    let s = path.to_string_lossy();
+    if s.chars().all(|c| c.is_ascii_alphanumeric() || "/._-+:@".contains(c)) {
+        s.to_string()
+    } else {
+        format!("'{}'", s.replace('\'', "'\\''"))
+    }
+}
+
+fn hook_entry(exe: &Path, timeout: u64) -> Value {
+    if cfg!(windows) {
+        // Exec form: no shell needed, so it works with or without Git Bash
+        json!({ "type": "command", "command": exe.to_string_lossy(), "args": ["hook"], "timeout": timeout })
+    } else {
+        json!({ "type": "command", "command": format!("{} hook", shell_quote(exe)), "timeout": timeout })
+    }
+}
+
+fn command_of(entry: &Value) -> &str {
+    entry.get("command").and_then(|c| c.as_str()).unwrap_or("")
+}
+
+pub fn is_ours(entry: &Value) -> bool {
+    let command = command_of(entry);
+    let args_hook = entry
+        .get("args")
+        .and_then(|a| a.as_array())
+        .map(|a| a.len() == 1 && a[0] == "hook")
+        .unwrap_or(false);
+    let base = Path::new(command.trim_end_matches(" hook").trim_matches('\''))
+        .file_name()
+        .map(|f| f.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let is_ccn_binary = base == "ccn" || base == "ccn.exe";
+    (command.ends_with(" hook") && is_ccn_binary) || (args_hook && is_ccn_binary)
+}
+
+fn is_mac_app(entry: &Value) -> bool {
+    command_of(entry).contains(MAC_APP_MARKER)
+}
+
+fn load(path: &Path) -> Result<Value> {
+    if !path.exists() {
+        return Ok(json!({}));
+    }
+    let text = fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
+    if text.trim().is_empty() {
+        return Ok(json!({}));
+    }
+    serde_json::from_str(&text).with_context(|| format!("{} is not valid JSON", path.display()))
+}
+
+fn save(path: &Path, root: &Value) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    if path.exists() {
+        let backup = path.with_extension("json.ccn-backup");
+        if !backup.exists() {
+            let _ = fs::copy(path, &backup);
+        }
+    }
+    let text = serde_json::to_string_pretty(root)?;
+    fs::write(path, format!("{text}\n")).with_context(|| format!("writing {}", path.display()))?;
+    Ok(())
+}
+
+/// Removes ccn's entries (and the Mac app's, when asked) from every event. Drops groups left empty.
+fn strip(hooks: &mut serde_json::Map<String, Value>, remove_mac_app: bool) -> (bool, bool) {
+    let mut found_mac = false;
+    let mut removed_mac = false;
+    for (_event, groups) in hooks.iter_mut() {
+        let Some(groups) = groups.as_array_mut() else { continue };
+        for group in groups.iter_mut() {
+            let Some(list) = group.get_mut("hooks").and_then(|h| h.as_array_mut()) else { continue };
+            list.retain(|entry| {
+                if is_ours(entry) {
+                    return false;
+                }
+                if is_mac_app(entry) {
+                    found_mac = true;
+                    if remove_mac_app {
+                        removed_mac = true;
+                        return false;
+                    }
+                }
+                true
+            });
+        }
+        groups.retain(|g| g.get("hooks").and_then(|h| h.as_array()).map(|l| !l.is_empty()).unwrap_or(true));
+    }
+    hooks.retain(|_, groups| groups.as_array().map(|g| !g.is_empty()).unwrap_or(true));
+    (found_mac, removed_mac)
+}
+
+pub fn install(replace_mac_app: bool) -> Result<InstallReport> {
+    let path = config::claude_settings_path();
+    let exe = exe_path()?;
+    let mut root = load(&path)?;
+    let obj = root.as_object_mut().context("settings.json is not a JSON object")?;
+    let hooks = obj.entry("hooks").or_insert_with(|| json!({}));
+    let hooks = hooks.as_object_mut().context("the hooks section of settings.json is not an object")?;
+
+    let (found_mac, removed_mac) = strip(hooks, replace_mac_app);
+
+    for (event, matcher, timeout) in EVENTS {
+        let groups = hooks.entry(*event).or_insert_with(|| json!([]));
+        let groups = groups.as_array_mut().with_context(|| format!("hooks.{event} is not an array"))?;
+        let mut group = json!({ "hooks": [hook_entry(&exe, *timeout)] });
+        if let Some(m) = matcher {
+            group["matcher"] = json!(m);
+        }
+        groups.push(group);
+    }
+
+    save(&path, &root)?;
+    Ok(InstallReport { path, exe, mac_app_hooks_found: found_mac, mac_app_hooks_removed: removed_mac })
+}
+
+pub fn uninstall() -> Result<PathBuf> {
+    let path = config::claude_settings_path();
+    if !path.exists() {
+        return Ok(path);
+    }
+    let mut root = load(&path)?;
+    if let Some(hooks) = root.get_mut("hooks").and_then(|h| h.as_object_mut()) {
+        strip(hooks, false);
+    }
+    save(&path, &root)?;
+    Ok(path)
+}
+
+pub fn status() -> Result<Status> {
+    let path = config::claude_settings_path();
+    let root = load(&path)?;
+    let exe = exe_path().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
+    let mut installed = Vec::new();
+    let mut missing = Vec::new();
+    let mut stale_exe = false;
+    let mut mac_app_present = false;
+
+    let hooks = root.get("hooks").and_then(|h| h.as_object());
+    for (event, matcher, _) in EVENTS {
+        let mut present = false;
+        if let Some(groups) = hooks.and_then(|h| h.get(*event)).and_then(|g| g.as_array()) {
+            for group in groups {
+                let group_matcher = group.get("matcher").and_then(|m| m.as_str());
+                let matcher_ok = match matcher {
+                    Some(m) => group_matcher == Some(m),
+                    None => group_matcher.map(|m| m.is_empty() || m == "*").unwrap_or(true),
+                };
+                let Some(list) = group.get("hooks").and_then(|h| h.as_array()) else { continue };
+                for entry in list {
+                    if is_mac_app(entry) {
+                        mac_app_present = true;
+                    }
+                    if matcher_ok && is_ours(entry) {
+                        present = true;
+                        if !exe.is_empty() && !command_of(entry).contains(&exe) {
+                            stale_exe = true;
+                        }
+                    }
+                }
+            }
+        }
+        let label = match matcher {
+            Some(m) => format!("{event} ({m})"),
+            None => event.to_string(),
+        };
+        if present {
+            installed.push(label);
+        } else {
+            missing.push(label);
+        }
+    }
+    // The Mac app's hooks live on events we do not use too
+    if let Some(hooks) = hooks {
+        for (_, groups) in hooks {
+            if let Some(groups) = groups.as_array() {
+                for group in groups {
+                    if let Some(list) = group.get("hooks").and_then(|h| h.as_array()) {
+                        if list.iter().any(is_mac_app) {
+                            mac_app_present = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(Status { path, installed, missing, stale_exe, mac_app_present })
+}
