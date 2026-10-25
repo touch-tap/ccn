@@ -36,9 +36,72 @@ pub struct Status {
     pub mac_app_present: bool,
 }
 
+/// The path the hooks call. It has to survive upgrades: a Homebrew Cellar path is versioned, so
+/// it maps to the prefix's bin link, and a binary run from npx's cache (the npm wrapper sets
+/// `CCN_EPHEMERAL=1`) is replaced by the copy `install_self` puts in the user's bin directory.
 pub fn exe_path() -> Result<PathBuf> {
+    if ephemeral() {
+        return Ok(user_bin_dir().join(exe_name()));
+    }
     let exe = std::env::current_exe().context("finding the ccn executable")?;
-    Ok(exe.canonicalize().unwrap_or(exe))
+    let exe = exe.canonicalize().unwrap_or(exe);
+    Ok(homebrew_bin(&exe).unwrap_or(exe))
+}
+
+fn ephemeral() -> bool {
+    std::env::var("CCN_EPHEMERAL").map(|v| v == "1").unwrap_or(false)
+}
+
+fn exe_name() -> &'static str {
+    if cfg!(windows) { "ccn.exe" } else { "ccn" }
+}
+
+/// Where the install scripts and `install_self` put the binary.
+pub fn user_bin_dir() -> PathBuf {
+    if let Ok(dir) = std::env::var("CCN_INSTALL_DIR") {
+        if !dir.is_empty() {
+            return PathBuf::from(dir);
+        }
+    }
+    #[cfg(windows)]
+    {
+        if let Ok(local) = std::env::var("LOCALAPPDATA") {
+            if !local.is_empty() {
+                return PathBuf::from(local).join("Programs").join("ccn");
+            }
+        }
+    }
+    config::home_dir().join(".local").join("bin")
+}
+
+/// `/opt/homebrew/Cellar/ccn/0.1.0/bin/ccn` → `/opt/homebrew/bin/ccn`, when that link exists.
+fn homebrew_bin(exe: &Path) -> Option<PathBuf> {
+    let s = exe.to_str()?;
+    let (prefix, rest) = s.split_once("/Cellar/ccn/")?;
+    let name = rest.rsplit('/').next()?;
+    let link = Path::new(prefix).join("bin").join(name);
+    link.exists().then_some(link)
+}
+
+/// Copies a binary running from npx's cache to the user's bin directory, so the hooks keep
+/// working after the cache is cleared. Returns the copy's path when one was made.
+pub fn install_self() -> Result<Option<PathBuf>> {
+    if !ephemeral() {
+        return Ok(None);
+    }
+    let from = std::env::current_exe().context("finding the ccn executable")?;
+    let dir = user_bin_dir();
+    fs::create_dir_all(&dir).with_context(|| format!("creating {}", dir.display()))?;
+    let to = dir.join(exe_name());
+    let tmp = dir.join(format!("{}.new", exe_name()));
+    fs::copy(&from, &tmp).with_context(|| format!("copying ccn to {}", dir.display()))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&tmp, fs::Permissions::from_mode(0o755))?;
+    }
+    fs::rename(&tmp, &to).with_context(|| format!("installing {}", to.display()))?;
+    Ok(Some(to))
 }
 
 fn shell_quote(path: &Path) -> String {
@@ -231,4 +294,22 @@ pub fn status() -> Result<Status> {
         }
     }
     Ok(Status { path, installed, missing, stale_exe, mac_app_present })
+}
+
+#[cfg(test)]
+mod exe_tests {
+    use super::*;
+
+    #[test]
+    fn homebrew_cellar_maps_to_the_bin_link() {
+        let root = std::env::temp_dir().join(format!("ccn-brew-{}", std::process::id()));
+        let cellar = root.join("Cellar/ccn/0.1.0/bin");
+        fs::create_dir_all(&cellar).unwrap();
+        fs::create_dir_all(root.join("bin")).unwrap();
+        fs::write(cellar.join("ccn"), "").unwrap();
+        fs::write(root.join("bin/ccn"), "").unwrap();
+        assert_eq!(homebrew_bin(&cellar.join("ccn")), Some(root.join("bin/ccn")));
+        assert_eq!(homebrew_bin(&root.join("elsewhere/ccn")), None);
+        fs::remove_dir_all(root).ok();
+    }
 }

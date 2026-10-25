@@ -137,6 +137,9 @@ pub fn setup(replace_mac_app: bool) -> Result<()> {
 }
 
 fn setup_inner(replace_mac_app: bool) -> Result<()> {
+    if let Some(copy) = hookcfg::install_self()? {
+        println!("Installed ccn to {}.", copy.display());
+    }
     let report = hookcfg::install(replace_mac_app)?;
     println!("Hooks installed in {} (using {}).", report.path.display(), report.exe.display());
     if report.mac_app_hooks_found && !report.mac_app_hooks_removed {
