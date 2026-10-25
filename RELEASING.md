@@ -1,8 +1,10 @@
 # Releasing ccn
 
 1. Bump `version` in `Cargo.toml` (and run `cargo build` so `Cargo.lock` follows), commit.
-2. `git tag v0.2.0 && git push origin v0.2.0`. The Release workflow builds six targets and creates a
-   **draft** GitHub release with the archives, `SHA256SUMS` and `ccn.rb`.
+2. On the release Mac, `scripts/release.sh 0.2.0`. It signs and notarizes the macOS notifier app,
+   creates a **draft** GitHub release with it, and pushes the tag. The Release workflow then builds
+   six targets and adds the archives, `SHA256SUMS` and `ccn.rb` to that draft. Never push a release
+   tag by hand: the macOS builds need the notarized app from the draft and fail without it.
 3. Check the draft, then publish it. The install scripts download from
    `releases/latest/download/…`, so they serve the new version the moment it is published.
    The repository must be public for the scripts, Homebrew and npm to reach the assets.
@@ -24,11 +26,17 @@ without it falls back to AppleScript notifications, which show Script Editor's i
 
 Its icon is the phone apps' `AppIcon.icon` copied from the iOS repo; copy it again when that changes.
 
-The Release workflow signs and notarizes it when these repository secrets exist, and ad-hoc signs it
-otherwise (that works, but isn't what to ship):
+It is signed and notarized on the release Mac, never in CI, so the Developer ID private key stays
+in that Mac's keychain. The Release workflow refuses an app that isn't notarized Developer ID.
 
-- `DEVELOPER_ID_P12`: a Developer ID Application certificate with its private key, exported as .p12
-  and base64-encoded (`base64 -i cert.p12 | pbcopy`)
-- `DEVELOPER_ID_P12_PASSWORD`: the .p12's export password
-- `NOTARY_KEY`, `NOTARY_KEY_ID`, `NOTARY_ISSUER`: an App Store Connect API key (the .p8 file's
-  contents, its key ID and the issuer ID) with the Developer role, for `notarytool`
+### Setting up a release Mac (once per Mac)
+
+1. Xcode (for `swiftc`, `actool`, `notarytool`), `gh` signed in to GitHub, and this repo.
+2. The certificate: "Developer ID Application: TouchTap LTD (4ABJZNGY79)" with its private key in the
+   login keychain. From the old Mac, export it from Keychain Access (My Certificates, right-click,
+   Export, .p12) and double-click the .p12 on the new one. If the old Mac is gone, create a new
+   Developer ID Application certificate at developer.apple.com (Certificates, +); releases signed
+   with the old one stay valid. Check with `security find-identity -v -p codesigning`.
+3. The notarization profile, using an App Store Connect API key (Users and Access, Integrations;
+   the .p8 is only downloadable once, so keep it with the company keys):
+   `xcrun notarytool store-credentials ccn-notary --key AuthKey_XXXX.p8 --key-id XXXX --issuer <issuer id>`

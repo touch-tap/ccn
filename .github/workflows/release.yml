@@ -1,7 +1,7 @@
 name: Release
 
-# Push a tag like v0.2.0. Builds every target and attaches them to a DRAFT release; a person
-# publishes it. The install scripts, Homebrew formula and npm packages all read these assets.
+# Started by scripts/release.sh, which creates the DRAFT release with the notarized macOS notifier app
+# and pushes the tag. Builds every target and adds them to that draft; a person publishes it. The install scripts, Homebrew formula and npm packages all read these assets.
 on:
   push:
     tags: ['v*']
@@ -32,36 +32,17 @@ jobs:
         run: |
           pip install ziglang
           cargo install --locked cargo-zigbuild
-      - name: Build the macOS notifier app
+      - name: Fetch the notarized macOS notifier app
         if: runner.os == 'macOS'
         env:
-          DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
-          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
-          NOTARY_KEY: ${{ secrets.NOTARY_KEY }}
-          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
-          NOTARY_ISSUER: ${{ secrets.NOTARY_ISSUER }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # Signed with Developer ID and notarized when the secrets exist (see RELEASING.md), ad-hoc otherwise
-          if [ -n "$DEVELOPER_ID_P12" ]; then
-            kc="$RUNNER_TEMP/signing.keychain-db"
-            security create-keychain -p ci "$kc"
-            security set-keychain-settings "$kc"
-            security unlock-keychain -p ci "$kc"
-            echo "$DEVELOPER_ID_P12" | base64 --decode > "$RUNNER_TEMP/id.p12"
-            security import "$RUNNER_TEMP/id.p12" -k "$kc" -P "$DEVELOPER_ID_P12_PASSWORD" -T /usr/bin/codesign
-            security set-key-partition-list -S apple-tool:,apple: -s -k ci "$kc" >/dev/null
-            security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
-            export CODESIGN_IDENTITY="$(security find-identity -v -p codesigning "$kc" | grep -o '"Developer ID Application[^"]*"' | head -1 | tr -d '"')"
-          fi
-          scripts/build-macos-notifier.sh "${GITHUB_REF_NAME#v}" "$RUNNER_TEMP"
+          # scripts/release.sh signs and notarizes it on the developer's Mac and attaches it to the draft
+          gh release download "$GITHUB_REF_NAME" -p ccn-notifier-macos.zip -D "$RUNNER_TEMP"
+          ditto -x -k "$RUNNER_TEMP/ccn-notifier-macos.zip" "$RUNNER_TEMP"
           app="$RUNNER_TEMP/Claude Code Notifier.app"
-          if [ -n "${CODESIGN_IDENTITY:-}" ] && [ -n "$NOTARY_KEY" ]; then
-            echo "$NOTARY_KEY" > "$RUNNER_TEMP/notary.p8"
-            ditto -c -k --keepParent "$app" "$RUNNER_TEMP/notifier.zip"
-            xcrun notarytool submit "$RUNNER_TEMP/notifier.zip" --key "$RUNNER_TEMP/notary.p8" \
-              --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER" --wait
-            xcrun stapler staple "$app"
-          fi
+          codesign --verify --strict "$app"
+          spctl --assess --type exec -vv "$app" 2>&1 | tee /dev/stderr | grep -q "Notarized Developer ID"
           echo "CCN_NOTIFIER_APP=$app" >> "$GITHUB_ENV"
       - name: Build
         shell: bash
@@ -99,8 +80,8 @@ jobs:
         run: cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS
       - name: Homebrew formula
         run: scripts/brew-formula.sh "${GITHUB_REF_NAME#v}" dist/SHA256SUMS > dist/ccn.rb
-      - name: Draft release
+      - name: Add to the draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/* --draft --title "ccn $GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" dist/* --clobber
