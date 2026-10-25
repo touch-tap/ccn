@@ -10,7 +10,8 @@
    The repository must be public for the scripts, Homebrew and npm to reach the assets.
 4. Homebrew: copy `ccn.rb` from the release to `touch-tap/homebrew-tap` as `Formula/ccn.rb`, push.
 5. npm: download the release assets into `dist/`, run `scripts/npm-packages.sh 0.2.0 dist`, then
-   `npm publish --access public` in each `npm/out/ccn-*` folder and finally in `npm/out/ccn`.
+   `scripts/npm-publish.sh <one-time password>` (signed in with `npm login` as an owner of the
+   `touchtap` org). It skips versions already on npm, so rerun it with a fresh code if one expires.
 6. Website: `install/install.sh` and `install/install.ps1` are served from claudecodenotifier.com.
    Copy them to the CCNotifier_Website repo root when they change.
 
