@@ -13,7 +13,7 @@ pub const FALLBACK_APP_ID: &str = r"{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\Windo
 pub const APP_NAME: &str = "Claude Code Notifier";
 
 /// The app icon, written to disk by `ccn setup` for the notification servers to read. macOS takes
-/// the icon of the app that posts (osascript), so the binary there goes without it.
+/// the icon of the app that posts (the bundled notifier app), so the binary there goes without it.
 #[cfg(not(target_os = "macos"))]
 const ICON: &[u8] = include_bytes!("../assets/icon.png");
 
@@ -54,7 +54,7 @@ pub fn show(title: &str, body: &str, sound: bool) {
     }
     let body = crate::session::SessionState::truncate(body, 200);
     #[cfg(target_os = "macos")]
-    {
+    if !mac::post(title, &body, sound) {
         let script = format!(
             "display notification {} with title {}{}",
             osa_string(&body),
@@ -107,7 +107,28 @@ pub fn install() -> Option<String> {
     {
         write_icon().map(|p| format!("Installed the notification icon at {}.", p.display()))
     }
-    #[cfg(not(any(windows, target_os = "linux")))]
+    #[cfg(target_os = "macos")]
+    {
+        mac::install()
+    }
+    #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
+    {
+        None
+    }
+}
+
+/// A line for `ccn doctor` about desktop notifications: (all good, text).
+pub fn doctor_line() -> Option<(bool, String)> {
+    #[cfg(target_os = "macos")]
+    {
+        Some(match mac::status().as_deref() {
+            None => (true, "AppleScript (this build has no notifier app)".to_string()),
+            Some("authorized") => (true, format!("allowed for \"{APP_NAME}\"")),
+            Some("denied") => (false, format!("turned off: System Settings > Notifications > {APP_NAME}")),
+            Some(_) => (false, "not allowed yet: run `ccn setup`".to_string()),
+        })
+    }
+    #[cfg(not(target_os = "macos"))]
     {
         None
     }
@@ -158,6 +179,109 @@ fn xml_escape(s: &str) -> String {
 #[cfg(target_os = "macos")]
 fn osa_string(s: &str) -> String {
     format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
+}
+
+#[cfg(target_os = "macos")]
+mod mac {
+    //! "Claude Code Notifier.app" (macos/notifier), embedded at build time and written to ccn's
+    //! folder, so notifications carry our name and icon instead of Script Editor's. It is rewritten
+    //! whenever its Info.plist differs from the embedded one, which carries the version.
+
+    use std::path::PathBuf;
+    use std::process::{Command, Stdio};
+
+    include!(concat!(env!("OUT_DIR"), "/notifier_files.rs"));
+
+    fn app_path() -> PathBuf {
+        crate::config::ccn_dir().join(format!("{}.app", super::APP_NAME))
+    }
+
+    fn exe() -> PathBuf {
+        app_path().join("Contents/MacOS/ccn-notifier")
+    }
+
+    /// Makes sure the current app is on disk. False when this build has none, or writing failed.
+    fn ensure() -> bool {
+        let Some((_, plist, _)) = FILES.iter().find(|(rel, _, _)| *rel == "Contents/Info.plist") else {
+            return false;
+        };
+        if std::fs::read(app_path().join("Contents/Info.plist")).is_ok_and(|on_disk| on_disk == *plist) {
+            return true;
+        }
+        match write() {
+            Ok(()) => true,
+            Err(err) => {
+                crate::logger::log(&format!("writing the notifier app failed: {err}"));
+                false
+            }
+        }
+    }
+
+    /// Writes beside the target and renames, so a hook running at the same time never sees half an app.
+    fn write() -> std::io::Result<()> {
+        use std::os::unix::fs::PermissionsExt;
+        let app = app_path();
+        let tmp = app.with_extension(format!("tmp-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&tmp);
+        for (rel, bytes, executable) in FILES {
+            let path = tmp.join(rel);
+            std::fs::create_dir_all(path.parent().unwrap())?;
+            std::fs::write(&path, bytes)?;
+            if *executable {
+                std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))?;
+            }
+        }
+        let _ = std::fs::remove_dir_all(&app);
+        std::fs::rename(&tmp, &app)
+    }
+
+    /// Fire and forget. The app falls back to AppleScript itself while permission was never asked.
+    pub fn post(title: &str, body: &str, sound: bool) -> bool {
+        if !ensure() {
+            return false;
+        }
+        let mut cmd = Command::new(exe());
+        cmd.args(["--title", title, "--body", body]);
+        if sound {
+            cmd.arg("--sound");
+        }
+        cmd.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().is_ok()
+    }
+
+    /// authorized, denied or not-determined; None without the app.
+    pub fn status() -> Option<String> {
+        if !ensure() {
+            return None;
+        }
+        let out = Command::new(exe()).arg("--status").stdin(Stdio::null()).stderr(Stdio::null()).output().ok()?;
+        Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
+    }
+
+    /// Asks for permission while the user is at the terminal. macOS only shows the prompt to an app
+    /// launched through Launch Services, hence `open`.
+    pub fn install() -> Option<String> {
+        let name = super::APP_NAME;
+        match status()?.as_str() {
+            "authorized" => return Some(format!("Desktop notifications are allowed for \"{name}\".")),
+            "denied" => return Some(format!(
+                "Desktop notifications are turned off for \"{name}\". Turn them on in System Settings > Notifications."
+            )),
+            _ => {}
+        }
+        println!("Asking macOS to allow notifications from \"{name}\"...");
+        let _ = Command::new("open")
+            .args(["-W", "-g"])
+            .arg(app_path())
+            .args(["--args", "--request-permission"])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+        Some(match status().as_deref() {
+            Some("authorized") => format!("Desktop notifications are allowed for \"{name}\"."),
+            _ => format!("Desktop notifications aren't allowed. Turn them on in System Settings > Notifications > {name}."),
+        })
+    }
 }
 
 #[cfg(windows)]

@@ -288,6 +288,9 @@ pub fn doctor() -> Result<()> {
         yes,
         if tmux { "works (tmux)" } else { "needs tmux" }
     );
+    if let Some((ok, line)) = notify::doctor_line() {
+        println!("{}desktop notifications: {line}", if ok { yes } else { no });
+    }
     println!("{}log: {}", yes, config::log_path().display());
     Ok(())
 }
