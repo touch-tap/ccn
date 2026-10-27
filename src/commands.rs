@@ -236,11 +236,15 @@ fn wait_for_welcome(api: &Api, notification_id: &str) {
     println!("No answer yet. The notification stays on your phone for an hour.");
 }
 
-/// `ccn` on its own: pair when this computer isn't paired yet (so `npx @touchtap/ccn` and a fresh
-/// `brew install` go straight to the QR code), otherwise say where things stand.
+/// `ccn` on its own: pair when no phone is paired with this computer yet (so `npx @touchtap/ccn` and a
+/// fresh `brew install` go straight to the QR code), otherwise say where things stand.
 pub fn default_command() -> Result<()> {
     let cfg = Config::load();
     if !cfg.is_paired() {
+        return pair(None, None, false);
+    }
+    // Registered without a phone (`ccn activate` or `ccn upgrade` before pairing): pairing is next
+    if matches!(Api::new(&cfg).pairings(), Ok(devices) if devices.is_empty()) {
         return pair(None, None, false);
     }
     println!("ccn {} is set up on this computer as \"{}\".", config::VERSION, cfg.machine_name());
