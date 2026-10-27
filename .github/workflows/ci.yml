@@ -8,6 +8,8 @@ on:
 # Test runs must not show up in the setup analytics
 env:
   CCN_NO_ANALYTICS: "1"
+  # Runners have no keychain a test should touch
+  CCN_CREDENTIAL_STORE: file
 
 jobs:
   test:

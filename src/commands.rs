@@ -289,7 +289,7 @@ pub fn doctor() -> Result<()> {
         "{}credentials: {}",
         if paired { yes } else { no },
         if paired {
-            format!("present ({})", if cfg.credential_store == "keychain" { "keychain" } else { "file" })
+            format!("present ({})", if config::credential_store(&cfg) == "keychain" { "keychain" } else { "file" })
         } else {
             "missing: run `ccn pair <code>`".to_string()
         }
@@ -451,7 +451,9 @@ pub fn config_show() -> Result<()> {
     println!("stop_hold_seconds          {}", s.stop_hold());
     println!("reminder_interval_seconds  {}", s.reminder_interval_seconds.unwrap_or(0));
     println!("sound                      {}", s.sound());
+    println!("quiet_when_present         {}", s.quiet_when_present());
     println!("desktop_notifications      {} (local only)", cfg.desktop_notifications);
+    println!("credential_store           {} (local only)", config::credential_store(&cfg));
     if let Some(at) = cfg.settings_updated_at {
         let when = chrono::DateTime::from_timestamp(at, 0).map(|t| t.to_rfc3339()).unwrap_or_default();
         println!("(last changed {when}; also editable from the phone)");
@@ -464,6 +466,23 @@ pub fn config_set(key: &str, value: &str) -> Result<()> {
     if key == "desktop_notifications" {
         cfg.desktop_notifications = matches!(value.to_ascii_lowercase().as_str(), "on" | "true" | "yes" | "1");
         cfg.save()?;
+        return config_show();
+    }
+    if key == "credential_store" {
+        let store = value.to_ascii_lowercase();
+        anyhow::ensure!(store == "keychain" || store == "file", "credential_store expects keychain or file");
+        // Move the token: read it from wherever it is now, then store it in the chosen place
+        let token = config::load_token(&cfg);
+        cfg.credential_store = store;
+        cfg.credential_store_chosen = true;
+        cfg.save()?;
+        if let Some(token) = token {
+            if config::credential_store(&cfg) == "file" {
+                config::delete_token();
+            }
+            let went = config::store_token(&cfg, &token)?;
+            println!("Credentials are now in the {went}.");
+        }
         return config_show();
     }
     let mut settings = cfg.settings.clone();

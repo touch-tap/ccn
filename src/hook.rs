@@ -143,6 +143,11 @@ impl Ctx {
         self.cfg.settings.in_quiet_hours(chrono::Local::now().time())
     }
 
+    /// The user is at the terminal Claude runs in, and asked for nothing to be sent then
+    fn quiet_at_terminal(&self) -> bool {
+        self.cfg.settings.quiet_when_present() && presence::at_terminal(self.cfg.settings.presence_threshold())
+    }
+
     // ---- events ----
 
     fn session_start(&mut self) -> Result<Option<Value>> {
@@ -235,7 +240,7 @@ impl Ctx {
 
     fn notification(&mut self) -> Result<Option<Value>> {
         let kind = self.input().str("notification_type").unwrap_or("").to_string();
-        if kind != "permission_prompt" || !self.cfg.settings.notify_on_permission() || self.quiet() {
+        if kind != "permission_prompt" || !self.cfg.settings.notify_on_permission() || self.quiet() || self.quiet_at_terminal() {
             return Ok(None);
         }
         // A card for this request may already be on the phone from the PermissionRequest hook
@@ -336,7 +341,9 @@ impl Ctx {
         }
         let threshold = self.cfg.settings.presence_threshold();
         if ceiling == 0 || presence::user_present(threshold) {
-            if present_sends_info {
+            // At the keyboard: nothing waits. The phone gets a note, unless the user is looking at
+            // this very terminal and has asked for quiet then
+            if present_sends_info && !self.quiet_at_terminal() {
                 self.send_card(kind, key, card, false)?;
             }
             return Ok(None);
