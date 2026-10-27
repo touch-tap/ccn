@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use crate::api::{self, Api};
 use crate::config::{self, Config, Unpaired};
-use crate::{hookcfg, notify, payload, presence};
+use crate::{hookcfg, notify, payload, presence, telemetry};
 
 /// What this computer tells the server about itself. None until credentials exist.
 pub fn identity(cfg: &Config) -> Option<Value> {
@@ -28,6 +28,21 @@ fn new_id() -> String {
 }
 
 pub fn pair(code: Option<String>, name: Option<String>, replace_mac_app: bool) -> Result<()> {
+    let flow = if code.is_some() { "phone_code" } else { "computer_code" };
+    let method = telemetry::install_method();
+    telemetry::event("cli_pair_started", &[("flow", flow), ("method", method)]);
+    let result = pair_inner(code, name, replace_mac_app);
+    match &result {
+        Ok(()) => telemetry::event("cli_paired", &[("flow", flow), ("method", method)]),
+        Err(err) => telemetry::event(
+            "cli_pair_failed",
+            &[("flow", flow), ("method", method), ("reason", telemetry::failure_reason(err))],
+        ),
+    }
+    result
+}
+
+fn pair_inner(code: Option<String>, name: Option<String>, replace_mac_app: bool) -> Result<()> {
     let mut cfg = Config::load();
     if let Some(n) = name {
         cfg.machine_name = Some(n);

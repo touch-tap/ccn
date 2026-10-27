@@ -15,6 +15,7 @@ mod payload;
 mod presence;
 mod respond;
 mod session;
+mod telemetry;
 
 use clap::{Parser, Subcommand};
 
