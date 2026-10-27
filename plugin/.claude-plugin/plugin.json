@@ -1,0 +1,10 @@
+{
+  "name": "ccn",
+  "version": "0.1.2",
+  "description": "Claude Code Notifier: a push on your phone when Claude needs you, and approve, deny or answer from there",
+  "author": { "name": "TouchTap", "url": "https://claudecodenotifier.com" },
+  "homepage": "https://claudecodenotifier.com/cli",
+  "repository": "https://github.com/touch-tap/ccn",
+  "license": "PolyForm-Shield-1.0.0",
+  "keywords": ["notifications", "mobile", "approvals", "ios", "android"]
+}

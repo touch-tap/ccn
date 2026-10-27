@@ -41,6 +41,9 @@ pub fn is_rejected(err: &anyhow::Error) -> bool {
 pub struct ClaimResult {
     pub pairing_id: String,
     pub device: ClaimedDevice,
+    /// The answerable welcome the server pushed to the phone (servers before Oct 2026 don't send it)
+    #[serde(default)]
+    pub welcome_notification_id: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -71,6 +74,8 @@ pub struct PairedDevice {
     pub platform: String,
     pub created_at: i64,
     pub notifications_enabled: Option<bool>,
+    #[serde(default)]
+    pub welcome_notification_id: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -78,6 +83,9 @@ pub struct PairedDevice {
 pub struct CodeResponse {
     pub code: String,
     pub expires_in: u64,
+    /// claudecodenotifier.com/c/<token>: what the QR code opens on the phone
+    #[serde(default)]
+    pub link_url: Option<String>,
 }
 
 #[derive(Debug)]

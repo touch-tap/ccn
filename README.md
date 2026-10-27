@@ -28,8 +28,24 @@ Then pair with the [Claude Code Notifier](https://claudecodenotifier.com) app on
 
 ```sh
 ccn pair 482913        # the code the app shows
-ccn pair               # or get a code here and type it into the app
+ccn                    # or show a QR code here and scan it with the phone's camera
 ```
+
+`ccn` on its own (and so `npx @touchtap/ccn`) pairs a computer that isn't paired yet. The QR code
+opens the app, or the App Store / Google Play when it isn't installed. Once paired, the phone gets
+a test notification it can answer, and `ccn` shows the answer.
+
+### As a Claude Code plugin
+
+```
+/plugin install ccn --marketplace touch-tap/ccn
+```
+
+or, on Claude Code before 2.1.275, `/plugin marketplace add touch-tap/ccn` then
+`/plugin install ccn@touch-tap`. Then run `/ccn:setup` (or `/ccn:setup 482913` with the app's
+code). The plugin's hooks call the installed `ccn` and stand aside when `ccn pair` has already
+put ccn's hooks (or the Mac app's) in `settings.json`, so nothing is sent twice. Until ccn is
+installed they only print a one-line pointer when a session starts.
 
 ## What you get
 
@@ -41,13 +57,17 @@ ccn pair               # or get a code here and type it into the app
 | Send a short follow-up right after Claude finishes | `Stop` returns it as Claude's next instruction |
 
 If you are at the keyboard (any input in the last 30 s) nothing waits: the terminal prompt appears
-at once and the phone gets an informational card. If you are away, the hook holds for the phone's
+at once. While you are at the terminal Claude runs in, the phone gets nothing (on macOS that means
+the terminal is also the frontmost app; elsewhere, keyboard activity alone); if you are active in
+another app it gets an informational card. `ccn config set quiet_when_present off` sends the card
+every time. If you are away, the hook holds for the phone's
 answer, up to a ceiling you choose, and releases the moment you touch the keyboard.
 
 ## Commands
 
 ```
-ccn pair [CODE]         pair with a phone (installs the hooks)
+ccn                     pair if this computer isn't paired yet, otherwise show its status
+ccn pair [CODE]         pair with a phone (installs the hooks); without a code, shows a QR code
 ccn doctor              check hooks, credentials, server, presence detection
 ccn test                send a test notification
 ccn devices             list paired phones; ccn devices revoke <name>
@@ -59,13 +79,19 @@ ccn uninstall           remove hooks, pairings, credentials and local state
 ```
 
 Settings: `notify_on_done`, `notify_on_permission`, `notify_on_question`, `quiet_hours`,
-`hold_ceiling_seconds` (30–3600, default 600), `presence_threshold_seconds` (default 30),
-`stop_hold_seconds` (0–600, default 120), `sound`, and the local-only `desktop_notifications`.
+`quiet_when_present` (default on), `hold_ceiling_seconds` (30–3600, default 600),
+`presence_threshold_seconds` (default 30), `stop_hold_seconds` (0–600, default 120), `sound`, and
+the local-only `desktop_notifications` and `credential_store` (`keychain` or `file`).
 
 ## Files
 
-- `~/.config/ccn/` (`%APPDATA%\ccn\` on Windows, or `$CCN_HOME`): `config.toml`, `credentials`
-  (mode 0600), `sessions/`, `ccn.log`
+- `~/.config/ccn/` (`%APPDATA%\ccn\` on Windows, or `$CCN_HOME`): `config.toml`, `sessions/`,
+  `ccn.log`
+- The computer's token: the macOS keychain or Windows Credential Manager (item `com.touchtap.ccn`),
+  or `credentials` in the folder above (mode 0600) on Linux, or wherever `credential_store` says.
+  A token from an older version moves to the keychain the first time it is read. The macOS release
+  binaries are signed with TouchTap's Developer ID, so each new version reads it without a prompt;
+  a build from source may prompt instead, so `ccn config set credential_store file` suits that.
 - `~/.claude/settings.json`: seven hook entries, each `ccn hook`. Everything else in the file is
   left untouched, and a one-time backup is kept beside it.
 

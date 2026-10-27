@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use crate::api::{self, Api};
 use crate::config::{self, Config, Unpaired};
-use crate::{hookcfg, notify, payload, presence, telemetry};
+use crate::{hookcfg, notify, payload, presence, qr, telemetry};
 
 /// What this computer tells the server about itself. None until credentials exist.
 pub fn identity(cfg: &Config) -> Option<Value> {
@@ -60,7 +60,8 @@ fn pair_inner(code: Option<String>, name: Option<String>, replace_mac_app: bool)
     let token = if paired { config::load_token(&cfg).unwrap_or_else(new_id) } else { new_id() };
     let api = Api::with_token(&cfg, token.clone());
 
-    let device_id = match code {
+    // The phone that just paired, and the welcome notification the server pushed to it
+    let paired_with: Option<(String, Option<String>)> = match code {
         Some(code) => {
             let code = code.trim().to_string();
             if code.len() != 6 || !code.chars().all(|c| c.is_ascii_digit()) {
@@ -82,7 +83,7 @@ fn pair_inner(code: Option<String>, name: Option<String>, replace_mac_app: bool)
                 result.device.name.clone().unwrap_or_else(|| "your phone".to_string()),
                 result.device.platform
             );
-            Some(result.device.id)
+            Some((result.device.id, result.welcome_notification_id))
         }
         None => {
             // The original flow: this computer shows a code, the phone types it
@@ -110,17 +111,28 @@ fn pair_inner(code: Option<String>, name: Option<String>, replace_mac_app: bool)
             }
             let issued = api.request_code()?;
             println!();
-            println!("  Enter this code in the Claude Code Notifier app:  {}", issued.code);
+            match issued.link_url.as_deref().and_then(|url| qr::render(url).map(|code| (url, code))) {
+                Some((url, code)) => {
+                    println!("  Scan this with your phone's camera to connect it. Without the app yet, it");
+                    println!("  takes you to the App Store or Google Play: install, then scan again.");
+                    println!();
+                    print!("{code}");
+                    println!();
+                    println!("  {url}");
+                    println!("  Or type this code in the Claude Code Notifier app:  {}", issued.code);
+                }
+                None => println!("  Enter this code in the Claude Code Notifier app:  {}", issued.code),
+            }
             println!("  It is valid for {} minutes. Waiting for your phone...", issued.expires_in / 60);
             println!();
             let deadline = std::time::Instant::now() + Duration::from_secs(issued.expires_in);
-            let mut found: Option<String> = None;
+            let mut found: Option<(String, Option<String>)> = None;
             while std::time::Instant::now() < deadline {
                 std::thread::sleep(Duration::from_secs(3));
                 if let Ok(devices) = api.pairings() {
                     if let Some(d) = devices.iter().find(|d| !before.contains(&d.id)) {
                         println!("Paired with {} ({}).", d.name.clone().unwrap_or_else(|| "your phone".to_string()), d.platform);
-                        found = Some(d.id.clone());
+                        found = Some((d.id.clone(), d.welcome_notification_id.clone()));
                         break;
                     }
                 }
@@ -143,16 +155,72 @@ fn pair_inner(code: Option<String>, name: Option<String>, replace_mac_app: bool)
     setup_inner(replace_mac_app)?;
     sync_settings(&mut cfg, &api);
 
-    if let Some(device_id) = device_id {
-        match api.post_event(&payload::test_notification(&device_id), Duration::from_secs(10)) {
+    match paired_with {
+        Some((_, Some(welcome))) => wait_for_welcome(&api, &welcome),
+        // An older server doesn't send a welcome, so send the plain test notification
+        Some((device_id, None)) => match api.post_event(&payload::test_notification(&device_id), Duration::from_secs(10)) {
             Ok(_) => println!("Sent a test notification to your phone."),
             Err(err) => println!("Could not send a test notification yet: {err:#}"),
-        }
+        },
+        None => {}
     }
 
     println!();
     println!("Done. Start `claude` as usual: you will get a push when Claude finishes or needs you,");
     println!("and you can approve, deny or answer from the phone. `ccn doctor` checks everything.");
+    Ok(())
+}
+
+/// The server pushed the phone an answerable welcome when it paired. Waiting here for the answer
+/// closes the loop in front of the user: phone to terminal, the way every real answer will go.
+fn wait_for_welcome(api: &Api, notification_id: &str) {
+    use std::io::IsTerminal;
+    println!();
+    if !std::io::stdin().is_terminal() {
+        println!("A test notification is on its way to your phone: try answering it there.");
+        return;
+    }
+    println!("A test notification is on its way to your phone. Try answering it there...");
+    println!("(press Enter to skip)");
+    let (skip_tx, skip_rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let mut line = String::new();
+        // End of input isn't a key press
+        if matches!(std::io::stdin().read_line(&mut line), Ok(n) if n > 0) {
+            let _ = skip_tx.send(());
+        }
+    });
+    let deadline = std::time::Instant::now() + Duration::from_secs(180);
+    while std::time::Instant::now() < deadline {
+        if skip_rx.try_recv().is_ok() {
+            return;
+        }
+        match api.wait_response(notification_id, 3) {
+            Ok(api::Wait::Responded(answer)) => {
+                println!("✓ Your phone answered \"{}\". That is how you'll answer Claude.", answer.trim());
+                return;
+            }
+            Ok(api::Wait::Settled(_)) => return,
+            Ok(api::Wait::Pending) => {}
+            Err(_) => std::thread::sleep(Duration::from_secs(3)),
+        }
+    }
+    println!("No answer yet. The notification stays on your phone for an hour.");
+}
+
+/// `ccn` on its own: pair when this computer isn't paired yet (so `npx @touchtap/ccn` and a fresh
+/// `brew install` go straight to the QR code), otherwise say where things stand.
+pub fn default_command() -> Result<()> {
+    let cfg = Config::load();
+    if !cfg.is_paired() {
+        return pair(None, None, false);
+    }
+    println!("ccn {} is set up on this computer as \"{}\".", config::VERSION, cfg.machine_name());
+    println!();
+    println!("  ccn doctor     check hooks, credentials and the server");
+    println!("  ccn test       send a test notification to your phone");
+    println!("  ccn pair       pair another phone");
+    println!("  ccn --help     everything else");
     Ok(())
 }
 
@@ -221,7 +289,7 @@ pub fn doctor() -> Result<()> {
         "{}credentials: {}",
         if paired { yes } else { no },
         if paired {
-            format!("present ({})", if cfg.credential_store == "keychain" { "keychain" } else { "file" })
+            format!("present ({})", if config::credential_store(&cfg) == "keychain" { "keychain" } else { "file" })
         } else {
             "missing: run `ccn pair <code>`".to_string()
         }
@@ -383,7 +451,9 @@ pub fn config_show() -> Result<()> {
     println!("stop_hold_seconds          {}", s.stop_hold());
     println!("reminder_interval_seconds  {}", s.reminder_interval_seconds.unwrap_or(0));
     println!("sound                      {}", s.sound());
+    println!("quiet_when_present         {}", s.quiet_when_present());
     println!("desktop_notifications      {} (local only)", cfg.desktop_notifications);
+    println!("credential_store           {} (local only)", config::credential_store(&cfg));
     if let Some(at) = cfg.settings_updated_at {
         let when = chrono::DateTime::from_timestamp(at, 0).map(|t| t.to_rfc3339()).unwrap_or_default();
         println!("(last changed {when}; also editable from the phone)");
@@ -396,6 +466,23 @@ pub fn config_set(key: &str, value: &str) -> Result<()> {
     if key == "desktop_notifications" {
         cfg.desktop_notifications = matches!(value.to_ascii_lowercase().as_str(), "on" | "true" | "yes" | "1");
         cfg.save()?;
+        return config_show();
+    }
+    if key == "credential_store" {
+        let store = value.to_ascii_lowercase();
+        anyhow::ensure!(store == "keychain" || store == "file", "credential_store expects keychain or file");
+        // Move the token: read it from wherever it is now, then store it in the chosen place
+        let token = config::load_token(&cfg);
+        cfg.credential_store = store;
+        cfg.credential_store_chosen = true;
+        cfg.save()?;
+        if let Some(token) = token {
+            if config::credential_store(&cfg) == "file" {
+                config::delete_token();
+            }
+            let went = config::store_token(&cfg, &token)?;
+            println!("Credentials are now in the {went}.");
+        }
         return config_show();
     }
     let mut settings = cfg.settings.clone();

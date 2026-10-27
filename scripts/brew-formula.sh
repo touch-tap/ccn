@@ -41,7 +41,9 @@ class Ccn < Formula
 
   def caveats
     <<~EOS
-      Pair with your phone: open Claude Code Notifier, add a computer, then run
+      Connect your phone: run
+        ccn
+      and scan the QR code with the phone's camera, or run
         ccn pair <the code on your phone>
     EOS
   end

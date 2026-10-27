@@ -37,6 +37,62 @@ pub fn user_present(threshold: f64) -> bool {
     idle_seconds().map(|idle| idle < threshold).unwrap_or(false)
 }
 
+/// True when the user is at the terminal Claude runs in: active within `threshold` seconds and,
+/// on macOS, with that terminal the frontmost app. Someone typing in a browser is not at the
+/// terminal. Where the terminal can't be identified (Linux, Windows, ssh), activity alone decides.
+pub fn at_terminal(threshold: f64) -> bool {
+    if let Ok(value) = std::env::var("CCN_PRESENCE") {
+        if value == "present-elsewhere" {
+            return false;
+        }
+    }
+    user_present(threshold) && terminal_frontmost().unwrap_or(true)
+}
+
+/// Whether the app hosting this session is in front. None when that can't be told.
+fn terminal_frontmost() -> Option<bool> {
+    #[cfg(target_os = "macos")]
+    {
+        // Apps launched from the Dock pass their bundle id to everything they start
+        let host = std::env::var("__CFBundleIdentifier").ok().filter(|s| !s.is_empty())?;
+        let asn = std::process::Command::new("lsappinfo").arg("front").output().ok()?;
+        let asn = String::from_utf8_lossy(&asn.stdout).trim().to_string();
+        if asn.is_empty() {
+            return None;
+        }
+        let info = std::process::Command::new("lsappinfo").args(["info", "-only", "bundleid", &asn]).output().ok()?;
+        let front = front_bundle_id(&String::from_utf8_lossy(&info.stdout))?;
+        Some(front.eq_ignore_ascii_case(&host))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        None
+    }
+}
+
+/// `bundleID="com.apple.Terminal"` or `"CFBundleIdentifier"="com.apple.Terminal"`, as lsappinfo prints it
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn front_bundle_id(text: &str) -> Option<String> {
+    for marker in ["bundleID=\"", "\"CFBundleIdentifier\"=\""] {
+        if let Some(start) = text.find(marker) {
+            let rest = &text[start + marker.len()..];
+            return rest.split('"').next().map(|s| s.to_string()).filter(|s| !s.is_empty());
+        }
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn reads_lsappinfo() {
+        let out = "[ NULL ]  ASN:0x0-0x1fb1fb: (in front) \n    bundleID=\"dev.warp.Warp-Stable\"\n";
+        assert_eq!(super::front_bundle_id(out).as_deref(), Some("dev.warp.Warp-Stable"));
+        assert_eq!(super::front_bundle_id("\"CFBundleIdentifier\"=\"com.apple.Terminal\"").as_deref(), Some("com.apple.Terminal"));
+        assert_eq!(super::front_bundle_id("nothing"), None);
+    }
+}
+
 pub fn detection_available() -> bool {
     idle_seconds().is_some()
 }

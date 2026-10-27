@@ -113,6 +113,8 @@ pub struct Settings {
     pub stop_hold_seconds: Option<u64>,
     pub reminder_interval_seconds: Option<u64>,
     pub sound: Option<bool>,
+    /// Send nothing to the phone while the user is at the terminal running Claude (default on)
+    pub quiet_when_present: Option<bool>,
 }
 
 impl Settings {
@@ -139,6 +141,9 @@ impl Settings {
     }
     pub fn sound(&self) -> bool {
         self.sound.unwrap_or(true)
+    }
+    pub fn quiet_when_present(&self) -> bool {
+        self.quiet_when_present.unwrap_or(true)
     }
 
     pub fn in_quiet_hours(&self, now: chrono::NaiveTime) -> bool {
@@ -174,6 +179,7 @@ impl Settings {
             "notify_on_permission" => self.notify_on_permission = Some(as_bool()?),
             "notify_on_question" => self.notify_on_question = Some(as_bool()?),
             "sound" => self.sound = Some(as_bool()?),
+            "quiet_when_present" | "quiet_at_terminal" => self.quiet_when_present = Some(as_bool()?),
             "hold_ceiling_seconds" | "hold_ceiling" => self.hold_ceiling_seconds = Some(as_secs(30, 3600)?),
             "presence_threshold_seconds" | "presence_threshold" => self.presence_threshold_seconds = Some(as_secs(5, 600)?),
             "stop_hold_seconds" | "stop_hold" => self.stop_hold_seconds = Some(as_secs(0, 600)?),
@@ -195,7 +201,7 @@ impl Settings {
                 }
             }
             other => anyhow::bail!(
-                "unknown setting '{other}'. Settings: notify_on_done, notify_on_permission, notify_on_question, sound, quiet_hours, hold_ceiling_seconds, presence_threshold_seconds, stop_hold_seconds, reminder_interval_seconds"
+                "unknown setting '{other}'. Settings: notify_on_done, notify_on_permission, notify_on_question, sound, quiet_when_present, quiet_hours, hold_ceiling_seconds, presence_threshold_seconds, stop_hold_seconds, reminder_interval_seconds"
             ),
         }
         Ok(())
@@ -233,8 +239,12 @@ pub struct Config {
     pub machine_name: Option<String>,
     /// Show a desktop notification as well as pushing to the phone.
     pub desktop_notifications: bool,
-    /// "file" (default) or "keychain". The release builds will default to the keychain once signed.
+    /// "keychain" or "file". Unless chosen with `ccn config set credential_store`, the token goes in
+    /// the system keychain on macOS (a signed binary, so upgrades don't prompt) and Windows, and in
+    /// a 0600 file on Linux, where a keyring is often missing or locked on servers.
     pub credential_store: String,
+    /// True once the user picked `credential_store` themselves; until then it is decided per platform
+    pub credential_store_chosen: bool,
     pub settings: Settings,
     pub settings_updated_at: Option<i64>,
     pub settings_etag: Option<String>,
@@ -250,6 +260,7 @@ impl Default for Config {
             machine_name: None,
             desktop_notifications: true,
             credential_store: "file".to_string(),
+            credential_store_chosen: false,
             settings: Settings::default(),
             settings_updated_at: None,
             settings_etag: None,
@@ -374,23 +385,48 @@ impl Unpaired {
 // Credentials
 // ============================================
 
+/// Where the token belongs: "keychain" or "file".
+pub fn credential_store(cfg: &Config) -> &'static str {
+    if cfg.credential_store_chosen {
+        return if cfg.credential_store == "keychain" { "keychain" } else { "file" };
+    }
+    if std::env::var("CCN_CREDENTIAL_STORE").map(|v| v == "file").unwrap_or(false) {
+        return "file";
+    }
+    if cfg!(any(target_os = "macos", windows)) { "keychain" } else { "file" }
+}
+
 pub fn load_token(cfg: &Config) -> Option<String> {
-    if cfg.credential_store == "keychain" {
+    let keychain = credential_store(cfg) == "keychain";
+    if keychain {
         if let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER) {
-            if let Ok(token) = entry.get_password() {
-                return Some(token);
+            // Empty is what delete_token leaves when it may not delete
+            if let Ok(token) = entry.get_password().map(|t| t.trim().to_string()) {
+                if !token.is_empty() {
+                    return Some(token);
+                }
             }
         }
     }
-    fs::read_to_string(credentials_path())
+    let token = fs::read_to_string(credentials_path())
         .ok()
         .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
+        .filter(|s| !s.is_empty())?;
+    // A token from before the keychain became the default moves there the first time it is read.
+    // If the keychain refuses (locked, no keyring), the file stays and keeps working.
+    if keychain {
+        if let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER) {
+            if entry.set_password(&token).is_ok() && entry.get_password().ok().as_deref() == Some(token.as_str()) {
+                let _ = fs::remove_file(credentials_path());
+            }
+        }
+    }
+    Some(token)
 }
 
 /// Stores the token and returns where it went.
 pub fn store_token(cfg: &Config, token: &str) -> Result<&'static str> {
-    if cfg.credential_store == "keychain" {
+    if credential_store(cfg) == "keychain" {
         if let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER) {
             if entry.set_password(token).is_ok() {
                 let _ = fs::remove_file(credentials_path());
@@ -409,7 +445,11 @@ pub fn store_token(cfg: &Config, token: &str) -> Result<&'static str> {
 
 pub fn delete_token() {
     if let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER) {
-        let _ = entry.delete_credential();
+        // On macOS only the build that created the item may delete it; a later version (same
+        // signature) may still change it, so it empties the item instead
+        if entry.delete_credential().is_err() {
+            let _ = entry.set_password("");
+        }
     }
     let _ = fs::remove_file(credentials_path());
 }

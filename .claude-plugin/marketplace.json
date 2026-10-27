@@ -1,0 +1,15 @@
+{
+  "name": "touch-tap",
+  "owner": {
+    "name": "TouchTap",
+    "url": "https://claudecodenotifier.com"
+  },
+  "description": "Claude Code Notifier from TouchTap: phone notifications and approvals for Claude Code",
+  "plugins": [
+    {
+      "name": "ccn",
+      "source": "./plugin",
+      "description": "Claude Code Notifier: a push on your phone when Claude needs you, and approve, deny or answer from there"
+    }
+  ]
+}
