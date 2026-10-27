@@ -310,6 +310,150 @@ impl Api {
     }
 }
 
+// ============================================
+// Licences
+// ============================================
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Licence {
+    pub plan: String,
+    pub status: String,
+    /// When an annual licence renews or ends (unix seconds); None for lifetime
+    pub valid_until: Option<i64>,
+    pub key_last4: String,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LicenceComputer {
+    /// The slot, which is what `--replace` frees
+    pub id: String,
+    pub name: Option<String>,
+    #[allow(dead_code)]
+    pub platform: Option<String>,
+    #[allow(dead_code)]
+    pub activated_at: i64,
+    pub last_seen_at: Option<i64>,
+    #[serde(default)]
+    pub current: bool,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LicenceStatus {
+    pub licensed: bool,
+    pub licence: Option<Licence>,
+    #[serde(default)]
+    pub computers: Vec<LicenceComputer>,
+    /// Show the once-a-day upgrade line in Claude Code (the server decides; off until launch)
+    #[serde(default)]
+    pub nudge: bool,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Checkout {
+    pub url: String,
+    pub session_id: String,
+}
+
+/// What a long-poll on a checkout came back with.
+#[derive(Debug)]
+pub enum CheckoutWait {
+    Pending,
+    Complete {
+        /// The new key, the first time it is asked for; None after that, and for an upgrade
+        key: Option<String>,
+        /// This computer holds one of the licence's slots
+        activated: bool,
+        upgraded: bool,
+        licence: Licence,
+    },
+}
+
+/// A licence call the server refused, with its code (`SLOTS_FULL`, `INVALID_KEY`, …) and the whole
+/// body, which for some codes lists the licence's computers.
+#[derive(Debug)]
+pub struct LicenceError {
+    pub code: String,
+    pub message: String,
+    pub body: Value,
+}
+
+impl std::fmt::Display for LicenceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for LicenceError {}
+
+impl LicenceError {
+    pub fn computers(&self) -> Vec<LicenceComputer> {
+        serde_json::from_value(self.body["computers"].clone()).unwrap_or_default()
+    }
+    pub fn licence(&self) -> Option<Licence> {
+        serde_json::from_value(self.body["licence"].clone()).ok()
+    }
+}
+
+impl Api {
+    fn licence_reply(reply: Reply, what: &str) -> Result<Value> {
+        let body: Value = serde_json::from_str(&reply.body).unwrap_or(Value::Null);
+        if (200..300).contains(&reply.status) {
+            return Ok(body);
+        }
+        let code = body["error"]["code"].as_str().unwrap_or("").to_string();
+        let message = body["error"]["message"].as_str().map(|s| s.to_string()).unwrap_or_else(|| format!("{what}: server returned {}", reply.status));
+        Err(anyhow::Error::new(LicenceError { code, message, body }))
+    }
+
+    pub fn start_checkout(&self, plan: &str, upgrade: bool) -> Result<Checkout> {
+        let body = json!({ "plan": plan, "upgrade": upgrade });
+        let reply = self.send("POST", "/api/clients/me/checkout", Some(&body), QUICK, &[])?;
+        serde_json::from_value(Self::licence_reply(reply, "starting the checkout")?).context("unexpected checkout response")
+    }
+
+    /// Long-polls the checkout for up to `wait_secs` (max 25).
+    pub fn wait_checkout(&self, session_id: &str, wait_secs: u64) -> Result<CheckoutWait> {
+        let wait = wait_secs.min(25);
+        let path = format!("/api/clients/me/checkout/{session_id}?wait={wait}");
+        let reply = self.send("GET", &path, None, Duration::from_secs(wait + 10), &[])?;
+        let v = Self::licence_reply(reply, "waiting for the payment")?;
+        if v["status"] != "complete" {
+            return Ok(CheckoutWait::Pending);
+        }
+        Ok(CheckoutWait::Complete {
+            key: v["key"].as_str().map(|s| s.to_string()),
+            activated: v["activated"].as_bool().unwrap_or(false),
+            upgraded: v["upgraded"].as_bool().unwrap_or(false),
+            licence: serde_json::from_value(v["licence"].clone()).context("unexpected checkout response")?,
+        })
+    }
+
+    pub fn licence_status(&self, timeout: Duration) -> Result<LicenceStatus> {
+        let reply = self.send("GET", "/api/clients/me/licence", None, timeout, &[])?;
+        serde_json::from_value(Self::licence_reply(reply, "reading the licence")?).context("unexpected licence response")
+    }
+
+    pub fn activate_licence(&self, key: &str, replace: Option<&str>) -> Result<LicenceStatus> {
+        let body = json!({ "key": key, "replace": replace });
+        let reply = self.send("POST", "/api/clients/me/licence/activate", Some(&body), QUICK, &[])?;
+        serde_json::from_value(Self::licence_reply(reply, "activating the licence")?).context("unexpected activation response")
+    }
+
+    /// True when this computer held a slot and now doesn't.
+    pub fn deactivate_licence(&self) -> Result<bool> {
+        let reply = self.send("POST", "/api/clients/me/licence/deactivate", None, QUICK, &[])?;
+        Ok(Self::licence_reply(reply, "freeing the licence")?["deactivated"].as_bool().unwrap_or(false))
+    }
+}
+
+pub fn licence_error(err: &anyhow::Error) -> Option<&LicenceError> {
+    err.downcast_ref::<LicenceError>()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

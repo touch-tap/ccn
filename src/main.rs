@@ -9,6 +9,7 @@ mod commands;
 mod config;
 mod hook;
 mod hookcfg;
+mod licence;
 mod logger;
 mod notify;
 mod payload;
@@ -67,6 +68,25 @@ enum Command {
     },
     /// Pull the latest settings from the server now
     Sync,
+    /// Buy a licence for this computer in the browser: unlocks every phone paired with it
+    Upgrade {
+        /// Pay once instead of yearly (or switch an annual licence to lifetime, keeping the key)
+        #[arg(long)]
+        lifetime: bool,
+    },
+    /// Use a licence key on this computer (up to 3 computers per licence)
+    Activate {
+        /// The key from your email, CCN-XXXX-XXXX-XXXX-XXXX
+        key: String,
+        /// Free the slot of another computer on the licence, by its name, to make room for this one
+        #[arg(long)]
+        replace: Option<String>,
+    },
+    /// Free this computer's licence slot so the key can be used elsewhere
+    Deactivate,
+    /// Show this computer's licence and the computers using it
+    #[command(alias = "license")]
+    Licence,
     /// Remove the hooks, credentials, pairings and local state
     Uninstall,
     /// Run as a Claude Code hook: reads the event JSON on stdin
@@ -126,6 +146,10 @@ fn main() {
             ConfigCommand::Set { key, value } => commands::config_set(&key, &value),
         },
         Command::Sync => commands::sync(),
+        Command::Upgrade { lifetime } => licence::upgrade(lifetime),
+        Command::Activate { key, replace } => licence::activate(&key, replace),
+        Command::Deactivate => licence::deactivate(),
+        Command::Licence => licence::show(),
         Command::Uninstall => commands::uninstall(),
     };
     if let Err(err) = result {

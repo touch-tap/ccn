@@ -21,6 +21,11 @@ const SETTINGS_MAX_AGE: i64 = 60 * 60;
 const REGISTER_MAX_AGE: i64 = 24 * 60 * 60;
 
 /// Shown in Claude Code when the server no longer knows this computer.
+/// Shown at most once a day when the server says so (an unlicensed computer whose phones don't pay in
+/// their app). It describes this computer, never anyone's store purchase; keep it that way.
+pub const LICENCE_SYSTEM_MESSAGE: &str = "Claude Code Notifier: phone notifications aren't unlocked for this computer. Unlock them: ccn upgrade";
+const LICENCE_CHECK_EVERY: i64 = 24 * 60 * 60;
+
 pub const UNPAIRED_SYSTEM_MESSAGE: &str = "Claude Code Notifier: this computer isn't paired any more, so your phone won't get notifications. Run `ccn pair` in a terminal to reconnect.";
 const UNPAIRED_NOTIFICATION: &str = "This computer isn't paired any more. Run `ccn pair` in a terminal to reconnect.";
 
@@ -191,7 +196,26 @@ impl Ctx {
                 }
             }
         }
-        Ok(None)
+        Ok(self.licence_nudge(now))
+    }
+
+    /// Once a day, asks whether this computer should be told about licences. `CCN_NO_NUDGE=1` turns it off.
+    fn licence_nudge(&mut self, now: i64) -> Option<Value> {
+        if std::env::var("CCN_NO_NUDGE").map(|v| !v.is_empty() && v != "0").unwrap_or(false)
+            || now - self.cfg.licence_checked_at.unwrap_or(0) < LICENCE_CHECK_EVERY
+        {
+            return None;
+        }
+        self.cfg.licence_checked_at = Some(now);
+        let _ = self.cfg.save();
+        match self.api.licence_status(QUICK_TIMEOUT) {
+            Ok(status) if status.nudge => Some(serde_json::json!({ "systemMessage": LICENCE_SYSTEM_MESSAGE })),
+            Ok(_) => None,
+            Err(err) => {
+                log(&format!("licence check skipped: {err:#}"));
+                None
+            }
+        }
     }
 
     fn user_prompt(&mut self) -> Result<Option<Value>> {

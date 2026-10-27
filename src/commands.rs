@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use crate::api::{self, Api};
 use crate::config::{self, Config, Unpaired};
-use crate::{hookcfg, notify, payload, presence, qr, telemetry};
+use crate::{hookcfg, licence, notify, payload, presence, qr, telemetry};
 
 /// What this computer tells the server about itself. None until credentials exist.
 pub fn identity(cfg: &Config) -> Option<Value> {
@@ -25,6 +25,34 @@ pub fn identity(cfg: &Config) -> Option<Value> {
 
 fn new_id() -> String {
     uuid::Uuid::new_v4().to_string()
+}
+
+/// This computer's API client, registering it with the server first when it has no credentials yet.
+/// A licence needs a registered computer, not a paired phone, so `ccn upgrade` and `ccn activate`
+/// work before (or without) `ccn pair`.
+pub fn ensure_registered(cfg: &mut Config) -> Result<Api> {
+    if cfg.is_paired() {
+        return Ok(Api::new(cfg));
+    }
+    let client_id = cfg.client_id.clone().unwrap_or_else(new_id);
+    let token = new_id();
+    let machine_name = cfg.machine_name();
+    let api = Api::with_token(cfg, token.clone());
+    api.register(&json!({
+        "id": client_id,
+        "authToken": token,
+        "name": machine_name,
+        "platform": config::platform(),
+        "clientKind": "cli",
+        "clientVersion": config::VERSION,
+        "capabilities": config::CAPABILITIES,
+    }))?;
+    cfg.client_id = Some(client_id);
+    cfg.machine_name = Some(machine_name);
+    cfg.registered_at = Some(config::now());
+    cfg.save()?;
+    config::store_token(cfg, &token)?;
+    Ok(api)
 }
 
 pub fn pair(code: Option<String>, name: Option<String>, replace_mac_app: bool) -> Result<()> {
@@ -216,6 +244,9 @@ pub fn default_command() -> Result<()> {
         return pair(None, None, false);
     }
     println!("ccn {} is set up on this computer as \"{}\".", config::VERSION, cfg.machine_name());
+    if let Some(line) = licence::status_line(&Api::new(&cfg)) {
+        println!("Licence: {line}");
+    }
     println!();
     println!("  ccn doctor     check hooks, credentials and the server");
     println!("  ccn test       send a test notification to your phone");
@@ -331,6 +362,9 @@ pub fn doctor() -> Result<()> {
         }
     }
     if accepted {
+        if let Some(line) = licence::status_line(&api) {
+            println!("{}licence: {line}", if line.ends_with("ccn upgrade") { no } else { yes });
+        }
         match api.pairings() {
             Ok(devices) if devices.is_empty() => println!("{}phones: none paired yet", no),
             Ok(devices) => {
@@ -507,6 +541,10 @@ pub fn uninstall() -> Result<()> {
     notify::uninstall();
     if cfg.is_paired() {
         let api = Api::new(&cfg);
+        // Free the licence slot first, so a reinstall (which is a new computer) doesn't find it taken
+        if let Ok(true) = api.deactivate_licence() {
+            println!("Freed this computer's licence slot.");
+        }
         if let Ok(devices) = api.pairings() {
             for d in devices {
                 let _ = api.revoke(&d.pairing_id);

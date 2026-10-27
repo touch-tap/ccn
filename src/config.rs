@@ -250,6 +250,8 @@ pub struct Config {
     pub settings_etag: Option<String>,
     pub settings_fetched_at: Option<i64>,
     pub registered_at: Option<i64>,
+    /// When a SessionStart hook last asked the server about this computer's licence (once a day)
+    pub licence_checked_at: Option<i64>,
 }
 
 impl Default for Config {
@@ -266,6 +268,7 @@ impl Default for Config {
             settings_etag: None,
             settings_fetched_at: None,
             registered_at: None,
+            licence_checked_at: None,
         }
     }
 }
