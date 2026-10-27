@@ -241,6 +241,20 @@ pub fn uninstall() -> Result<PathBuf> {
     Ok(path)
 }
 
+/// Whether settings.json already sends Claude Code's events somewhere: ccn's own entries, or the
+/// Mac app's. The plugin's hooks stand aside then, so no event is sent twice.
+pub fn settings_has_hooks() -> bool {
+    let Ok(root) = load(&config::claude_settings_path()) else { return false };
+    let Some(hooks) = root.get("hooks").and_then(|h| h.as_object()) else { return false };
+    hooks.values().filter_map(|g| g.as_array()).flatten().any(|group| {
+        group
+            .get("hooks")
+            .and_then(|h| h.as_array())
+            .map(|list| list.iter().any(|entry| is_ours(entry) || is_mac_app(entry)))
+            .unwrap_or(false)
+    })
+}
+
 pub fn status() -> Result<Status> {
     let path = config::claude_settings_path();
     let root = load(&path)?;

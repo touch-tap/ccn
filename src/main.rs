@@ -13,6 +13,7 @@ mod logger;
 mod notify;
 mod payload;
 mod presence;
+mod qr;
 mod respond;
 mod session;
 mod telemetry;
@@ -26,8 +27,9 @@ use clap::{Parser, Subcommand};
     about = "Claude Code Notifier: get a push on your phone when Claude Code needs you, and answer from there"
 )]
 struct Cli {
+    /// With no command: pair this computer if it isn't yet, otherwise show its status
     #[command(subcommand)]
-    command: Command,
+    command: Option<Command>,
 }
 
 #[derive(Subcommand)]
@@ -69,7 +71,11 @@ enum Command {
     Uninstall,
     /// Run as a Claude Code hook: reads the event JSON on stdin
     #[command(hide = true)]
-    Hook,
+    Hook {
+        /// Called by the Claude Code plugin, which stands aside when settings.json has ccn's hooks too
+        #[arg(long)]
+        plugin: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -93,8 +99,20 @@ enum ConfigCommand {
 
 fn main() {
     let cli = Cli::parse();
-    let result = match cli.command {
-        Command::Hook => hook::run(),
+    let Some(command) = cli.command else {
+        if let Err(err) = commands::default_command() {
+            eprintln!("ccn: {err:#}");
+            std::process::exit(1);
+        }
+        return;
+    };
+    let result = match command {
+        Command::Hook { plugin } => {
+            if plugin && hookcfg::settings_has_hooks() {
+                return;
+            }
+            hook::run()
+        }
         Command::Pair { code, name, replace_mac_app } => commands::pair(code, name, replace_mac_app),
         Command::Setup { replace_mac_app } => commands::setup(replace_mac_app),
         Command::Doctor => commands::doctor(),

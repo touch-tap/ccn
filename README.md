@@ -28,8 +28,24 @@ Then pair with the [Claude Code Notifier](https://claudecodenotifier.com) app on
 
 ```sh
 ccn pair 482913        # the code the app shows
-ccn pair               # or get a code here and type it into the app
+ccn                    # or show a QR code here and scan it with the phone's camera
 ```
+
+`ccn` on its own (and so `npx @touchtap/ccn`) pairs a computer that isn't paired yet. The QR code
+opens the app, or the App Store / Google Play when it isn't installed. Once paired, the phone gets
+a test notification it can answer, and `ccn` shows the answer.
+
+### As a Claude Code plugin
+
+```
+/plugin install ccn --marketplace touch-tap/ccn
+```
+
+or, on Claude Code before 2.1.275, `/plugin marketplace add touch-tap/ccn` then
+`/plugin install ccn@touch-tap`. Then run `/ccn:setup` (or `/ccn:setup 482913` with the app's
+code). The plugin's hooks call the installed `ccn` and stand aside when `ccn pair` has already
+put ccn's hooks (or the Mac app's) in `settings.json`, so nothing is sent twice. Until ccn is
+installed they only print a one-line pointer when a session starts.
 
 ## What you get
 
@@ -47,7 +63,8 @@ answer, up to a ceiling you choose, and releases the moment you touch the keyboa
 ## Commands
 
 ```
-ccn pair [CODE]         pair with a phone (installs the hooks)
+ccn                     pair if this computer isn't paired yet, otherwise show its status
+ccn pair [CODE]         pair with a phone (installs the hooks); without a code, shows a QR code
 ccn doctor              check hooks, credentials, server, presence detection
 ccn test                send a test notification
 ccn devices             list paired phones; ccn devices revoke <name>
