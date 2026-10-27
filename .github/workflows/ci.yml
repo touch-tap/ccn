@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
 
+# Test runs must not show up in the setup analytics
+env:
+  CCN_NO_ANALYTICS: "1"
+
 jobs:
   test:
     strategy:

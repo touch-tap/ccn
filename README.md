@@ -69,6 +69,13 @@ Settings: `notify_on_done`, `notify_on_permission`, `notify_on_question`, `quiet
 - `~/.claude/settings.json`: seven hook entries, each `ccn hook`. Everything else in the file is
   left untouched, and a one-time backup is kept beside it.
 
+## Setup analytics
+
+`ccn pair` and the install scripts send a few anonymous events (install started, finished or
+failed at which stage; pairing started, paired or failed with a short reason; how ccn was
+installed; the OS and processor). The hooks send none, and nothing about your sessions, prompts or
+computer name is included. Set `CCN_NO_ANALYTICS=1` or `DO_NOT_TRACK=1` to turn them off.
+
 ## Development
 
 ```sh
