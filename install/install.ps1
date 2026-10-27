@@ -75,4 +75,4 @@ Send-SetupEvent 'cli_install_finished'
 $env:CCN_INSTALL_METHOD = 'powershell'
 
 Write-Host ""
-Write-Host "Next: ccn pair <the code on your phone>"
+Write-Host "Next: run ccn and scan the QR code with your phone, or ccn pair <the code on your phone>"

@@ -117,8 +117,13 @@ if [ -n "$code" ]; then
   else
     exec "$dir/ccn" pair "$code"
   fi
+elif (: < /dev/tty) 2>/dev/null; then
+  # No code: show a QR code to scan with the phone, which also offers the app if it isn't installed
+  say ""
+  exec "$dir/ccn" pair < /dev/tty
 else
   say ""
-  say "Next: open Claude Code Notifier on your phone, add a computer, and run"
+  say "Next: run \`$ccn\` and scan the QR code with your phone, or open Claude Code Notifier,"
+  say "add a computer, and run"
   say "  $ccn pair <the code on your phone>"
 fi
