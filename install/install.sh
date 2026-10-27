@@ -3,13 +3,25 @@
 #
 #   curl -fsSL https://claudecodenotifier.com/install.sh | sh              # install only
 #   curl -fsSL https://claudecodenotifier.com/install.sh | sh -s 482913    # install and pair
+#   curl -fsSL https://claudecodenotifier.com/install.sh | sh -s 482913 --licence CCN-XXXX-XXXX-XXXX-XXXX
+#   curl -fsSL https://claudecodenotifier.com/install.sh | sh -s -- --licence CCN-XXXX-XXXX-XXXX-XXXX
+#                                                     # install, use a licence key (and pair)
 #
 # CCN_VERSION=0.2.0 picks a release (default: the latest). CCN_INSTALL_DIR overrides ~/.local/bin.
 # CCN_NO_ANALYTICS=1 (or DO_NOT_TRACK=1) stops the anonymous install events.
 set -eu
 
 repo="touch-tap/ccn"
-code="${1:-}"
+code=""
+licence=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --licence|--license) licence="${2:-}"; [ $# -ge 2 ] && shift; shift ;;
+    --licence=*|--license=*) licence="${1#*=}"; shift ;;
+    --) shift ;;
+    *) [ -z "$code" ] && code="$1"; shift ;;
+  esac
+done
 dir="${CCN_INSTALL_DIR:-$HOME/.local/bin}"
 
 say() { printf '%s\n' "$*"; }
@@ -109,6 +121,12 @@ on_path=yes
 track cli_install_finished "\"pairing\":\"$([ -n "$code" ] && echo yes || echo no)\",\"on_path\":\"$on_path\""
 
 export CCN_INSTALL_METHOD=script
+# The licence first, so the phone paired next is unlocked as soon as it connects. A bad key doesn't
+# stop the install; the message says what to do.
+if [ -n "$licence" ]; then
+  say ""
+  "$dir/ccn" activate "$licence" < /dev/null || say "The licence wasn't applied. Try again later: $ccn activate $licence"
+fi
 if [ -n "$code" ]; then
   say ""
   # stdin is the piped script, so give pair the terminal for any question it asks

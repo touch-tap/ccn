@@ -1,6 +1,7 @@
 # Installs ccn, the Claude Code Notifier CLI, on Windows.
 #
 #   irm https://claudecodenotifier.com/install.ps1 | iex; ccn pair 482913
+#   irm https://claudecodenotifier.com/install.ps1 | iex; ccn activate CCN-XXXX-XXXX-XXXX-XXXX; ccn pair 482913
 #
 # $env:CCN_VERSION = "0.2.0" picks a release (default: the latest).
 # $env:CCN_INSTALL_DIR overrides %LOCALAPPDATA%\Programs\ccn.
