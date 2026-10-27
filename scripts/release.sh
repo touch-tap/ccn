@@ -3,7 +3,8 @@
 #   scripts/release.sh 0.2.0
 # Builds the macOS notifier app, signs and notarizes it, creates the DRAFT release with it attached,
 # then pushes the tag. The Release workflow builds every target with that app embedded and adds them
-# to the draft. Needs the certificate in the keychain and the `ccn-notary` notarytool profile
+# to the draft; this script waits for it, then signs and notarizes the two macOS binaries with the
+# Developer ID and replaces them (and SHA256SUMS and ccn.rb) in the draft. Needs the certificate in the keychain and the `ccn-notary` notarytool profile
 # (see RELEASING.md).
 set -eu
 version=$1
@@ -40,4 +41,41 @@ gh release create "$tag" "$work/ccn-notifier-macos.zip" --draft --target "$(git 
   --title "ccn $tag" --generate-notes
 git tag "$tag"
 git push origin "$tag"
-echo "Pushed $tag. Watch the Release workflow, then check and publish the draft."
+
+# The workflow builds every target. The macOS binaries then get the Developer ID signature here,
+# where the certificate is: with a stable identity, the keychain lets each new version read the
+# token the last one stored, instead of prompting in the middle of a hook.
+echo "Waiting for the Release workflow..."
+run_id=""
+for _ in $(seq 1 30); do
+  run_id=$(gh run list --workflow release.yml --event push --limit 10 --json databaseId,headBranch \
+    --jq ".[] | select(.headBranch == \"$tag\") | .databaseId" | head -1)
+  [ -n "$run_id" ] && break
+  sleep 5
+done
+[ -n "$run_id" ] || fail "the Release workflow for $tag didn't start"
+gh run watch "$run_id" --exit-status >/dev/null || fail "the Release workflow failed: gh run view $run_id"
+
+echo "Signing and notarizing the macOS binaries..."
+mac="$work/mac"
+mkdir -p "$mac/submit"
+gh release download "$tag" -D "$mac" -p 'ccn-*-apple-darwin.tar.gz' -p SHA256SUMS
+for target in aarch64-apple-darwin x86_64-apple-darwin; do
+  mkdir -p "$mac/$target"
+  tar xzf "$mac/ccn-$target.tar.gz" -C "$mac/$target"
+  codesign --force --options runtime --timestamp --identifier com.touchtap.ccn --sign "$identity" "$mac/$target/ccn"
+  cp "$mac/$target/ccn" "$mac/submit/ccn-$target"
+done
+ditto -c -k "$mac/submit" "$mac/submit.zip"
+xcrun notarytool submit "$mac/submit.zip" --keychain-profile ccn-notary --wait
+for target in aarch64-apple-darwin x86_64-apple-darwin; do
+  codesign -dv "$mac/$target/ccn" 2>&1 | grep -q "TeamIdentifier=4ABJZNGY79" || fail "$target isn't signed by TouchTap"
+  tar czf "$mac/ccn-$target.tar.gz" -C "$mac/$target" ccn
+  sum=$(shasum -a 256 "$mac/ccn-$target.tar.gz" | cut -d' ' -f1)
+  awk -v f="ccn-$target.tar.gz" -v s="$sum" '$2 == f { print s "  " f; next } { print }' "$mac/SHA256SUMS" > "$mac/SHA256SUMS.new"
+  mv "$mac/SHA256SUMS.new" "$mac/SHA256SUMS"
+done
+scripts/brew-formula.sh "$version" "$mac/SHA256SUMS" > "$mac/ccn.rb"
+gh release upload "$tag" --clobber "$mac/ccn-aarch64-apple-darwin.tar.gz" "$mac/ccn-x86_64-apple-darwin.tar.gz" \
+  "$mac/SHA256SUMS" "$mac/ccn.rb"
+echo "Done: $tag is a draft with signed macOS binaries. Check it, then publish it."

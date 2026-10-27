@@ -3,8 +3,12 @@
 1. Bump `version` in `Cargo.toml` (and run `cargo build` so `Cargo.lock` follows), commit.
 2. On the release Mac, `scripts/release.sh 0.2.0`. It signs and notarizes the macOS notifier app,
    creates a **draft** GitHub release with it, and pushes the tag. The Release workflow then builds
-   six targets and adds the archives, `SHA256SUMS` and `ccn.rb` to that draft. Never push a release
-   tag by hand: the macOS builds need the notarized app from the draft and fail without it.
+   six targets and adds the archives, `SHA256SUMS` and `ccn.rb` to that draft. The script waits for
+   it, then signs the two macOS binaries with the Developer ID (identifier `com.touchtap.ccn`,
+   hardened runtime), notarizes them, and replaces them, `SHA256SUMS` and `ccn.rb` in the draft.
+   The stable signature is what lets each version read the keychain token without a prompt. Never
+   push a release tag by hand: the macOS builds need the notarized app from the draft and fail
+   without it, and the binaries would stay unsigned.
 3. Check the draft, then publish it. The install scripts download from
    `releases/latest/download/…`, so they serve the new version the moment it is published.
    The repository must be public for the scripts, Homebrew and npm to reach the assets.
