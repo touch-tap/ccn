@@ -1,10 +1,10 @@
 //! The server over HTTPS. Every call has a short timeout: a hook must never hang Claude Code.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use serde::Deserialize;
-use serde_json::{json, Value};
-use std::sync::atomic::{AtomicBool, Ordering};
+use serde_json::{Value, json};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use crate::config::{self, Config, Settings};
@@ -125,7 +125,11 @@ impl Api {
     }
 
     fn build(cfg: &Config, token: Option<String>) -> Api {
-        Api { base: cfg.server_url.trim_end_matches('/').to_string(), token, rejected: Arc::default() }
+        Api {
+            base: cfg.server_url.trim_end_matches('/').to_string(),
+            token,
+            rejected: Arc::default(),
+        }
     }
 
     pub fn was_rejected(&self) -> bool {
@@ -154,7 +158,11 @@ impl Api {
 
         let mut response = match method {
             "GET" | "DELETE" => {
-                let mut req = if method == "GET" { agent.get(&url) } else { agent.delete(&url) };
+                let mut req = if method == "GET" {
+                    agent.get(&url)
+                } else {
+                    agent.delete(&url)
+                };
                 if let Some(b) = &bearer {
                     req = req.header("Authorization", b);
                 }
@@ -164,7 +172,11 @@ impl Api {
                 req.call()
             }
             _ => {
-                let mut req = if method == "POST" { agent.post(&url) } else { agent.put(&url) };
+                let mut req = if method == "POST" {
+                    agent.post(&url)
+                } else {
+                    agent.put(&url)
+                };
                 if let Some(b) = &bearer {
                     req = req.header("Authorization", b);
                 }
@@ -181,7 +193,11 @@ impl Api {
             self.rejected.store(true, Ordering::Relaxed);
             return Err(anyhow::Error::new(Rejected));
         }
-        let etag = response.headers().get("etag").and_then(|v| v.to_str().ok()).map(|s| s.to_string());
+        let etag = response
+            .headers()
+            .get("etag")
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string());
         let body = response.body_mut().read_to_string().unwrap_or_default();
         Ok(Reply { status, body, etag })
     }
@@ -209,7 +225,13 @@ impl Api {
     }
 
     pub fn claim_by_client(&self, body: &Value) -> Result<ClaimResult> {
-        let reply = self.send("POST", "/api/pairing/claim-by-client", Some(body), QUICK, &[])?;
+        let reply = self.send(
+            "POST",
+            "/api/pairing/claim-by-client",
+            Some(body),
+            QUICK,
+            &[],
+        )?;
         let reply = Self::expect_ok(reply, "pairing")?;
         serde_json::from_str(&reply.body).context("unexpected pairing response")
     }
@@ -240,11 +262,19 @@ impl Api {
         struct Devices {
             devices: Vec<PairedDevice>,
         }
-        Ok(serde_json::from_str::<Devices>(&reply.body).context("unexpected pairings response")?.devices)
+        Ok(serde_json::from_str::<Devices>(&reply.body)
+            .context("unexpected pairings response")?
+            .devices)
     }
 
     pub fn revoke(&self, pairing_id: &str) -> Result<()> {
-        let reply = self.send("DELETE", &format!("/api/pairings/{pairing_id}"), None, QUICK, &[])?;
+        let reply = self.send(
+            "DELETE",
+            &format!("/api/pairings/{pairing_id}"),
+            None,
+            QUICK,
+            &[],
+        )?;
         Self::expect_ok(reply, "revoking the pairing").map(|_| ())
     }
 
@@ -256,7 +286,11 @@ impl Api {
     // ---- settings ----
 
     /// `Ok(None)` means the server's copy matches `etag` (304).
-    pub fn get_settings(&self, etag: Option<&str>, timeout: Duration) -> Result<Option<SettingsResult>> {
+    pub fn get_settings(
+        &self,
+        etag: Option<&str>,
+        timeout: Duration,
+    ) -> Result<Option<SettingsResult>> {
         let extra: Vec<(&str, &str)> = etag.map(|e| vec![("If-None-Match", e)]).unwrap_or_default();
         let reply = self.send("GET", "/api/clients/me/settings", None, timeout, &extra)?;
         if reply.status == 304 {
@@ -280,8 +314,13 @@ impl Api {
             settings: Settings,
             updated_at: Option<i64>,
         }
-        let parsed: Body = serde_json::from_str(&reply.body).context("unexpected settings response")?;
-        Ok(SettingsResult { settings: parsed.settings, updated_at: parsed.updated_at, etag: reply.etag })
+        let parsed: Body =
+            serde_json::from_str(&reply.body).context("unexpected settings response")?;
+        Ok(SettingsResult {
+            settings: parsed.settings,
+            updated_at: parsed.updated_at,
+            etag: reply.etag,
+        })
     }
 
     // ---- hook events ----
@@ -303,16 +342,22 @@ impl Api {
         match reply.status {
             204 => Ok(Wait::Pending),
             200 => {
-                let v: Value = serde_json::from_str(&reply.body).context("unexpected response body")?;
+                let v: Value =
+                    serde_json::from_str(&reply.body).context("unexpected response body")?;
                 let status = v["status"].as_str().unwrap_or("").to_string();
                 let source = v["responseSource"].as_str().unwrap_or("");
                 match (status.as_str(), v["response"].as_str()) {
-                    ("responded", Some(text)) if source == "mobile" => Ok(Wait::Responded(text.to_string())),
+                    ("responded", Some(text)) if source == "mobile" => {
+                        Ok(Wait::Responded(text.to_string()))
+                    }
                     _ => Ok(Wait::Settled(status)),
                 }
             }
             404 => Ok(Wait::Settled("gone".to_string())),
-            _ => Err(anyhow!("waiting for a response: {}", Self::error_message(&reply))),
+            _ => Err(anyhow!(
+                "waiting for a response: {}",
+                Self::error_message(&reply)
+            )),
         }
     }
 }
@@ -412,14 +457,22 @@ impl Api {
             return Ok(body);
         }
         let code = body["error"]["code"].as_str().unwrap_or("").to_string();
-        let message = body["error"]["message"].as_str().map(|s| s.to_string()).unwrap_or_else(|| format!("{what}: server returned {}", reply.status));
-        Err(anyhow::Error::new(LicenceError { code, message, body }))
+        let message = body["error"]["message"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| format!("{what}: server returned {}", reply.status));
+        Err(anyhow::Error::new(LicenceError {
+            code,
+            message,
+            body,
+        }))
     }
 
     pub fn start_checkout(&self, plan: &str, upgrade: bool) -> Result<Checkout> {
         let body = json!({ "plan": plan, "upgrade": upgrade });
         let reply = self.send("POST", "/api/clients/me/checkout", Some(&body), QUICK, &[])?;
-        serde_json::from_value(Self::licence_reply(reply, "starting the checkout")?).context("unexpected checkout response")
+        serde_json::from_value(Self::licence_reply(reply, "starting the checkout")?)
+            .context("unexpected checkout response")
     }
 
     /// Long-polls the checkout for up to `wait_secs` (max 25).
@@ -435,25 +488,44 @@ impl Api {
             key: v["key"].as_str().map(|s| s.to_string()),
             activated: v["activated"].as_bool().unwrap_or(false),
             upgraded: v["upgraded"].as_bool().unwrap_or(false),
-            licence: serde_json::from_value(v["licence"].clone()).context("unexpected checkout response")?,
+            licence: serde_json::from_value(v["licence"].clone())
+                .context("unexpected checkout response")?,
         })
     }
 
     pub fn licence_status(&self, timeout: Duration) -> Result<LicenceStatus> {
         let reply = self.send("GET", "/api/clients/me/licence", None, timeout, &[])?;
-        serde_json::from_value(Self::licence_reply(reply, "reading the licence")?).context("unexpected licence response")
+        serde_json::from_value(Self::licence_reply(reply, "reading the licence")?)
+            .context("unexpected licence response")
     }
 
     pub fn activate_licence(&self, key: &str, replace: Option<&str>) -> Result<LicenceStatus> {
         let body = json!({ "key": key, "replace": replace });
-        let reply = self.send("POST", "/api/clients/me/licence/activate", Some(&body), QUICK, &[])?;
-        serde_json::from_value(Self::licence_reply(reply, "activating the licence")?).context("unexpected activation response")
+        let reply = self.send(
+            "POST",
+            "/api/clients/me/licence/activate",
+            Some(&body),
+            QUICK,
+            &[],
+        )?;
+        serde_json::from_value(Self::licence_reply(reply, "activating the licence")?)
+            .context("unexpected activation response")
     }
 
     /// True when this computer held a slot and now doesn't.
     pub fn deactivate_licence(&self) -> Result<bool> {
-        let reply = self.send("POST", "/api/clients/me/licence/deactivate", None, QUICK, &[])?;
-        Ok(Self::licence_reply(reply, "freeing the licence")?["deactivated"].as_bool().unwrap_or(false))
+        let reply = self.send(
+            "POST",
+            "/api/clients/me/licence/deactivate",
+            None,
+            QUICK,
+            &[],
+        )?;
+        Ok(
+            Self::licence_reply(reply, "freeing the licence")?["deactivated"]
+                .as_bool()
+                .unwrap_or(false),
+        )
     }
 }
 
@@ -467,7 +539,9 @@ mod tests {
 
     #[test]
     fn rejection_is_recognised_through_context() {
-        let err = Err::<(), _>(anyhow::Error::new(Rejected)).context("sending the event").unwrap_err();
+        let err = Err::<(), _>(anyhow::Error::new(Rejected))
+            .context("sending the event")
+            .unwrap_err();
         assert!(is_rejected(&err));
         assert!(format!("{err:#}").contains("Run `ccn pair`"));
         assert!(!is_rejected(&anyhow!("server returned 500")));

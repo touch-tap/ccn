@@ -2,7 +2,7 @@
 //! Everything else in that file is left exactly as it was, including key order.
 
 use anyhow::{Context, Result};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -49,7 +49,9 @@ pub fn exe_path() -> Result<PathBuf> {
 }
 
 fn ephemeral() -> bool {
-    std::env::var("CCN_EPHEMERAL").map(|v| v == "1").unwrap_or(false)
+    std::env::var("CCN_EPHEMERAL")
+        .map(|v| v == "1")
+        .unwrap_or(false)
 }
 
 fn exe_name() -> &'static str {
@@ -106,7 +108,9 @@ pub fn install_self() -> Result<Option<PathBuf>> {
 
 fn shell_quote(path: &Path) -> String {
     let s = path.to_string_lossy();
-    if s.chars().all(|c| c.is_ascii_alphanumeric() || "/._-+:@".contains(c)) {
+    if s.chars()
+        .all(|c| c.is_ascii_alphanumeric() || "/._-+:@".contains(c))
+    {
         s.to_string()
     } else {
         format!("'{}'", s.replace('\'', "'\\''"))
@@ -176,9 +180,13 @@ fn strip(hooks: &mut serde_json::Map<String, Value>, remove_mac_app: bool) -> (b
     let mut found_mac = false;
     let mut removed_mac = false;
     for (_event, groups) in hooks.iter_mut() {
-        let Some(groups) = groups.as_array_mut() else { continue };
+        let Some(groups) = groups.as_array_mut() else {
+            continue;
+        };
         for group in groups.iter_mut() {
-            let Some(list) = group.get_mut("hooks").and_then(|h| h.as_array_mut()) else { continue };
+            let Some(list) = group.get_mut("hooks").and_then(|h| h.as_array_mut()) else {
+                continue;
+            };
             list.retain(|entry| {
                 if is_ours(entry) {
                     return false;
@@ -193,7 +201,12 @@ fn strip(hooks: &mut serde_json::Map<String, Value>, remove_mac_app: bool) -> (b
                 true
             });
         }
-        groups.retain(|g| g.get("hooks").and_then(|h| h.as_array()).map(|l| !l.is_empty()).unwrap_or(true));
+        groups.retain(|g| {
+            g.get("hooks")
+                .and_then(|h| h.as_array())
+                .map(|l| !l.is_empty())
+                .unwrap_or(true)
+        });
     }
     hooks.retain(|_, groups| groups.as_array().map(|g| !g.is_empty()).unwrap_or(true));
     (found_mac, removed_mac)
@@ -203,15 +216,21 @@ pub fn install(replace_mac_app: bool) -> Result<InstallReport> {
     let path = config::claude_settings_path();
     let exe = exe_path()?;
     let mut root = load(&path)?;
-    let obj = root.as_object_mut().context("settings.json is not a JSON object")?;
+    let obj = root
+        .as_object_mut()
+        .context("settings.json is not a JSON object")?;
     let hooks = obj.entry("hooks").or_insert_with(|| json!({}));
-    let hooks = hooks.as_object_mut().context("the hooks section of settings.json is not an object")?;
+    let hooks = hooks
+        .as_object_mut()
+        .context("the hooks section of settings.json is not an object")?;
 
     let (found_mac, removed_mac) = strip(hooks, replace_mac_app);
 
     for (event, matcher, timeout) in EVENTS {
         let groups = hooks.entry(*event).or_insert_with(|| json!([]));
-        let groups = groups.as_array_mut().with_context(|| format!("hooks.{event} is not an array"))?;
+        let groups = groups
+            .as_array_mut()
+            .with_context(|| format!("hooks.{event} is not an array"))?;
         let mut group = json!({ "hooks": [hook_entry(&exe, *timeout)] });
         if let Some(m) = matcher {
             group["matcher"] = json!(m);
@@ -220,7 +239,12 @@ pub fn install(replace_mac_app: bool) -> Result<InstallReport> {
     }
 
     save(&path, &root)?;
-    Ok(InstallReport { path, exe, mac_app_hooks_found: found_mac, mac_app_hooks_removed: removed_mac })
+    Ok(InstallReport {
+        path,
+        exe,
+        mac_app_hooks_found: found_mac,
+        mac_app_hooks_removed: removed_mac,
+    })
 }
 
 pub fn uninstall() -> Result<PathBuf> {
@@ -233,7 +257,10 @@ pub fn uninstall() -> Result<PathBuf> {
         strip(hooks, false);
     }
     // An empty hooks section is almost always one ccn created, so leave the file as it was before
-    let empty = root.get("hooks").and_then(|h| h.as_object()).is_some_and(|h| h.is_empty());
+    let empty = root
+        .get("hooks")
+        .and_then(|h| h.as_object())
+        .is_some_and(|h| h.is_empty());
     if empty {
         root.as_object_mut().map(|o| o.remove("hooks"));
     }
@@ -244,21 +271,31 @@ pub fn uninstall() -> Result<PathBuf> {
 /// Whether settings.json already sends Claude Code's events somewhere: ccn's own entries, or the
 /// Mac app's. The plugin's hooks stand aside then, so no event is sent twice.
 pub fn settings_has_hooks() -> bool {
-    let Ok(root) = load(&config::claude_settings_path()) else { return false };
-    let Some(hooks) = root.get("hooks").and_then(|h| h.as_object()) else { return false };
-    hooks.values().filter_map(|g| g.as_array()).flatten().any(|group| {
-        group
-            .get("hooks")
-            .and_then(|h| h.as_array())
-            .map(|list| list.iter().any(|entry| is_ours(entry) || is_mac_app(entry)))
-            .unwrap_or(false)
-    })
+    let Ok(root) = load(&config::claude_settings_path()) else {
+        return false;
+    };
+    let Some(hooks) = root.get("hooks").and_then(|h| h.as_object()) else {
+        return false;
+    };
+    hooks
+        .values()
+        .filter_map(|g| g.as_array())
+        .flatten()
+        .any(|group| {
+            group
+                .get("hooks")
+                .and_then(|h| h.as_array())
+                .map(|list| list.iter().any(|entry| is_ours(entry) || is_mac_app(entry)))
+                .unwrap_or(false)
+        })
 }
 
 pub fn status() -> Result<Status> {
     let path = config::claude_settings_path();
     let root = load(&path)?;
-    let exe = exe_path().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
+    let exe = exe_path()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_default();
     let mut installed = Vec::new();
     let mut missing = Vec::new();
     let mut stale_exe = false;
@@ -272,9 +309,13 @@ pub fn status() -> Result<Status> {
                 let group_matcher = group.get("matcher").and_then(|m| m.as_str());
                 let matcher_ok = match matcher {
                     Some(m) => group_matcher == Some(m),
-                    None => group_matcher.map(|m| m.is_empty() || m == "*").unwrap_or(true),
+                    None => group_matcher
+                        .map(|m| m.is_empty() || m == "*")
+                        .unwrap_or(true),
                 };
-                let Some(list) = group.get("hooks").and_then(|h| h.as_array()) else { continue };
+                let Some(list) = group.get("hooks").and_then(|h| h.as_array()) else {
+                    continue;
+                };
                 for entry in list {
                     if is_mac_app(entry) {
                         mac_app_present = true;
@@ -312,7 +353,13 @@ pub fn status() -> Result<Status> {
             }
         }
     }
-    Ok(Status { path, installed, missing, stale_exe, mac_app_present })
+    Ok(Status {
+        path,
+        installed,
+        missing,
+        stale_exe,
+        mac_app_present,
+    })
 }
 
 #[cfg(test)]
@@ -328,7 +375,10 @@ mod exe_tests {
         fs::create_dir_all(root.join("bin")).unwrap();
         fs::write(cellar.join("ccn"), "").unwrap();
         fs::write(root.join("bin/ccn"), "").unwrap();
-        assert_eq!(homebrew_bin(&cellar.join("ccn")), Some(root.join("bin/ccn")));
+        assert_eq!(
+            homebrew_bin(&cellar.join("ccn")),
+            Some(root.join("bin/ccn"))
+        );
         assert_eq!(homebrew_bin(&root.join("elsewhere/ccn")), None);
         fs::remove_dir_all(root).ok();
     }

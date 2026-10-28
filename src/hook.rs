@@ -13,7 +13,7 @@ use crate::config::{self, Config, Unpaired};
 use crate::logger::log;
 use crate::payload::{self, Input};
 use crate::session::{self, Card, SessionState};
-use crate::{notify, presence, respond};
+use crate::{live, notify, presence, respond};
 
 const EVENT_TIMEOUT: Duration = Duration::from_secs(3);
 const QUICK_TIMEOUT: Duration = Duration::from_secs(2);
@@ -27,7 +27,8 @@ pub const LICENCE_SYSTEM_MESSAGE: &str = "Claude Code Notifier: phone notificati
 const LICENCE_CHECK_EVERY: i64 = 24 * 60 * 60;
 
 pub const UNPAIRED_SYSTEM_MESSAGE: &str = "Claude Code Notifier: this computer isn't paired any more, so your phone won't get notifications. Run `ccn pair` in a terminal to reconnect.";
-const UNPAIRED_NOTIFICATION: &str = "This computer isn't paired any more. Run `ccn pair` in a terminal to reconnect.";
+const UNPAIRED_NOTIFICATION: &str =
+    "This computer isn't paired any more. Run `ccn pair` in a terminal to reconnect.";
 
 pub fn run() -> Result<()> {
     match std::panic::catch_unwind(run_inner) {
@@ -64,17 +65,25 @@ fn run_inner() -> Result<Option<Value>> {
     if let Some(mut flag) = Unpaired::load() {
         // No network while unpaired, except a once-a-day check at SessionStart in case the
         // rejection was a server mistake. `ccn pair` deletes the flag.
-        let recheck = event == "SessionStart" && config::now() - flag.checked_at > Unpaired::RECHECK_AFTER;
+        let recheck =
+            event == "SessionStart" && config::now() - flag.checked_at > Unpaired::RECHECK_AFTER;
         if !(recheck && still_accepted(&api, &mut flag)) {
             return Ok(unpaired(&cfg, &event, &mut state, flag));
         }
         log("the server accepts this computer again");
     }
 
-    let mut ctx = Ctx { cfg, api, input, state };
+    let mut ctx = Ctx {
+        cfg,
+        api,
+        input,
+        state,
+    };
     let result = ctx.dispatch(&event);
     if ctx.api.was_rejected() {
-        log(&format!("{event}: the server rejected this computer's credentials; run `ccn pair`"));
+        log(&format!(
+            "{event}: the server rejected this computer's credentials; run `ccn pair`"
+        ));
         return Ok(unpaired(&ctx.cfg, &event, &mut ctx.state, Unpaired::new()));
     }
     result
@@ -99,10 +108,19 @@ fn still_accepted(api: &Api, flag: &mut Unpaired) -> bool {
 
 /// What a hook does while the server rejects this computer: a desktop notification at most once a
 /// day, and a message in Claude Code at SessionStart and on the first prompt of each session.
-fn unpaired(cfg: &Config, event: &str, state: &mut SessionState, mut flag: Unpaired) -> Option<Value> {
+fn unpaired(
+    cfg: &Config,
+    event: &str,
+    state: &mut SessionState,
+    mut flag: Unpaired,
+) -> Option<Value> {
     let now = config::now();
     if cfg.desktop_notifications && now - flag.notified_at > Unpaired::NOTIFY_EVERY {
-        notify::show(notify::APP_NAME, UNPAIRED_NOTIFICATION, cfg.settings.sound());
+        notify::show(
+            notify::APP_NAME,
+            UNPAIRED_NOTIFICATION,
+            cfg.settings.sound(),
+        );
         flag.notified_at = now;
     }
     flag.save();
@@ -145,12 +163,15 @@ impl Ctx {
     }
 
     fn quiet(&self) -> bool {
-        self.cfg.settings.in_quiet_hours(chrono::Local::now().time())
+        self.cfg
+            .settings
+            .in_quiet_hours(chrono::Local::now().time())
     }
 
     /// The user is at the terminal Claude runs in, and asked for nothing to be sent then
     fn quiet_at_terminal(&self) -> bool {
-        self.cfg.settings.quiet_when_present() && presence::at_terminal(self.cfg.settings.presence_threshold())
+        self.cfg.settings.quiet_when_present()
+            && presence::at_terminal(self.cfg.settings.presence_threshold())
     }
 
     // ---- events ----
@@ -167,7 +188,10 @@ impl Ctx {
         let register_due = now - self.cfg.registered_at.unwrap_or(0) > REGISTER_MAX_AGE;
         let mut accepted = false;
         if register_due || now - self.cfg.settings_fetched_at.unwrap_or(0) > SETTINGS_MAX_AGE {
-            match self.api.get_settings(self.cfg.settings_etag.as_deref(), QUICK_TIMEOUT) {
+            match self
+                .api
+                .get_settings(self.cfg.settings_etag.as_deref(), QUICK_TIMEOUT)
+            {
                 Ok(Some(result)) => {
                     accepted = true;
                     self.cfg.settings = result.settings;
@@ -201,7 +225,9 @@ impl Ctx {
 
     /// Once a day, asks whether this computer should be told about licences. `CCN_NO_NUDGE=1` turns it off.
     fn licence_nudge(&mut self, now: i64) -> Option<Value> {
-        if std::env::var("CCN_NO_NUDGE").map(|v| !v.is_empty() && v != "0").unwrap_or(false)
+        if std::env::var("CCN_NO_NUDGE")
+            .map(|v| !v.is_empty() && v != "0")
+            .unwrap_or(false)
             || now - self.cfg.licence_checked_at.unwrap_or(0) < LICENCE_CHECK_EVERY
         {
             return None;
@@ -209,7 +235,9 @@ impl Ctx {
         self.cfg.licence_checked_at = Some(now);
         let _ = self.cfg.save();
         match self.api.licence_status(QUICK_TIMEOUT) {
-            Ok(status) if status.nudge => Some(serde_json::json!({ "systemMessage": LICENCE_SYSTEM_MESSAGE })),
+            Ok(status) if status.nudge => {
+                Some(serde_json::json!({ "systemMessage": LICENCE_SYSTEM_MESSAGE }))
+            }
             Ok(_) => None,
             Err(err) => {
                 log(&format!("licence check skipped: {err:#}"));
@@ -220,10 +248,13 @@ impl Ctx {
 
     fn user_prompt(&mut self) -> Result<Option<Value>> {
         self.settle_last_card();
+        let now = config::now();
         if let Some(prompt) = self.input().str("prompt") {
             self.state.prompt = Some(SessionState::truncate(prompt, 4000));
-            self.state.prompt_at = Some(config::now());
+            self.state.prompt_at = Some(now);
         }
+        self.state.turn = live::Turn::begin(now);
+        self.send_working(now, None);
         self.state.save()?;
         Ok(None)
     }
@@ -234,9 +265,18 @@ impl Ctx {
         self.state.tool_name = tool_name.clone();
         self.state.tool_input = Some(self.input().tool_input());
         self.state.tool_at = Some(config::now());
+        if let Some(name) = &tool_name {
+            self.state
+                .turn
+                .record_tool(name, &self.input().tool_input());
+        }
+        if tool_name.as_deref() != Some("AskUserQuestion") {
+            self.send_working(config::now(), tool_name.as_deref());
+        }
         self.state.save()?;
 
-        if tool_name.as_deref() == Some("AskUserQuestion") && self.cfg.settings.notify_on_question() {
+        if tool_name.as_deref() == Some("AskUserQuestion") && self.cfg.settings.notify_on_question()
+        {
             let tool_input = self.input().tool_input();
             let questions = payload::questions_from_input(&tool_input);
             if questions.is_empty() {
@@ -245,7 +285,9 @@ impl Ctx {
             let (card, key) = payload::question_card(&self.input(), &questions, false);
             let ceiling = self.cfg.settings.hold_ceiling();
             let answer = self.blocking("question", &key, card, ceiling, true)?;
-            return Ok(answer.and_then(|text| respond::question_output(&text, &tool_input, &questions)));
+            return Ok(
+                answer.and_then(|text| respond::question_output(&text, &tool_input, &questions))
+            );
         }
         Ok(None)
     }
@@ -259,30 +301,47 @@ impl Ctx {
         // When the user is present we send nothing here: Claude Code shows its prompt and the
         // Notification hook sends the informational card.
         let answer = self.blocking(kind, &key, card, ceiling, false)?;
+        if answer.is_some() {
+            self.state.turn.record_approval();
+            let _ = self.state.save();
+        }
         Ok(answer.map(|text| respond::permission_output(&text)))
     }
 
     fn notification(&mut self) -> Result<Option<Value>> {
-        let kind = self.input().str("notification_type").unwrap_or("").to_string();
-        if kind != "permission_prompt" || !self.cfg.settings.notify_on_permission() || self.quiet() || self.quiet_at_terminal() {
+        let kind = self
+            .input()
+            .str("notification_type")
+            .unwrap_or("")
+            .to_string();
+        if kind != "permission_prompt"
+            || !self.cfg.settings.notify_on_permission()
+            || self.quiet()
+            || self.quiet_at_terminal()
+        {
             return Ok(None);
         }
         // A card for this request may already be on the phone from the PermissionRequest hook
         if let Some(card) = &self.state.last_card {
             let fresh = config::now() - card.sent_at < self.cfg.settings.hold_ceiling() as i64 + 60;
-            if fresh && !card.settled && (card.kind == "permission" || card.kind == "plan" || card.kind == "question") {
+            if fresh
+                && !card.settled
+                && (card.kind == "permission" || card.kind == "plan" || card.kind == "question")
+            {
                 return Ok(None);
             }
         }
-        let (card, kind, key) = if self.state.tool_name.is_some() && self.input().tool_name().is_none() {
-            // The Notification event carries no tool; use what PreToolUse recorded
-            let mut synthetic = self.input.clone();
-            synthetic["tool_name"] = Value::String(self.state.tool_name.clone().unwrap_or_default());
-            synthetic["tool_input"] = self.state.tool_input.clone().unwrap_or(Value::Null);
-            payload::permission_card(&Input(&synthetic), false)
-        } else {
-            payload::permission_card(&self.input(), false)
-        };
+        let (card, kind, key) =
+            if self.state.tool_name.is_some() && self.input().tool_name().is_none() {
+                // The Notification event carries no tool; use what PreToolUse recorded
+                let mut synthetic = self.input.clone();
+                synthetic["tool_name"] =
+                    Value::String(self.state.tool_name.clone().unwrap_or_default());
+                synthetic["tool_input"] = self.state.tool_input.clone().unwrap_or(Value::Null);
+                payload::permission_card(&Input(&synthetic), false)
+            } else {
+                payload::permission_card(&self.input(), false)
+            };
         self.send_card(kind, &key, card, false)?;
         Ok(None)
     }
@@ -292,6 +351,19 @@ impl Ctx {
             return Ok(None);
         }
         let stop_hook_active = self.input["stop_hook_active"].as_bool().unwrap_or(false);
+        if !stop_hook_active && self.live_updates_allowed() {
+            // Before the done card, which may hold for the phone's answer
+            let update = live::done(
+                &self.state.session_id,
+                self.input().project_name().as_deref(),
+                self.input().str("last_assistant_message"),
+                &self.state.turn,
+                config::now(),
+            );
+            if let Err(err) = self.api.post_event(&update, QUICK_TIMEOUT) {
+                log(&format!("could not send the done update: {err:#}"));
+            }
+        }
         if stop_hook_active {
             if let Some(card) = &self.state.last_card {
                 if card.kind == "done" && config::now() - card.sent_at < 5 {
@@ -308,16 +380,45 @@ impl Ctx {
 
     fn session_end(&mut self) -> Result<Option<Value>> {
         let session_id = self.input().session_id();
-        let _ = self.api.post_event(&payload::session_update(&session_id, "ended"), QUICK_TIMEOUT);
+        let _ = self.api.post_event(
+            &payload::session_update(&session_id, "ended"),
+            QUICK_TIMEOUT,
+        );
         SessionState::remove(&session_id);
         Ok(None)
     }
 
     // ---- helpers ----
 
+    /// The phone's lock-screen card follows the session unless the user asked for quiet
+    fn live_updates_allowed(&self) -> bool {
+        self.cfg.settings.notify_on_done() && !self.quiet() && !self.quiet_at_terminal()
+    }
+
+    /// A throttled "Claude is working" update for the lock-screen card. Never fails the hook.
+    fn send_working(&mut self, now: i64, tool_name: Option<&str>) {
+        if !self.live_updates_allowed() || !self.state.turn.working_due(now) {
+            return;
+        }
+        let tool_input = self.input().tool_input();
+        let update = live::working(
+            &self.state.session_id,
+            self.input().project_name().as_deref(),
+            self.state.prompt.as_deref(),
+            tool_name.map(|name| (name, &tool_input)),
+            self.state.turn.progress,
+            self.state.turn.started_at,
+        );
+        if let Err(err) = self.api.post_event(&update, QUICK_TIMEOUT) {
+            log(&format!("could not send the working update: {err:#}"));
+        }
+    }
+
     /// Tells the server the previous request in this session was answered at the keyboard.
     fn settle_last_card(&mut self) {
-        let Some(card) = &mut self.state.last_card else { return };
+        let Some(card) = &mut self.state.last_card else {
+            return;
+        };
         if card.settled {
             return;
         }
@@ -329,7 +430,13 @@ impl Ctx {
         let _ = self.state.save();
     }
 
-    fn send_card(&mut self, kind: &str, key: &str, mut card: Value, held: bool) -> Result<Option<String>> {
+    fn send_card(
+        &mut self,
+        kind: &str,
+        key: &str,
+        mut card: Value,
+        held: bool,
+    ) -> Result<Option<String>> {
         card["terminalContext"]["supportsRemoteInput"] = Value::Bool(held);
         let id = self.api.post_event(&card, EVENT_TIMEOUT)?;
         if let Some(id) = &id {
@@ -345,7 +452,10 @@ impl Ctx {
         }
         if self.cfg.desktop_notifications {
             let title = card["title"].as_str().unwrap_or("Claude Code");
-            let body = card["promptText"].as_str().or(card["message"].as_str()).unwrap_or("Needs your attention");
+            let body = card["promptText"]
+                .as_str()
+                .or(card["message"].as_str())
+                .unwrap_or("Needs your attention");
             notify::show(title, body, self.cfg.settings.sound());
         }
         Ok(id)
@@ -373,7 +483,9 @@ impl Ctx {
             return Ok(None);
         }
 
-        let Some(id) = self.send_card(kind, key, card, true)? else { return Ok(None) };
+        let Some(id) = self.send_card(kind, key, card, true)? else {
+            return Ok(None);
+        };
         log(&format!("holding {kind} {id} for up to {ceiling}s"));
 
         let deadline = Instant::now() + Duration::from_secs(ceiling);

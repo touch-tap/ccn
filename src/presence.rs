@@ -5,7 +5,10 @@ pub fn idle_seconds() -> Option<f64> {
     // Test hook: CCN_PRESENCE=away|present pins the answer; file:<path> reads it from a file each time
     if let Ok(value) = std::env::var("CCN_PRESENCE") {
         let value = match value.strip_prefix("file:") {
-            Some(path) => std::fs::read_to_string(path).unwrap_or_default().trim().to_string(),
+            Some(path) => std::fs::read_to_string(path)
+                .unwrap_or_default()
+                .trim()
+                .to_string(),
             None => value,
         };
         match value.as_str() {
@@ -54,13 +57,21 @@ fn terminal_frontmost() -> Option<bool> {
     #[cfg(target_os = "macos")]
     {
         // Apps launched from the Dock pass their bundle id to everything they start
-        let host = std::env::var("__CFBundleIdentifier").ok().filter(|s| !s.is_empty())?;
-        let asn = std::process::Command::new("lsappinfo").arg("front").output().ok()?;
+        let host = std::env::var("__CFBundleIdentifier")
+            .ok()
+            .filter(|s| !s.is_empty())?;
+        let asn = std::process::Command::new("lsappinfo")
+            .arg("front")
+            .output()
+            .ok()?;
         let asn = String::from_utf8_lossy(&asn.stdout).trim().to_string();
         if asn.is_empty() {
             return None;
         }
-        let info = std::process::Command::new("lsappinfo").args(["info", "-only", "bundleid", &asn]).output().ok()?;
+        let info = std::process::Command::new("lsappinfo")
+            .args(["info", "-only", "bundleid", &asn])
+            .output()
+            .ok()?;
         let front = front_bundle_id(&String::from_utf8_lossy(&info.stdout))?;
         Some(front.eq_ignore_ascii_case(&host))
     }
@@ -76,7 +87,11 @@ fn front_bundle_id(text: &str) -> Option<String> {
     for marker in ["bundleID=\"", "\"CFBundleIdentifier\"=\""] {
         if let Some(start) = text.find(marker) {
             let rest = &text[start + marker.len()..];
-            return rest.split('"').next().map(|s| s.to_string()).filter(|s| !s.is_empty());
+            return rest
+                .split('"')
+                .next()
+                .map(|s| s.to_string())
+                .filter(|s| !s.is_empty());
         }
     }
     None
@@ -86,9 +101,16 @@ fn front_bundle_id(text: &str) -> Option<String> {
 mod tests {
     #[test]
     fn reads_lsappinfo() {
-        let out = "[ NULL ]  ASN:0x0-0x1fb1fb: (in front) \n    bundleID=\"dev.warp.Warp-Stable\"\n";
-        assert_eq!(super::front_bundle_id(out).as_deref(), Some("dev.warp.Warp-Stable"));
-        assert_eq!(super::front_bundle_id("\"CFBundleIdentifier\"=\"com.apple.Terminal\"").as_deref(), Some("com.apple.Terminal"));
+        let out =
+            "[ NULL ]  ASN:0x0-0x1fb1fb: (in front) \n    bundleID=\"dev.warp.Warp-Stable\"\n";
+        assert_eq!(
+            super::front_bundle_id(out).as_deref(),
+            Some("dev.warp.Warp-Stable")
+        );
+        assert_eq!(
+            super::front_bundle_id("\"CFBundleIdentifier\"=\"com.apple.Terminal\"").as_deref(),
+            Some("com.apple.Terminal")
+        );
         assert_eq!(super::front_bundle_id("nothing"), None);
     }
 }
@@ -117,8 +139,12 @@ fn macos() -> Option<f64> {
 
 #[cfg(target_os = "linux")]
 fn linux() -> Option<f64> {
-    let has_display = std::env::var("DISPLAY").map(|v| !v.is_empty()).unwrap_or(false)
-        || std::env::var("WAYLAND_DISPLAY").map(|v| !v.is_empty()).unwrap_or(false);
+    let has_display = std::env::var("DISPLAY")
+        .map(|v| !v.is_empty())
+        .unwrap_or(false)
+        || std::env::var("WAYLAND_DISPLAY")
+            .map(|v| !v.is_empty())
+            .unwrap_or(false);
     if !has_display {
         return None;
     }
@@ -131,10 +157,14 @@ fn linux() -> Option<f64> {
     }
     let out = std::process::Command::new("gdbus")
         .args([
-            "call", "--session",
-            "--dest", "org.gnome.Mutter.IdleMonitor",
-            "--object-path", "/org/gnome/Mutter/IdleMonitor/Core",
-            "--method", "org.gnome.Mutter.IdleMonitor.GetIdletime",
+            "call",
+            "--session",
+            "--dest",
+            "org.gnome.Mutter.IdleMonitor",
+            "--object-path",
+            "/org/gnome/Mutter/IdleMonitor/Core",
+            "--method",
+            "org.gnome.Mutter.IdleMonitor.GetIdletime",
         ])
         .output()
         .ok()?;
@@ -150,7 +180,10 @@ fn linux() -> Option<f64> {
 fn windows() -> Option<f64> {
     use windows_sys::Win32::System::SystemInformation::GetTickCount;
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
-    let mut info = LASTINPUTINFO { cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32, dwTime: 0 };
+    let mut info = LASTINPUTINFO {
+        cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32,
+        dwTime: 0,
+    };
     // SAFETY: the struct is correctly sized and the pointer is valid for the call.
     let ok = unsafe { GetLastInputInfo(&mut info) };
     if ok == 0 {

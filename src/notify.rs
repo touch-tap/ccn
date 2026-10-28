@@ -9,7 +9,8 @@ use std::process::{Command, Stdio};
 pub const APP_ID: &str = "TouchTap.ccn";
 /// Windows PowerShell's AUMID: always registered, so toasts still show before `ccn setup` has run.
 #[cfg_attr(not(windows), allow(dead_code))]
-pub const FALLBACK_APP_ID: &str = r"{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe";
+pub const FALLBACK_APP_ID: &str =
+    r"{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe";
 pub const APP_NAME: &str = "Claude Code Notifier";
 
 /// The app icon, written to disk by `ccn setup` for the notification servers to read. macOS takes
@@ -31,7 +32,11 @@ fn icon_path() -> std::path::PathBuf {
             .filter(|d| !d.is_empty())
             .map(std::path::PathBuf::from)
             .unwrap_or_else(|| crate::config::home_dir().join(".local").join("share"));
-        data.join("icons").join("hicolor").join("256x256").join("apps").join("ccn.png")
+        data.join("icons")
+            .join("hicolor")
+            .join("256x256")
+            .join("apps")
+            .join("ccn.png")
     }
 }
 
@@ -122,9 +127,15 @@ pub fn doctor_line() -> Option<(bool, String)> {
     #[cfg(target_os = "macos")]
     {
         Some(match mac::status().as_deref() {
-            None => (true, "AppleScript (this build has no notifier app)".to_string()),
+            None => (
+                true,
+                "AppleScript (this build has no notifier app)".to_string(),
+            ),
             Some("authorized") => (true, format!("allowed for \"{APP_NAME}\"")),
-            Some("denied") => (false, format!("turned off: System Settings > Notifications > {APP_NAME}")),
+            Some("denied") => (
+                false,
+                format!("turned off: System Settings > Notifications > {APP_NAME}"),
+            ),
             Some(_) => (false, "not allowed yet: run `ccn setup`".to_string()),
         })
     }
@@ -202,10 +213,15 @@ mod mac {
 
     /// Makes sure the current app is on disk. False when this build has none, or writing failed.
     fn ensure() -> bool {
-        let Some((_, plist, _)) = FILES.iter().find(|(rel, _, _)| *rel == "Contents/Info.plist") else {
+        let Some((_, plist, _)) = FILES
+            .iter()
+            .find(|(rel, _, _)| *rel == "Contents/Info.plist")
+        else {
             return false;
         };
-        if std::fs::read(app_path().join("Contents/Info.plist")).is_ok_and(|on_disk| on_disk == *plist) {
+        if std::fs::read(app_path().join("Contents/Info.plist"))
+            .is_ok_and(|on_disk| on_disk == *plist)
+        {
             return true;
         }
         match write() {
@@ -245,7 +261,11 @@ mod mac {
         if sound {
             cmd.arg("--sound");
         }
-        cmd.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().is_ok()
+        cmd.stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .is_ok()
     }
 
     /// authorized, denied or not-determined; None without the app.
@@ -253,7 +273,12 @@ mod mac {
         if !ensure() {
             return None;
         }
-        let out = Command::new(exe()).arg("--status").stdin(Stdio::null()).stderr(Stdio::null()).output().ok()?;
+        let out = Command::new(exe())
+            .arg("--status")
+            .stdin(Stdio::null())
+            .stderr(Stdio::null())
+            .output()
+            .ok()?;
         Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
     }
 
@@ -262,10 +287,14 @@ mod mac {
     pub fn install() -> Option<String> {
         let name = super::APP_NAME;
         match status()?.as_str() {
-            "authorized" => return Some(format!("Desktop notifications are allowed for \"{name}\".")),
-            "denied" => return Some(format!(
-                "Desktop notifications are turned off for \"{name}\". Turn them on in System Settings > Notifications."
-            )),
+            "authorized" => {
+                return Some(format!("Desktop notifications are allowed for \"{name}\"."));
+            }
+            "denied" => {
+                return Some(format!(
+                    "Desktop notifications are turned off for \"{name}\". Turn them on in System Settings > Notifications."
+                ));
+            }
             _ => {}
         }
         println!("Asking macOS to allow notifications from \"{name}\"...");
@@ -279,7 +308,9 @@ mod mac {
             .status();
         Some(match status().as_deref() {
             Some("authorized") => format!("Desktop notifications are allowed for \"{name}\"."),
-            _ => format!("Desktop notifications aren't allowed. Turn them on in System Settings > Notifications > {name}."),
+            _ => format!(
+                "Desktop notifications aren't allowed. Turn them on in System Settings > Notifications > {name}."
+            ),
         })
     }
 }
@@ -291,13 +322,13 @@ mod win {
     //! registers ours under HKCU\Software\Classes\AppUserModelId, which Windows 10 1809 and later
     //! honour without a Start-menu shortcut. Until then the toast borrows PowerShell's.
 
-    use windows::core::HSTRING;
     use windows::Data::Xml::Dom::XmlDocument;
     use windows::UI::Notifications::{ToastNotification, ToastNotificationManager};
+    use windows::core::HSTRING;
     use windows_sys::Win32::Foundation::ERROR_SUCCESS;
     use windows_sys::Win32::System::Registry::{
-        RegCloseKey, RegCreateKeyExW, RegDeleteTreeW, RegOpenKeyExW, RegSetValueExW, HKEY, HKEY_CURRENT_USER,
-        KEY_READ, KEY_WRITE, REG_OPTION_NON_VOLATILE, REG_SZ,
+        HKEY, HKEY_CURRENT_USER, KEY_READ, KEY_WRITE, REG_OPTION_NON_VOLATILE, REG_SZ, RegCloseKey,
+        RegCreateKeyExW, RegDeleteTreeW, RegOpenKeyExW, RegSetValueExW,
     };
 
     fn key_path() -> String {
@@ -312,7 +343,8 @@ mod win {
         let path = wide(&key_path());
         let mut key: HKEY = std::ptr::null_mut();
         // SAFETY: a valid NUL-terminated path and out pointer; the key is closed below.
-        let status = unsafe { RegOpenKeyExW(HKEY_CURRENT_USER, path.as_ptr(), 0, KEY_READ, &mut key) };
+        let status =
+            unsafe { RegOpenKeyExW(HKEY_CURRENT_USER, path.as_ptr(), 0, KEY_READ, &mut key) };
         if status == ERROR_SUCCESS {
             unsafe { RegCloseKey(key) };
             true
@@ -325,7 +357,11 @@ mod win {
         let doc = XmlDocument::new()?;
         doc.LoadXml(&HSTRING::from(xml))?;
         let toast = ToastNotification::CreateToastNotification(&doc)?;
-        let app_id = if registered() { super::APP_ID } else { super::FALLBACK_APP_ID };
+        let app_id = if registered() {
+            super::APP_ID
+        } else {
+            super::FALLBACK_APP_ID
+        };
         ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(app_id))?.Show(&toast)
     }
 
@@ -354,14 +390,27 @@ mod win {
             status = set_string(key, "IconUri", &icon.to_string_lossy());
         }
         unsafe { RegCloseKey(key) };
-        if status == ERROR_SUCCESS { Ok(()) } else { Err(status) }
+        if status == ERROR_SUCCESS {
+            Ok(())
+        } else {
+            Err(status)
+        }
     }
 
     fn set_string(key: HKEY, name: &str, value: &str) -> u32 {
         let name = wide(name);
         let value = wide(value);
         // SAFETY: the key is open; the data is a NUL-terminated UTF-16 string of the given byte length.
-        unsafe { RegSetValueExW(key, name.as_ptr(), 0, REG_SZ, value.as_ptr() as *const u8, (value.len() * 2) as u32) }
+        unsafe {
+            RegSetValueExW(
+                key,
+                name.as_ptr(),
+                0,
+                REG_SZ,
+                value.as_ptr() as *const u8,
+                (value.len() * 2) as u32,
+            )
+        }
     }
 
     pub fn unregister() {

@@ -10,6 +10,7 @@ mod config;
 mod hook;
 mod hookcfg;
 mod licence;
+mod live;
 mod logger;
 mod notify;
 mod payload;
@@ -107,9 +108,7 @@ enum Command {
 #[derive(Subcommand)]
 enum DevicesCommand {
     /// Revoke a paired phone by name or id
-    Revoke {
-        device: String,
-    },
+    Revoke { device: String },
 }
 
 #[derive(Subcommand)]
@@ -117,10 +116,7 @@ enum ConfigCommand {
     /// Print the effective settings
     Show,
     /// Set one setting, e.g. `ccn config set hold_ceiling_seconds 300` or `ccn config set quiet_hours 22:00-08:00`
-    Set {
-        key: String,
-        value: String,
-    },
+    Set { key: String, value: String },
 }
 
 fn main() {
@@ -139,7 +135,11 @@ fn main() {
             }
             hook::run()
         }
-        Command::Pair { code, name, replace_mac_app } => commands::pair(code, name, replace_mac_app),
+        Command::Pair {
+            code,
+            name,
+            replace_mac_app,
+        } => commands::pair(code, name, replace_mac_app),
         Command::Setup { replace_mac_app } => commands::setup(replace_mac_app),
         Command::Doctor => commands::doctor(),
         Command::Test => commands::test(),

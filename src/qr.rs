@@ -31,7 +31,11 @@ pub fn render(text: &str) -> Option<String> {
             let top = dark(x, y);
             let bottom = y + 1 < size && dark(x, y + 1);
             // With colours, ink is the dark modules; without, ink is the light ones
-            let (top, bottom) = if ansi { (top, bottom) } else { (!top, !(bottom || y + 1 >= size)) };
+            let (top, bottom) = if ansi {
+                (top, bottom)
+            } else {
+                (!top, !(bottom || y + 1 >= size))
+            };
             out.push(match (top, bottom) {
                 (true, true) => '█',
                 (true, false) => '▀',
@@ -53,7 +57,10 @@ fn ansi_supported() -> bool {
     }
     if cfg!(windows) {
         // Windows Terminal and VS Code take ANSI; the old console host may not
-        return std::env::var_os("WT_SESSION").is_some() || std::env::var("TERM_PROGRAM").map(|t| t == "vscode").unwrap_or(false);
+        return std::env::var_os("WT_SESSION").is_some()
+            || std::env::var("TERM_PROGRAM")
+                .map(|t| t == "vscode")
+                .unwrap_or(false);
     }
     std::env::var("TERM").map(|t| t != "dumb").unwrap_or(true)
 }

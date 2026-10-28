@@ -5,13 +5,17 @@
 //! stage that failed, how ccn was installed), posted once with a short timeout and no retry.
 //! `CCN_NO_ANALYTICS=1` or `DO_NOT_TRACK=1` turns them off.
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 use std::time::Duration;
 
 use crate::config::{self, Config};
 
 fn enabled() -> bool {
-    let set = |name: &str| std::env::var(name).map(|v| !v.is_empty() && v != "0").unwrap_or(false);
+    let set = |name: &str| {
+        std::env::var(name)
+            .map(|v| !v.is_empty() && v != "0")
+            .unwrap_or(false)
+    };
     !set("CCN_NO_ANALYTICS") && !set("DO_NOT_TRACK")
 }
 
@@ -28,7 +32,9 @@ pub fn install_method() -> &'static str {
     if std::env::var("CCN_EPHEMERAL").is_ok() {
         return "npx";
     }
-    let exe = std::env::current_exe().map(|p| p.display().to_string()).unwrap_or_default();
+    let exe = std::env::current_exe()
+        .map(|p| p.display().to_string())
+        .unwrap_or_default();
     if exe.contains("/Cellar/") || exe.contains("/homebrew/") || exe.contains("linuxbrew") {
         "homebrew"
     } else if exe.contains("node_modules") {
@@ -87,7 +93,12 @@ pub fn failure_reason(err: &anyhow::Error) -> &'static str {
         "hooks"
     } else if text.contains("credential") || text.contains("keyring") || text.contains("keychain") {
         "credentials"
-    } else if text.contains("dns") || text.contains("connect") || text.contains("timed out") || text.contains("timeout") || text.contains("tls") {
+    } else if text.contains("dns")
+        || text.contains("connect")
+        || text.contains("timed out")
+        || text.contains("timeout")
+        || text.contains("tls")
+    {
         "network"
     } else {
         "other"
@@ -101,10 +112,22 @@ mod tests {
     #[test]
     fn reasons_are_recognised() {
         let r = |s: &str| failure_reason(&anyhow::anyhow!(s.to_string()));
-        assert_eq!(r("pairing: Invalid or expired pairing code"), "invalid_code");
-        assert_eq!(r("pairing: Too many pairing attempts. Wait a minute and try again."), "rate_limited");
-        assert_eq!(r("the code is the 6 digits shown in the Claude Code Notifier app"), "malformed_code");
-        assert_eq!(r("POST /api/pairing/claim-by-client: io: Connection refused"), "network");
+        assert_eq!(
+            r("pairing: Invalid or expired pairing code"),
+            "invalid_code"
+        );
+        assert_eq!(
+            r("pairing: Too many pairing attempts. Wait a minute and try again."),
+            "rate_limited"
+        );
+        assert_eq!(
+            r("the code is the 6 digits shown in the Claude Code Notifier app"),
+            "malformed_code"
+        );
+        assert_eq!(
+            r("POST /api/pairing/claim-by-client: io: Connection refused"),
+            "network"
+        );
         assert_eq!(r("something else"), "other");
     }
 }

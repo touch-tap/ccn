@@ -1,6 +1,6 @@
 //! Turns what the phone sent into what Claude Code's hook contract expects on stdout.
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 fn normalise(response: &str) -> String {
     response.trim().to_ascii_lowercase()
@@ -10,9 +10,15 @@ fn normalise(response: &str) -> String {
 /// or free text. Free text is a deny with the text as the reason, so Claude reads it.
 pub fn permission_output(response: &str) -> Value {
     let decision = match normalise(response).as_str() {
-        "y" | "yes" | "allow" | "approve" | "ok" | "a" | "always" | "1" | "2" | "3" | "4" => json!({ "behavior": "allow" }),
-        "n" | "no" | "deny" | "reject" => json!({ "behavior": "deny", "message": "Denied from the phone" }),
-        _ => json!({ "behavior": "deny", "message": format!("From the phone: {}", response.trim()) }),
+        "y" | "yes" | "allow" | "approve" | "ok" | "a" | "always" | "1" | "2" | "3" | "4" => {
+            json!({ "behavior": "allow" })
+        }
+        "n" | "no" | "deny" | "reject" => {
+            json!({ "behavior": "deny", "message": "Denied from the phone" })
+        }
+        _ => {
+            json!({ "behavior": "deny", "message": format!("From the phone: {}", response.trim()) })
+        }
     };
     json!({ "hookSpecificOutput": { "hookEventName": "PermissionRequest", "decision": decision } })
 }
@@ -46,7 +52,10 @@ pub fn question_output(response: &str, tool_input: &Value, questions: &[Value]) 
     if !updated.is_object() {
         updated = json!({});
     }
-    updated["questions"] = tool_input.get("questions").cloned().unwrap_or_else(|| json!([]));
+    updated["questions"] = tool_input
+        .get("questions")
+        .cloned()
+        .unwrap_or_else(|| json!([]));
     updated["answers"] = Value::Object(answers);
     Some(json!({
         "hookSpecificOutput": {
@@ -58,10 +67,18 @@ pub fn question_output(response: &str, tool_input: &Value, questions: &[Value]) 
 }
 
 fn map_answer(raw: &str, question: &Value) -> Option<String> {
-    let labels: Vec<&str> = question["options"].as_array()?.iter().filter_map(|o| o["label"].as_str()).collect();
+    let labels: Vec<&str> = question["options"]
+        .as_array()?
+        .iter()
+        .filter_map(|o| o["label"].as_str())
+        .collect();
     if let Some(rest) = raw.strip_prefix("OTHER:") {
         let text = rest.split_once(':').map(|(_, t)| t).unwrap_or(rest).trim();
-        return if text.is_empty() { None } else { Some(text.to_string()) };
+        return if text.is_empty() {
+            None
+        } else {
+            Some(text.to_string())
+        };
     }
     if let Ok(n) = raw.trim().parse::<usize>() {
         if n >= 1 {
@@ -75,13 +92,22 @@ fn map_answer(raw: &str, question: &Value) -> Option<String> {
     }
     // Free text typed on the phone becomes the answer as written
     let text = raw.trim();
-    if text.is_empty() { None } else { Some(text.to_string()) }
+    if text.is_empty() {
+        None
+    } else {
+        Some(text.to_string())
+    }
 }
 
 /// Stop: free text from the phone becomes Claude's next instruction.
 pub fn stop_output(response: &str) -> Option<Value> {
     let text = response.trim();
-    if text.is_empty() || matches!(normalise(text).as_str(), "ok" | "done" | "thanks" | "y" | "n") {
+    if text.is_empty()
+        || matches!(
+            normalise(text).as_str(),
+            "ok" | "done" | "thanks" | "y" | "n"
+        )
+    {
         return None;
     }
     Some(json!({ "decision": "block", "reason": text }))
@@ -92,32 +118,62 @@ mod tests {
     use super::*;
 
     fn questions() -> Vec<Value> {
-        vec![json!({ "question": "Which framework?", "header": "Framework", "multiSelect": false,
-            "options": [{ "label": "React", "value": "React" }, { "label": "Vue", "value": "Vue" }] })]
+        vec![
+            json!({ "question": "Which framework?", "header": "Framework", "multiSelect": false,
+            "options": [{ "label": "React", "value": "React" }, { "label": "Vue", "value": "Vue" }] }),
+        ]
     }
 
     #[test]
     fn maps_a_numbered_multi_answer() {
-        let out = question_output("[[MULTI_ANSWER]][\"2\"]", &json!({ "questions": [] }), &questions()).unwrap();
-        assert_eq!(out["hookSpecificOutput"]["updatedInput"]["answers"]["Which framework?"], "Vue");
+        let out = question_output(
+            "[[MULTI_ANSWER]][\"2\"]",
+            &json!({ "questions": [] }),
+            &questions(),
+        )
+        .unwrap();
+        assert_eq!(
+            out["hookSpecificOutput"]["updatedInput"]["answers"]["Which framework?"],
+            "Vue"
+        );
     }
 
     #[test]
     fn maps_other_text() {
-        let out = question_output("[[MULTI_ANSWER]][\"OTHER:3:Svelte please\"]", &json!({}), &questions()).unwrap();
-        assert_eq!(out["hookSpecificOutput"]["updatedInput"]["answers"]["Which framework?"], "Svelte please");
+        let out = question_output(
+            "[[MULTI_ANSWER]][\"OTHER:3:Svelte please\"]",
+            &json!({}),
+            &questions(),
+        )
+        .unwrap();
+        assert_eq!(
+            out["hookSpecificOutput"]["updatedInput"]["answers"]["Which framework?"],
+            "Svelte please"
+        );
     }
 
     #[test]
     fn permission_values() {
-        assert_eq!(permission_output("y")["hookSpecificOutput"]["decision"]["behavior"], "allow");
-        assert_eq!(permission_output("n")["hookSpecificOutput"]["decision"]["behavior"], "deny");
-        assert_eq!(permission_output("use pnpm instead")["hookSpecificOutput"]["decision"]["message"], "From the phone: use pnpm instead");
+        assert_eq!(
+            permission_output("y")["hookSpecificOutput"]["decision"]["behavior"],
+            "allow"
+        );
+        assert_eq!(
+            permission_output("n")["hookSpecificOutput"]["decision"]["behavior"],
+            "deny"
+        );
+        assert_eq!(
+            permission_output("use pnpm instead")["hookSpecificOutput"]["decision"]["message"],
+            "From the phone: use pnpm instead"
+        );
     }
 
     #[test]
     fn stop_block() {
         assert!(stop_output("ok").is_none());
-        assert_eq!(stop_output("now write tests").unwrap()["reason"], "now write tests");
+        assert_eq!(
+            stop_output("now write tests").unwrap()["reason"],
+            "now write tests"
+        );
     }
 }

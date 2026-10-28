@@ -147,11 +147,15 @@ impl Settings {
     }
 
     pub fn in_quiet_hours(&self, now: chrono::NaiveTime) -> bool {
-        let Some(q) = &self.quiet_hours else { return false };
+        let Some(q) = &self.quiet_hours else {
+            return false;
+        };
         if !q.enabled {
             return false;
         }
-        let (Some(start), Some(end)) = (parse_hhmm(&q.start), parse_hhmm(&q.end)) else { return false };
+        let (Some(start), Some(end)) = (parse_hhmm(&q.start), parse_hhmm(&q.end)) else {
+            return false;
+        };
         if start <= end {
             now >= start && now < end
         } else {
@@ -170,8 +174,13 @@ impl Settings {
             }
         };
         let as_secs = |min: u64, max: u64| -> Result<u64> {
-            let n: u64 = value.parse().with_context(|| format!("{key} expects a number of seconds"))?;
-            anyhow::ensure!((min..=max).contains(&n), "{key} must be between {min} and {max} seconds");
+            let n: u64 = value
+                .parse()
+                .with_context(|| format!("{key} expects a number of seconds"))?;
+            anyhow::ensure!(
+                (min..=max).contains(&n),
+                "{key} must be between {min} and {max} seconds"
+            );
             Ok(n)
         };
         match key.as_str() {
@@ -179,13 +188,24 @@ impl Settings {
             "notify_on_permission" => self.notify_on_permission = Some(as_bool()?),
             "notify_on_question" => self.notify_on_question = Some(as_bool()?),
             "sound" => self.sound = Some(as_bool()?),
-            "quiet_when_present" | "quiet_at_terminal" => self.quiet_when_present = Some(as_bool()?),
-            "hold_ceiling_seconds" | "hold_ceiling" => self.hold_ceiling_seconds = Some(as_secs(30, 3600)?),
-            "presence_threshold_seconds" | "presence_threshold" => self.presence_threshold_seconds = Some(as_secs(5, 600)?),
+            "quiet_when_present" | "quiet_at_terminal" => {
+                self.quiet_when_present = Some(as_bool()?)
+            }
+            "hold_ceiling_seconds" | "hold_ceiling" => {
+                self.hold_ceiling_seconds = Some(as_secs(30, 3600)?)
+            }
+            "presence_threshold_seconds" | "presence_threshold" => {
+                self.presence_threshold_seconds = Some(as_secs(5, 600)?)
+            }
             "stop_hold_seconds" | "stop_hold" => self.stop_hold_seconds = Some(as_secs(0, 600)?),
-            "reminder_interval_seconds" | "reminder_interval" => self.reminder_interval_seconds = Some(as_secs(0, 3600)?),
+            "reminder_interval_seconds" | "reminder_interval" => {
+                self.reminder_interval_seconds = Some(as_secs(0, 3600)?)
+            }
             "quiet_hours" => {
-                if matches!(value.to_ascii_lowercase().as_str(), "off" | "false" | "none") {
+                if matches!(
+                    value.to_ascii_lowercase().as_str(),
+                    "off" | "false" | "none"
+                ) {
                     if let Some(q) = &mut self.quiet_hours {
                         q.enabled = false;
                     }
@@ -197,7 +217,11 @@ impl Settings {
                         parse_hhmm(start).is_some() && parse_hhmm(end).is_some(),
                         "quiet_hours expects HH:MM-HH:MM, e.g. 22:00-08:00"
                     );
-                    self.quiet_hours = Some(QuietHours { enabled: true, start: start.to_string(), end: end.to_string() });
+                    self.quiet_hours = Some(QuietHours {
+                        enabled: true,
+                        start: start.to_string(),
+                        end: end.to_string(),
+                    });
                 }
             }
             other => anyhow::bail!(
@@ -298,7 +322,8 @@ impl Config {
         let mut to_write = self.clone();
         if std::env::var("CCN_SERVER_URL").is_ok() {
             // an override from the environment is not persisted
-            to_write.server_url = Config::load_file_server_url().unwrap_or_else(|| DEFAULT_SERVER_URL.to_string());
+            to_write.server_url =
+                Config::load_file_server_url().unwrap_or_else(|| DEFAULT_SERVER_URL.to_string());
         }
         let text = toml::to_string_pretty(&to_write)?;
         fs::write(&path, text).with_context(|| format!("writing {}", path.display()))?;
@@ -318,7 +343,9 @@ impl Config {
     }
 
     pub fn machine_name(&self) -> String {
-        self.machine_name.clone().unwrap_or_else(default_machine_name)
+        self.machine_name
+            .clone()
+            .unwrap_or_else(default_machine_name)
     }
 }
 
@@ -334,7 +361,9 @@ pub fn default_machine_name() -> String {
             .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
             .filter(|s| !s.is_empty())
     };
-    let raw = from_env.or_else(from_cmd).unwrap_or_else(|| format!("{} computer", platform()));
+    let raw = from_env
+        .or_else(from_cmd)
+        .unwrap_or_else(|| format!("{} computer", platform()));
     raw.trim_end_matches(".local").to_string()
 }
 
@@ -361,7 +390,11 @@ impl Unpaired {
 
     pub fn new() -> Unpaired {
         let now = now();
-        Unpaired { since: now, checked_at: now, notified_at: 0 }
+        Unpaired {
+            since: now,
+            checked_at: now,
+            notified_at: 0,
+        }
     }
 
     pub fn load() -> Option<Unpaired> {
@@ -391,12 +424,23 @@ impl Unpaired {
 /// Where the token belongs: "keychain" or "file".
 pub fn credential_store(cfg: &Config) -> &'static str {
     if cfg.credential_store_chosen {
-        return if cfg.credential_store == "keychain" { "keychain" } else { "file" };
+        return if cfg.credential_store == "keychain" {
+            "keychain"
+        } else {
+            "file"
+        };
     }
-    if std::env::var("CCN_CREDENTIAL_STORE").map(|v| v == "file").unwrap_or(false) {
+    if std::env::var("CCN_CREDENTIAL_STORE")
+        .map(|v| v == "file")
+        .unwrap_or(false)
+    {
         return "file";
     }
-    if cfg!(any(target_os = "macos", windows)) { "keychain" } else { "file" }
+    if cfg!(any(target_os = "macos", windows)) {
+        "keychain"
+    } else {
+        "file"
+    }
 }
 
 pub fn load_token(cfg: &Config) -> Option<String> {
@@ -419,7 +463,9 @@ pub fn load_token(cfg: &Config) -> Option<String> {
     // If the keychain refuses (locked, no keyring), the file stays and keeps working.
     if keychain {
         if let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER) {
-            if entry.set_password(&token).is_ok() && entry.get_password().ok().as_deref() == Some(token.as_str()) {
+            if entry.set_password(&token).is_ok()
+                && entry.get_password().ok().as_deref() == Some(token.as_str())
+            {
                 let _ = fs::remove_file(credentials_path());
             }
         }
@@ -441,7 +487,8 @@ pub fn store_token(cfg: &Config, token: &str) -> Result<&'static str> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
-    fs::write(&path, format!("{token}\n")).with_context(|| format!("writing {}", path.display()))?;
+    fs::write(&path, format!("{token}\n"))
+        .with_context(|| format!("writing {}", path.display()))?;
     restrict_permissions(&path);
     Ok("file")
 }
@@ -449,7 +496,10 @@ pub fn store_token(cfg: &Config, token: &str) -> Result<&'static str> {
 pub fn delete_token() {
     // CCN_CREDENTIAL_STORE=file is what the tests set: they must not touch the real keychain
     let file_only = std::env::var("CCN_CREDENTIAL_STORE").is_ok_and(|v| v == "file");
-    if let (false, Ok(entry)) = (file_only, keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER)) {
+    if let (false, Ok(entry)) = (
+        file_only,
+        keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER),
+    ) {
         // On macOS only the build that created the item may delete it; a later version (same
         // signature) may still change it, so it empties the item instead
         if entry.delete_credential().is_err() {

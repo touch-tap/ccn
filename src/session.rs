@@ -8,6 +8,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use crate::config;
+use crate::live::Turn;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(default)]
@@ -46,6 +47,8 @@ pub struct SessionState {
     pub tool_input: Option<Value>,
     pub tool_at: Option<i64>,
     pub terminal: Terminal,
+    /// What the current turn has done, for the phone's lock-screen card
+    pub turn: Turn,
     pub last_card: Option<Card>,
     /// Claude Code has shown this session the "not paired any more" message
     pub unpaired_warned: bool,
@@ -53,7 +56,10 @@ pub struct SessionState {
 }
 
 fn path_for(session_id: &str) -> PathBuf {
-    let safe: String = session_id.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_').collect();
+    let safe: String = session_id
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .collect();
     config::sessions_dir().join(format!("{safe}.json"))
 }
 
@@ -110,7 +116,9 @@ impl SessionState {
 
 /// Deletes session files untouched for longer than `days`.
 pub fn prune_old(days: i64) {
-    let Ok(entries) = fs::read_dir(config::sessions_dir()) else { return };
+    let Ok(entries) = fs::read_dir(config::sessions_dir()) else {
+        return;
+    };
     let cutoff = config::now() - days * 86_400;
     for entry in entries.flatten() {
         let path = entry.path();

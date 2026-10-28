@@ -15,9 +15,17 @@ impl Sandbox {
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(root.join("claude")).unwrap();
         std::fs::create_dir_all(root.join("ccn")).unwrap();
-        std::fs::write(root.join("ccn/config.toml"), "client_id = \"test-computer\"\n").unwrap();
+        std::fs::write(
+            root.join("ccn/config.toml"),
+            "client_id = \"test-computer\"\n",
+        )
+        .unwrap();
         std::fs::write(root.join("ccn/credentials"), "test-token\n").unwrap();
-        std::fs::write(root.join("claude/settings.json"), r#"{"permissions":{"allow":["Bash(ls)"]}}"#).unwrap();
+        std::fs::write(
+            root.join("claude/settings.json"),
+            r#"{"permissions":{"allow":["Bash(ls)"]}}"#,
+        )
+        .unwrap();
         Sandbox { root }
     }
 
@@ -55,7 +63,10 @@ fn fake_server(status: u16, body: &'static str) -> (String, std::thread::JoinHan
         let (mut stream, _) = listener.accept().unwrap();
         let mut request = vec![0u8; 4096];
         let n = stream.read(&mut request).unwrap();
-        let reply = format!("HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
+        let reply = format!(
+            "HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        );
         stream.write_all(reply.as_bytes()).unwrap();
         String::from_utf8_lossy(&request[..n]).to_string()
     });
@@ -67,7 +78,8 @@ fn text(bytes: &[u8]) -> String {
 }
 
 fn settings_hooks_gone(sandbox: &Sandbox) -> bool {
-    let settings = std::fs::read_to_string(Path::new(&sandbox.root).join("claude/settings.json")).unwrap();
+    let settings =
+        std::fs::read_to_string(Path::new(&sandbox.root).join("claude/settings.json")).unwrap();
     !settings.contains("\"hooks\"")
 }
 
@@ -79,9 +91,17 @@ fn erases_on_the_server_then_removes_everything_local() {
     assert!(out.status.success(), "{}", text(&out.stderr));
     let request = server.join().unwrap();
     assert!(request.starts_with("DELETE /api/clients/me "), "{request}");
-    assert!(request.to_ascii_lowercase().contains("authorization: bearer test-token"), "{request}");
+    assert!(
+        request
+            .to_ascii_lowercase()
+            .contains("authorization: bearer test-token"),
+        "{request}"
+    );
     let stdout = text(&out.stdout);
-    assert!(stdout.contains("Erased this computer and its pairings from the server."), "{stdout}");
+    assert!(
+        stdout.contains("Erased this computer and its pairings from the server."),
+        "{stdout}"
+    );
     assert!(stdout.contains("Erase my licence"), "{stdout}");
     assert!(!sandbox.ccn_dir().exists());
     assert!(settings_hooks_gone(&sandbox));
@@ -108,7 +128,11 @@ fn an_unreachable_server_keeps_the_local_credentials() {
     };
     let out = sandbox.run(&url, &["forget", "--yes"]);
     assert!(!out.status.success());
-    assert!(text(&out.stderr).contains("Nothing was removed from this computer"), "{}", text(&out.stderr));
+    assert!(
+        text(&out.stderr).contains("Nothing was removed from this computer"),
+        "{}",
+        text(&out.stderr)
+    );
     assert!(sandbox.ccn_dir().join("credentials").exists());
     assert!(sandbox.ccn_dir().join("config.toml").exists());
 }
