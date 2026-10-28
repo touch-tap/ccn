@@ -76,6 +76,7 @@ ccn config set KEY VAL  e.g. hold_ceiling_seconds 300, quiet_hours 22:00-08:00, 
 ccn sync                pull settings from the server now
 ccn setup               reinstall the hooks (after moving the binary)
 ccn uninstall           remove hooks, pairings, credentials and local state
+ccn forget [--yes]      erase this computer and its pairings from the server, then uninstall
 ```
 
 Settings: `notify_on_done`, `notify_on_permission`, `notify_on_question`, `quiet_hours`,
