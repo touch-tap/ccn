@@ -226,6 +226,13 @@ impl Api {
         serde_json::from_str(&reply.body).context("unexpected /me response")
     }
 
+    /// Erases this computer from the server: its record, pairings, queued notifications and
+    /// licence-slot name. A computer the server doesn't know comes back as `Rejected`.
+    pub fn erase(&self) -> Result<()> {
+        let reply = self.send("DELETE", "/api/clients/me", None, QUICK, &[])?;
+        Self::expect_ok(reply, "erasing this computer").map(|_| ())
+    }
+
     pub fn pairings(&self) -> Result<Vec<PairedDevice>> {
         let reply = self.send("GET", "/api/pairings", None, QUICK, &[])?;
         let reply = Self::expect_ok(reply, "listing paired phones")?;

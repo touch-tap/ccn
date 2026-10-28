@@ -1,4 +1,4 @@
-//! The user-facing commands: pair, setup, doctor, test, devices, config, sync, uninstall.
+//! The user-facing commands: pair, setup, doctor, test, devices, config, sync, uninstall, forget.
 
 use anyhow::{bail, Context, Result};
 use serde_json::{json, Value};
@@ -539,11 +539,53 @@ pub fn config_set(key: &str, value: &str) -> Result<()> {
 }
 
 pub fn uninstall() -> Result<()> {
+    remove_local(true)
+}
+
+/// Erases this computer from the server, then removes ccn exactly as `ccn uninstall` does. The
+/// server goes first: if it can't be reached the credentials stay, so the user can try again.
+pub fn forget(yes: bool) -> Result<()> {
+    use std::io::{IsTerminal, Write};
+    if !yes && !std::io::stdin().is_terminal() {
+        bail!("ccn forget needs a yes from you: run it in a terminal, or add --yes");
+    }
+    println!("This erases this computer and its pairings from the Claude Code Notifier server, then");
+    println!("removes ccn from Claude Code and deletes its credentials and files here, as `ccn uninstall` does.");
+    println!("Phones paired with this computer will see it disappear.");
+    println!("A licence bought on the website is not cancelled: do that at claudecodenotifier.com/licence");
+    println!("with \"Erase my licence\".");
+    if !yes {
+        print!("\nType yes to continue: ");
+        std::io::stdout().flush()?;
+        let mut line = String::new();
+        std::io::stdin().read_line(&mut line)?;
+        if line.trim() != "yes" {
+            println!("Nothing was erased.");
+            return Ok(());
+        }
+    }
+    let cfg = Config::load();
+    if cfg.is_paired() {
+        match Api::new(&cfg).erase() {
+            Ok(()) => println!("Erased this computer and its pairings from the server."),
+            Err(err) if api::is_rejected(&err) => println!("The server had already forgotten this computer."),
+            Err(err) => bail!("{err:#}. Nothing was removed from this computer, so you can run `ccn forget` again"),
+        }
+    } else {
+        println!("This computer isn't registered with the server, so there is nothing to erase there.");
+    }
+    // The server has already dropped the licence slot and the pairings
+    remove_local(false)
+}
+
+/// Removes the hooks, credentials and local files. `revoke_on_server` also frees the licence slot
+/// and unpairs every phone first, which `forget` has already done by erasing the computer.
+fn remove_local(revoke_on_server: bool) -> Result<()> {
     let cfg = Config::load();
     let path = hookcfg::uninstall()?;
     println!("Removed ccn's hooks from {}.", path.display());
     notify::uninstall();
-    if cfg.is_paired() {
+    if revoke_on_server && cfg.is_paired() {
         let api = Api::new(&cfg);
         // Free the licence slot first, so a reinstall (which is a new computer) doesn't find it taken
         if let Ok(true) = api.deactivate_licence() {

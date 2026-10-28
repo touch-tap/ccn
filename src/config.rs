@@ -447,7 +447,9 @@ pub fn store_token(cfg: &Config, token: &str) -> Result<&'static str> {
 }
 
 pub fn delete_token() {
-    if let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER) {
+    // CCN_CREDENTIAL_STORE=file is what the tests set: they must not touch the real keychain
+    let file_only = std::env::var("CCN_CREDENTIAL_STORE").is_ok_and(|v| v == "file");
+    if let (false, Ok(entry)) = (file_only, keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER)) {
         // On macOS only the build that created the item may delete it; a later version (same
         // signature) may still change it, so it empties the item instead
         if entry.delete_credential().is_err() {

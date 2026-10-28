@@ -89,6 +89,12 @@ enum Command {
     Licence,
     /// Remove the hooks, credentials, pairings and local state
     Uninstall,
+    /// Erase this computer and its pairings from the server, then uninstall
+    Forget {
+        /// Don't ask for confirmation
+        #[arg(short, long)]
+        yes: bool,
+    },
     /// Run as a Claude Code hook: reads the event JSON on stdin
     #[command(hide = true)]
     Hook {
@@ -151,6 +157,7 @@ fn main() {
         Command::Deactivate => licence::deactivate(),
         Command::Licence => licence::show(),
         Command::Uninstall => commands::uninstall(),
+        Command::Forget { yes } => commands::forget(yes),
     };
     if let Err(err) = result {
         eprintln!("ccn: {err:#}");
