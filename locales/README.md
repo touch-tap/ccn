@@ -40,8 +40,8 @@ same order there, or the columns stop lining up.
 
 `common.date_format` is not a sentence but a strftime pattern for dates in sentences ("annual,
 renews 27 Oct 2027"). The program only knows English month names, so use a numeric form for your
-language: `"%d.%m.%Y"` (de), `"%d/%m/%Y"` (fr, es, pt-BR, it, tr, vi), `"%Y/%m/%d"` (ja, zh),
-`"%Y.%m.%d."` (ko), `"%d.%m.%Y"` (ru, pl), `"%d-%m-%Y"` (nl), `"%d/%m/%Y"` (ar, he).
+language: `"%d.%m.%Y"` (de), `"%d/%m/%Y"` (fr, es, pt-BR, it, vi), `"%Y/%m/%d"` (ja, zh),
+`"%Y.%m.%d."` (ko), `"%d.%m.%Y"` (ru, pl, tr), `"%d-%m-%Y"` (nl), `"%d/%m/%Y"` (ar, he).
 
 Plurals: the only counted words are hours and minutes for how long a pairing code lasts.
 `pair.hours_one`/`pair.minutes_one` are used for exactly 1 and `pair.hours_other`/

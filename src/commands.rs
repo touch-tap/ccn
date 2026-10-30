@@ -840,6 +840,10 @@ pub fn config_show() -> Result<()> {
         "pair_nudges                {} {local_only}",
         if cfg.pair_nudges { "on" } else { "off" }
     );
+    println!(
+        "auto_update                {} {local_only}",
+        if cfg.auto_update { "on" } else { "off" }
+    );
     if let Some(at) = cfg.settings_updated_at {
         let when = chrono::DateTime::from_timestamp(at, 0)
             .map(|t| t.to_rfc3339())
