@@ -1,0 +1,298 @@
+# 繁體中文。譯自 locales/en.yml：鍵保持不變，只翻譯值。%{name} 是執行時填入的佔位符，
+# 必須與英文完全一致。翻譯規則見 locales/README.md。
+_version: 1
+
+cli:
+  about: "Claude Code Notifier: Claude Code 需要你時，在手機上收到推播，並直接在手機上回覆"
+  pair:
+    about: "把這台電腦與你的手機配對。傳入 App 顯示的配對碼，或不帶配對碼執行，取得一個輸入到 App 裡的配對碼"
+    code: "Claude Code Notifier App 中顯示的 6 位配對碼"
+    name: "這台電腦在手機上顯示的名稱（預設: 主機名稱）"
+    replace_mac_app: "同時移除 Mac 選單列 App 的鉤子項目，避免通知傳送兩次"
+    no_wait: "顯示 QR 碼後立即返回: 手機連線後配對會自動完成"
+  setup:
+    about: "安裝 Claude Code 的鉤子和桌面通知（pair 和不帶參數的 ccn 會先做這一步）"
+    replace_mac_app: "同時移除 Mac 選單列 App 的鉤子項目"
+  doctor:
+    about: "檢查鉤子、憑證、伺服器以及這個終端機支援的功能"
+  test:
+    about: "向每部已配對的手機傳送一則測試通知"
+  devices:
+    about: "列出已配對的手機，或撤銷其中一部"
+    revoke: "依名稱或 ID 撤銷一部已配對的手機"
+  config:
+    about: "查看或修改這台電腦的設定（也可以在手機上編輯）"
+    show: "列出目前生效的設定"
+    set: "修改一項設定，例如 `ccn config set hold_ceiling_seconds 300` 或 `ccn config set quiet_hours 22:00-08:00`"
+  sync:
+    about: "立即從伺服器拉取最新設定"
+  unlock:
+    about: "在瀏覽器中為這台電腦購買授權: 解鎖與它配對的每一部手機"
+    lifetime: "一次付清而不是按年付費（也可以把年繳授權換成終身授權，金鑰不變）"
+  upgrade:
+    about: "把 ccn 更新到最新版本（背景每天也會檢查一次）"
+    check: "只回報是否有新版本: 已是最新則結束代碼為 0，有新版本則為 10"
+    quiet: "除非出了問題，否則不輸出任何內容"
+  activate:
+    about: "在這台電腦上使用授權金鑰（每個授權最多 3 台電腦）"
+    key: "電子郵件中的金鑰，CCN-XXXX-XXXX-XXXX-XXXX"
+    replace: "依名稱釋放授權上另一台電腦的名額，給這台電腦騰出位置"
+  deactivate:
+    about: "釋放這台電腦佔用的授權名額，讓金鑰可以在別處使用"
+  licence:
+    about: "顯示這台電腦的授權以及正在使用它的電腦"
+  uninstall:
+    about: "移除鉤子、憑證、配對和本機狀態"
+  forget:
+    about: "從伺服器上抹除這台電腦及其配對，然後解除安裝"
+    yes: "不要求確認"
+
+common:
+  your_phone: "你的手機"
+  not_paired: "這台電腦尚未配對。用 App 中的配對碼執行 `ccn pair <code>`。"
+  store_keychain: "鑰匙圈"
+  store_file: "檔案"
+  # 句子中日期所用的 chrono strftime 格式。chrono 只認得英文月份名，所以用純數字形式。
+  date_format: "%Y/%m/%d"
+
+pair:
+  reregister: "這台電腦之前的配對已被移除，所以會重新註冊。"
+  code_not_recognised: "無法辨識這個配對碼。6 位配對碼在 Claude Code Notifier App 的「電腦 > 加入電腦」裡；它每 24 小時更換一次，所以請複製 App 此刻顯示的那一行。"
+  offer_qr: "按 Enter 改為在這裡顯示 QR 碼（用手機掃描），或按 Ctrl+C 離開。"
+  options_without_terminal: "用 App 現在顯示的配對碼再次執行 `ccn pair <code>`，或執行 `ccn pair` 在這裡顯示 QR 碼，再用手機掃描。"
+  scan: "  用手機相機掃描它即可連線。還沒有 App 的話，它會帶你去 App Store 或\n  Google Play: 安裝後再掃一次。"
+  or_type_code: "  或者在 Claude Code Notifier App 中輸入這個配對碼:  %{code}"
+  enter_code: "  在 Claude Code Notifier App 中輸入這個配對碼:  %{code}"
+  hooks_already_installed: "  鉤子已安裝，所以這台電腦上你已經能收到桌面通知。"
+  code_lasts: "  隨時都可以配對: 這個配對碼 %{duration}內有效。"
+  completes_on_its_own: "  手機連線後，配對會自動完成。"
+  waiting: "  正在等待你的手機...（可以放心按 Ctrl+C: 手機連線後配對會自動完成）"
+  code_expired: "配對碼在手機使用之前就過期了。請再執行一次 `ccn pair`。"
+  code_is_six_digits: "配對碼是 Claude Code Notifier App 中顯示的 6 位數字"
+  credentials_stored: "憑證已存入%{store}（%{path}）。"
+  test_sent: "已向你的手機傳送一則測試通知。"
+  test_failed: "暫時無法傳送測試通知: %{error}"
+  done: "完成。像平常一樣啟動 `claude`: Claude 完成或需要你時，你會收到推播，\n並且可以在手機上核准、拒絕或回答。`ccn doctor` 可以檢查所有內容。"
+  paired_with: "已與 %{name}（%{platform}）配對。"
+  hours_one: "1 小時"
+  hours_other: "%{count} 小時"
+  minutes_one: "1 分鐘"
+  minutes_other: "%{count} 分鐘"
+  pitch: "你的手機會在 App 裡提供訂閱。你也可以繞過應用程式商店，直接在這裡解鎖全部功能:"
+  pitch_annual: "  ccn unlock             每年 %{price}"
+  pitch_lifetime: "  ccn unlock --lifetime  一次性 %{price}"
+  pitch_covers: "涵蓋 %{computers} 台電腦以及與它們配對的每一部手機。%{days} 天退款保證。"
+  welcome_no_terminal: "一則測試通知正在發往你的手機: 試著在手機上回覆它。"
+  welcome: "一則測試通知正在發往你的手機。試著在手機上回覆它..."
+  welcome_skip: "（按 Enter 略過）"
+  welcome_answered: "✓ 你的手機回覆了「%{answer}」。以後你就是這樣回覆 Claude 的。"
+  welcome_no_answer: "還沒有回覆。這則通知會在你的手機上保留一小時。"
+
+status:
+  set_up: "ccn %{version} 已在這台電腦上設定完成，名稱為「%{name}」。"
+  licence: "授權: %{line}"
+  hint_doctor: "  ccn doctor     檢查鉤子、憑證和伺服器"
+  hint_test: "  ccn test       向你的手機傳送測試通知"
+  hint_pair: "  ccn pair       配對另一部手機"
+  hint_help: "  ccn --help     其他所有內容"
+
+setup:
+  installed_self: "已把 ccn 安裝到 %{path}。"
+  hooks_installed: "鉤子已安裝到 %{path}（使用 %{exe}）。"
+  mac_app_note: "注意: Claude Code Notifier Mac App 的鉤子也已安裝，所以每個事件會傳送兩次。\n執行 `ccn setup --replace-mac-app` 移除它們，或結束 Mac App。"
+  mac_app_removed: "已移除 Mac App 的鉤子項目；從現在起由 ccn 負責通知。"
+
+sync:
+  not_synced: "設定尚未同步: %{error}"
+  synced: "設定已同步。"
+
+doctor:
+  header: "ccn %{version}（%{platform}）"
+  config: "設定檔: %{path}"
+  credentials_present: "憑證: 存在（%{store}）"
+  credentials_missing: "憑證: 缺少: 執行 `ccn pair <code>`"
+  server_reachable: "伺服器: %{url} 可連線"
+  server_error: "伺服器: %{error}"
+  registered: "已註冊為「%{name}」（%{kind} %{platform}），功能: %{capabilities}"
+  not_paired_any_more: "配對: 已不再配對: 執行 `ccn pair`"
+  registration_error: "註冊: %{error}"
+  licence: "授權: %{line}"
+  phones_none: "手機: 尚未配對，所以通知只留在這台電腦的桌面上（執行 `ccn pair`）"
+  phones: "手機: %{names}"
+  phones_error: "手機: %{error}"
+  hooks_all: "鉤子: 全部 %{count} 個已安裝在 %{path}"
+  hooks_missing: "鉤子: 缺少 %{names}（執行 `ccn setup`）"
+  hooks_error: "鉤子: %{error}"
+  hooks_stale: "鉤子指向另一個 ccn 執行檔；執行 `ccn setup` 更新它們"
+  mac_app_hooks: "Mac App 的鉤子也已安裝（執行 `ccn setup --replace-mac-app`）"
+  presence: "在場偵測: 目前已閒置 %{idle} 秒，門檻 %{threshold} 秒"
+  presence_none: "在場偵測: 這裡無法偵測，所以每個請求都會等待手機"
+  replies: "回覆: 來自手機的核准和問題回答在任何終端機都可用；向閒置工作階段輸入自由文字%{free_text}"
+  replies_tmux: "可用（tmux）"
+  replies_no_tmux: "需要 tmux"
+  desktop: "桌面通知: %{line}"
+  log: "記錄: %{path}"
+
+test:
+  none_paired: "沒有已配對的手機。執行 `ccn pair <code>`。"
+  sent: "已向 %{name}（%{platform}）傳送一則測試通知。"
+  failed: "%{name}: %{error}"
+
+devices:
+  none: "沒有已配對的手機。用 App 中的配對碼執行 `ccn pair <code>`。"
+  # %{name} 會先補齊到 24 欄、%{platform} 補齊到 8 欄再填入
+  row: "%{name} %{platform} 配對於 %{since}%{off}"
+  notifications_off: "  （通知已關閉）"
+  revoked: "已撤銷 %{name}。"
+  no_such_phone: "沒有名為「%{device}」的已配對手機"
+
+config:
+  local_only: "（僅本機）"
+  last_changed: "（上次修改 %{when}；也可以在手機上編輯）"
+  credentials_moved: "憑證現已存放在%{store}中。"
+  credential_store_expects: "credential_store 只接受 keychain 或 file"
+  auto_update_expects: "auto_update 只接受 on 或 off"
+
+settings:
+  expects_on_off: "%{key} 只接受 on 或 off"
+  expects_seconds: "%{key} 需要一個秒數"
+  seconds_range: "%{key} 必須在 %{min} 到 %{max} 秒之間"
+  quiet_hours_format: "quiet_hours 只接受 HH:MM-HH:MM 或 off"
+  quiet_hours_example: "quiet_hours 需要 HH:MM-HH:MM 格式，例如 22:00-08:00"
+  unknown: "沒有「%{key}」這項設定。可用設定: notify_on_done, notify_on_permission, notify_on_question, sound, quiet_when_present, quiet_hours, hold_ceiling_seconds, presence_threshold_seconds, stop_hold_seconds, reminder_interval_seconds"
+
+forget:
+  needs_yes: "ccn forget 需要你確認: 在終端機中執行它，或加上 --yes"
+  warning: "這會從 Claude Code Notifier 伺服器上抹除這台電腦及其配對，然後像 `ccn uninstall` 一樣\n從 Claude Code 中移除 ccn，並刪除這裡的憑證和檔案。\n與這台電腦配對的手機會看到它消失。\n在網站上購買的授權不會被取消: 請到 claudecodenotifier.com/licence\n使用「Erase my licence」處理。"
+  # 使用者必須輸入的詞；`yes` 始終也可以
+  yes_word: "是"
+  prompt: "\n輸入 %{yes} 繼續: "
+  nothing_erased: "沒有抹除任何內容。"
+  erased: "已從伺服器上抹除這台電腦及其配對。"
+  already_forgotten: "伺服器早已忘記這台電腦。"
+  nothing_removed: "%{error}。這台電腦上沒有移除任何內容，所以你可以再執行一次 `ccn forget`"
+  not_registered: "這台電腦沒有在伺服器上註冊，所以伺服器上沒有可抹除的內容。"
+
+uninstall:
+  hooks_removed: "已從 %{path} 移除 ccn 的鉤子。"
+  slot_freed: "已釋放這台電腦的授權名額。"
+  unpaired_all: "已取消與每一部手機的配對。"
+  removed_dir: "已移除 %{path}。"
+
+local:
+  finished_title: "Claude 已完成"
+  finished_body: "Claude 已完成，正在等你。"
+  permission_title: "Claude 需要權限"
+  question_title: "Claude 有一個問題"
+  first_nudge: "在手機上接收: ccn pair"
+  milestone_nudge: "到現在已有 10 則通知。想在手機上接收，並從鎖定畫面直接核准: 執行 ccn pair"
+  pair_message: "Claude Code Notifier: 你現在收到的是桌面通知。想在手機上也收到，並在手機上核准或回答，請在終端機中執行 `ccn pair`。"
+
+hook:
+  licence_message: "Claude Code Notifier: 這台電腦的手機通知尚未解鎖。解鎖: ccn unlock"
+  unpaired_message: "Claude Code Notifier: 這台電腦已不再配對，所以你的手機收不到通知。在終端機中執行 `ccn pair` 重新連線。"
+  unpaired_notification: "這台電腦已不再配對。在終端機中執行 `ccn pair` 重新連線。"
+  paired_message: "Claude Code Notifier: 已與 %{phone} 配對。通知現在會傳到你的手機。"
+  # 標題、內文和指令由伺服器用使用者的語言寫好；這裡只是把它們拼起來
+  nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
+  needs_attention: "需要你處理"
+
+licence:
+  already_licensed: "這台電腦已有授權（%{licence}）。"
+  switch_to_lifetime: "要換成終身授權且金鑰不變: ccn unlock --lifetime"
+  checkout_open: "  結帳頁面已在瀏覽器中開啟。想改用手機付款，請掃描這個:"
+  checkout_link: "  開啟這個連結付款，或用手機掃描:"
+  waiting_payment: "  正在等待付款...（Ctrl+C 可停止；無論如何金鑰都會寄到你的電子郵件）"
+  upgraded: "✓ 已升級為終身授權。金鑰不變，電腦不變；年繳續訂已取消。"
+  licensed: "✓ 這台電腦已取得授權（%{licence}）。"
+  key: "  金鑰: %{key}（也已寄到電子郵件）。最多還可在 2 台電腦上使用: ccn activate %{key}"
+  phones_unlocked: "  與這台電腦配對的每一部手機都已解鎖。"
+  activate_with_key: "  用電子郵件裡的金鑰執行 `ccn activate <key>`，即可在這台電腦上使用。"
+  no_payment: "15 分鐘後仍未收到付款。如果你已付款，金鑰在你的電子郵件裡: ccn activate <key>"
+  replace_stale: "「%{name}」已超過一週沒有出現。那是這台電腦嗎？要取代它嗎？"
+  yes_no: " [Y/n] "
+  # 以這個字（或 n）開頭的回答表示否
+  no_initial: "否"
+  slots_full: "這個授權已在 %{count} 台電腦上使用:"
+  free_one: "在那台電腦上執行 `ccn deactivate` 釋放一個名額，或從這裡取代它:"
+  replace_example: "  ccn activate %{key} --replace \"%{name}\""
+  old_laptop: "舊筆電"
+  no_free_slot: "沒有空餘的電腦名額"
+  computers_on_licence: "使用這個授權的電腦:"
+  activated: "✓ 已取得授權（%{licence}）。3 台電腦中已用 %{count} 台。"
+  pair_to_unlock: "  用 `ccn pair` 配對一部手機，它會立刻解鎖。"
+  none: "這台電腦沒有授權。"
+  freed: "已釋放。這個授權現在 3 台電腦中已用 %{count} 台。"
+  none_buy: "這台電腦沒有授權。購買: ccn unlock"
+  none_short: "這台電腦沒有授權。"
+  buy_options: "  購買:              ccn unlock（年繳）或 ccn unlock --lifetime"
+  have_key: "  已有金鑰:          ccn activate <key>"
+  show_licence: "授權:       %{licence}"
+  show_key: "金鑰:       CCN-…-%{last4}"
+  show_unlocks: "解鎖:       %{value}"
+  unlocks_yes: "是，與這台電腦配對的每一部手機"
+  unlocks_no: "否"
+  show_computers: "電腦:       3 台中的 %{count} 台"
+  switch_lifetime_keep_key: "換成終身授權，金鑰不變: ccn unlock --lifetime"
+  status_licensed: "%{licence}，3 台電腦中的 %{count} 台"
+  status_unlicensed: "%{licence}: ccn unlock"
+  status_none: "無: ccn unlock"
+  describe_refunded: "已退款"
+  describe_lifetime: "終身"
+  describe_renews: "年繳，%{date} 續訂"
+  describe_past_due: "年繳，正在重試扣款"
+  describe_ends: "年繳，%{date} 結束"
+  describe_ended: "年繳，已於 %{date} 結束"
+  describe_other: "%{plan}，%{status}"
+  unnamed_computer: "未命名電腦"
+  last_seen: "上次出現 %{date}"
+  not_seen_recently: "最近沒有出現"
+  this_computer: "  （這台電腦）"
+  # %{name} 會先補齊到 28 欄再填入
+  computer_row: "  %{name} %{seen}%{current}"
+
+update:
+  latest: "ccn %{version} 已是最新。"
+  available_check: "ccn %{version} 可供更新（你目前是 %{current}）。"
+  update_with: "  更新: %{command}"
+  available_run: "ccn %{version} 可供更新: %{command}"
+  nothing_to_update: "沒有可更新的內容: %{path} 未安裝%{npx}"
+  npx_note: "（npx 每次都會執行最新的 ccn）"
+  no_release_build: "沒有適用於 %{os}-%{arch} 的發行版"
+  no_build_named: "ccn %{version} 沒有名為 %{asset} 的建置"
+  no_checksum: "SHA256SUMS 中沒有 %{asset} 的項目"
+  checksum_mismatch: "%{asset} 的校驗和不符: 沒有做任何更動"
+  archive_empty: "壓縮檔裡沒有 ccn"
+  zip_empty: "zip 裡沒有 ccn.exe"
+  did_not_run: "下載的 ccn 無法執行，所以保留了已安裝的版本"
+  updated: "已把 ccn 從 %{from} 更新到 %{to}。"
+  available_message: "Claude Code Notifier: ccn %{version} 可供更新: %{command}"
+
+notify:
+  registered_windows: "已為 Windows 通知註冊「Claude Code Notifier」。"
+  icon_installed: "已把通知圖像安裝到 %{path}。"
+  doctor_applescript: "AppleScript（這個建置沒有通知 App）"
+  doctor_allowed: "已允許「%{app}」"
+  doctor_denied: "已關閉: 系統設定 > 通知 > %{app}"
+  doctor_not_allowed: "尚未允許: 執行 `ccn setup`"
+  mac_denied: "「%{app}」的桌面通知已關閉。請在系統設定 > 通知中開啟。"
+  mac_asking: "正在請求 macOS 允許來自「%{app}」的通知..."
+  mac_allowed: "「%{app}」的桌面通知已允許。"
+  mac_not_allowed: "桌面通知未被允許。請在系統設定 > 通知 > %{app} 中開啟。"
+
+api:
+  rejected: "這台電腦已不再配對（伺服器不再認得它）。執行 `ccn pair` 重新連線"
+  server_returned: "伺服器回傳了 %{status}"
+  # 伺服器拒絕時正在做的事；伺服器自己的訊息跟在冒號後面
+  registering: "註冊這台電腦"
+  pairing: "配對"
+  requesting_code: "請求配對碼"
+  reading_record: "讀取這台電腦的記錄"
+  erasing: "抹除這台電腦"
+  listing_phones: "列出已配對的手機"
+  revoking: "撤銷配對"
+  health: "伺服器健康狀態"
+  reading_settings: "讀取設定"
+  saving_settings: "儲存設定"
+  sending_event: "傳送事件"
+  waiting_response: "等待回應: %{error}"
