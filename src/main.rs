@@ -47,8 +47,11 @@ enum Command {
         /// Also remove the Mac menu bar app's hook entries, so notifications are not sent twice
         #[arg(long)]
         replace_mac_app: bool,
+        /// Show the QR code and return at once: pairing completes on its own when the phone connects
+        #[arg(long)]
+        no_wait: bool,
     },
-    /// Install the Claude Code hooks (pair does this for you)
+    /// Install the Claude Code hooks and desktop notifications (pair and bare ccn do this first)
     Setup {
         /// Also remove the Mac menu bar app's hook entries
         #[arg(long)]
@@ -140,7 +143,8 @@ fn main() {
             code,
             name,
             replace_mac_app,
-        } => commands::pair(code, name, replace_mac_app),
+            no_wait,
+        } => commands::pair(code, name, replace_mac_app, no_wait),
         Command::Setup { replace_mac_app } => commands::setup(replace_mac_app),
         Command::Doctor => commands::doctor(),
         Command::Test => commands::test(),

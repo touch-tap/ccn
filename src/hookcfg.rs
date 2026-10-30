@@ -97,6 +97,12 @@ pub fn install_self() -> Result<Option<PathBuf>> {
     let dir = user_bin_dir();
     fs::create_dir_all(&dir).with_context(|| format!("creating {}", dir.display()))?;
     let to = dir.join(exe_name());
+    // Already this very build: nothing to do (so a repeated setup stays quiet)
+    if let (Ok(a), Ok(b)) = (fs::read(&from), fs::read(&to)) {
+        if a == b {
+            return Ok(None);
+        }
+    }
     let tmp = dir.join(format!("{}.new", exe_name()));
     fs::copy(&from, &tmp).with_context(|| format!("copying ccn to {}", dir.display()))?;
     #[cfg(unix)]

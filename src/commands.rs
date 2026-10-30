@@ -28,7 +28,7 @@ fn new_id() -> String {
 }
 
 /// This computer's API client, registering it with the server first when it has no credentials yet.
-/// A licence needs a registered computer, not a paired phone, so `ccn upgrade` and `ccn activate`
+/// A licence needs a registered computer, not a paired phone, so `ccn unlock` and `ccn activate`
 /// work before (or without) `ccn pair`.
 pub fn ensure_registered(cfg: &mut Config) -> Result<Api> {
     if cfg.is_paired() {
@@ -50,22 +50,46 @@ pub fn ensure_registered(cfg: &mut Config) -> Result<Api> {
     cfg.client_id = Some(client_id);
     cfg.machine_name = Some(machine_name);
     cfg.registered_at = Some(config::now());
+    cfg.phones = Some(0);
     cfg.save()?;
     config::store_token(cfg, &token)?;
     Ok(api)
 }
 
-pub fn pair(code: Option<String>, name: Option<String>, replace_mac_app: bool) -> Result<()> {
-    let flow = if code.is_some() {
+/// What the user sees when the phone's code is refused or malformed. One whole paragraph, so it
+/// can be translated as one.
+pub const CODE_NOT_RECOGNISED: &str = "That code wasn't recognised. The 6-digit code is in the Claude Code Notifier app under Computers > Add a computer; it changes every 24 hours, so copy the line the app shows right now.";
+const OFFER_QR: &str =
+    "Press Enter to show a QR code here instead (scan it with your phone), or Ctrl+C.";
+const OPTIONS_WITHOUT_TERMINAL: &str = "Run `ccn pair <code>` again with the code the app shows now, or run `ccn pair` to show a QR code here and scan it with your phone.";
+
+/// Why `ccn pair` returned without an error.
+pub enum PairOutcome {
+    /// A phone paired
+    Paired,
+    /// `--no-wait`: the code is on screen and the phone finishes the pairing on its own
+    CodeShown,
+}
+
+pub fn pair(
+    code: Option<String>,
+    name: Option<String>,
+    replace_mac_app: bool,
+    no_wait: bool,
+) -> Result<()> {
+    let mut flow = if code.is_some() {
         "phone_code"
     } else {
         "computer_code"
     };
     let method = telemetry::install_method();
     telemetry::event("cli_pair_started", &[("flow", flow), ("method", method)]);
-    let result = pair_inner(code, name, replace_mac_app);
+    let result = pair_inner(code, name, replace_mac_app, no_wait, &mut flow);
     match &result {
-        Ok(()) => telemetry::event("cli_paired", &[("flow", flow), ("method", method)]),
+        Ok(PairOutcome::Paired) => {
+            telemetry::event("cli_paired", &[("flow", flow), ("method", method)])
+        }
+        Ok(PairOutcome::CodeShown) => {}
         Err(err) => telemetry::event(
             "cli_pair_failed",
             &[
@@ -75,10 +99,19 @@ pub fn pair(code: Option<String>, name: Option<String>, replace_mac_app: bool) -
             ],
         ),
     }
-    result
+    result.map(|_| ())
 }
 
-fn pair_inner(code: Option<String>, name: Option<String>, replace_mac_app: bool) -> Result<()> {
+/// The phone that just paired, and the welcome notification the server pushed to it
+type PairedPhone = (String, Option<String>);
+
+fn pair_inner(
+    code: Option<String>,
+    name: Option<String>,
+    replace_mac_app: bool,
+    no_wait: bool,
+    flow: &mut &'static str,
+) -> Result<PairOutcome> {
     // Hooks first: a computer that never finishes pairing still gets desktop notifications
     ensure_setup(replace_mac_app)?;
     let mut cfg = Config::load();
@@ -88,134 +121,143 @@ fn pair_inner(code: Option<String>, name: Option<String>, replace_mac_app: bool)
     let machine_name = cfg.machine_name();
     // A computer the server has deleted (60 days unused) cannot come back under its old identity's
     // pairings, so it starts over as a new one
-    let mut paired = cfg.is_paired();
-    if paired && matches!(Api::new(&cfg).me(), Err(err) if api::is_rejected(&err)) {
+    let mut registered = cfg.is_paired();
+    if registered && matches!(Api::new(&cfg).me(), Err(err) if api::is_rejected(&err)) {
         println!("This computer's old pairing has been removed, so it will be registered again.");
         cfg.client_id = None;
-        paired = false;
+        cfg.phones = None;
+        cfg.paired_at = None;
+        cfg.paired_message_shown = false;
+        registered = false;
     }
     let client_id = cfg.client_id.clone().unwrap_or_else(new_id);
-    let token = if paired {
+    let token = if registered {
         config::load_token(&cfg).unwrap_or_else(new_id)
     } else {
         new_id()
     };
     let api = Api::with_token(&cfg, token.clone());
+    let identity = json!({
+        "id": client_id,
+        "authToken": token,
+        "name": machine_name,
+        "platform": config::platform(),
+        "clientKind": "cli",
+        "clientVersion": config::VERSION,
+        "capabilities": config::CAPABILITIES,
+    });
 
-    // The phone that just paired, and the welcome notification the server pushed to it
-    let paired_with: Option<(String, Option<String>)> = match code {
-        Some(code) => {
-            let code = code.trim().to_string();
-            if code.len() != 6 || !code.chars().all(|c| c.is_ascii_digit()) {
-                bail!("the code is the 6 digits shown in the Claude Code Notifier app");
-            }
-            let body = json!({
-                "code": code,
-                "id": client_id,
-                "authToken": token,
-                "name": machine_name,
-                "platform": config::platform(),
-                "clientKind": "cli",
-                "clientVersion": config::VERSION,
-                "capabilities": config::CAPABILITIES,
-            });
-            let result = api.claim_by_client(&body)?;
-            println!(
-                "Paired with {} ({}).",
-                result
-                    .device
-                    .name
-                    .clone()
-                    .unwrap_or_else(|| "your phone".to_string()),
-                result.device.platform
-            );
-            Some((result.device.id, result.welcome_notification_id))
-        }
-        None => {
-            // The original flow: this computer shows a code, the phone types it
-            let before: Vec<String> = if paired {
-                api.pairings()
-                    .map(|d| d.into_iter().map(|d| d.id).collect())
-                    .unwrap_or_default()
-            } else {
-                vec![]
-            };
-            if !paired {
-                let body = json!({
-                    "id": client_id,
-                    "authToken": token,
-                    "name": machine_name,
-                    "platform": config::platform(),
-                    "clientKind": "cli",
-                    "clientVersion": config::VERSION,
-                    "capabilities": config::CAPABILITIES,
-                });
-                api.register(&body)?;
-                cfg.client_id = Some(client_id.clone());
-                cfg.machine_name = Some(machine_name.clone());
-                cfg.registered_at = Some(config::now());
-                cfg.save()?;
-                config::store_token(&cfg, &token)?;
-            }
-            let issued = api.request_code()?;
-            println!();
-            match issued
-                .link_url
-                .as_deref()
-                .and_then(|url| qr::render(url).map(|code| (url, code)))
-            {
-                Some((url, code)) => {
-                    println!(
-                        "  Scan this with your phone's camera to connect it. Without the app yet, it"
-                    );
-                    println!(
-                        "  takes you to the App Store or Google Play: install, then scan again."
-                    );
-                    println!();
-                    print!("{code}");
-                    println!();
-                    println!("  {url}");
-                    println!(
-                        "  Or type this code in the Claude Code Notifier app:  {}",
-                        issued.code
-                    );
+    let mut paired_with: Option<PairedPhone> = None;
+    if let Some(code) = code {
+        match claim_with_code(&api, &identity, &code) {
+            Ok(phone) => paired_with = Some(phone),
+            Err(err) if code_was_refused(&err) => {
+                // Explain, and offer the QR code in place of a dead end
+                println!("{CODE_NOT_RECOGNISED}");
+                if !offer_qr_instead()? {
+                    return Err(err);
                 }
-                None => println!(
-                    "  Enter this code in the Claude Code Notifier app:  {}",
+                let method = telemetry::install_method();
+                telemetry::event(
+                    "cli_pair_failed",
+                    &[
+                        ("flow", flow),
+                        ("method", method),
+                        ("reason", telemetry::failure_reason(&err)),
+                    ],
+                );
+                *flow = "computer_code";
+                telemetry::event(
+                    "cli_pair_started",
+                    &[("flow", flow), ("method", method), ("recovered", "qr")],
+                );
+            }
+            Err(err) => return Err(err),
+        }
+    }
+
+    if paired_with.is_none() {
+        // This computer shows a code (as a QR code and in digits), the phone takes it
+        let before: Vec<String> = if registered {
+            list_phones(&mut cfg, &api)
+                .map(|d| d.into_iter().map(|d| d.id).collect())
+                .unwrap_or_default()
+        } else {
+            vec![]
+        };
+        if !registered {
+            api.register(&identity)?;
+            cfg.client_id = Some(client_id.clone());
+            cfg.machine_name = Some(machine_name.clone());
+            cfg.registered_at = Some(config::now());
+            cfg.phones = Some(0);
+            cfg.save()?;
+            config::store_token(&cfg, &token)?;
+        }
+        let issued = api.request_code()?;
+        println!();
+        match issued
+            .link_url
+            .as_deref()
+            .and_then(|url| qr::render(url).map(|code| (url, code)))
+        {
+            Some((url, code)) => {
+                println!(
+                    "  Scan this with your phone's camera to connect it. Without the app yet, it"
+                );
+                println!("  takes you to the App Store or Google Play: install, then scan again.");
+                println!();
+                print!("{code}");
+                println!();
+                println!("  {url}");
+                println!(
+                    "  Or type this code in the Claude Code Notifier app:  {}",
                     issued.code
-                ),
+                );
             }
-            println!(
-                "  It is valid for {} minutes. Waiting for your phone...",
-                issued.expires_in / 60
-            );
+            None => println!(
+                "  Enter this code in the Claude Code Notifier app:  {}",
+                issued.code
+            ),
+        }
+        println!();
+        println!(
+            "  Hooks are installed, so you already get desktop notifications on this computer."
+        );
+        println!(
+            "  Pair when you like: this code lasts {}.",
+            duration_text(issued.expires_in)
+        );
+        if no_wait {
+            println!("  Pairing completes on its own when the phone connects.");
             println!();
-            let deadline = std::time::Instant::now() + Duration::from_secs(issued.expires_in);
-            let mut found: Option<(String, Option<String>)> = None;
-            while std::time::Instant::now() < deadline {
-                std::thread::sleep(Duration::from_secs(3));
-                if let Ok(devices) = api.pairings() {
-                    if let Some(d) = devices.iter().find(|d| !before.contains(&d.id)) {
-                        println!(
-                            "Paired with {} ({}).",
-                            d.name.clone().unwrap_or_else(|| "your phone".to_string()),
-                            d.platform
-                        );
-                        found = Some((d.id.clone(), d.welcome_notification_id.clone()));
-                        break;
-                    }
+            return Ok(PairOutcome::CodeShown);
+        }
+        println!(
+            "  Waiting for your phone... (Ctrl+C is safe: pairing completes on its own when the phone connects)"
+        );
+        println!();
+        let deadline = std::time::Instant::now() + Duration::from_secs(issued.expires_in);
+        while std::time::Instant::now() < deadline {
+            std::thread::sleep(Duration::from_secs(3));
+            if let Ok(devices) = api.pairings() {
+                if let Some(d) = devices.iter().find(|d| !before.contains(&d.id)) {
+                    print_paired(d.name.as_deref(), &d.platform);
+                    paired_with = Some((d.id.clone(), d.welcome_notification_id.clone()));
+                    break;
                 }
             }
-            if found.is_none() {
-                bail!("the code expired before a phone claimed it. Run `ccn pair` again.");
-            }
-            found
         }
-    };
+        if paired_with.is_none() {
+            bail!("the code expired before a phone claimed it. Run `ccn pair` again.");
+        }
+    }
 
     cfg.client_id = Some(client_id);
     cfg.machine_name = Some(machine_name);
     cfg.registered_at = Some(config::now());
+    // `ccn pair` has told the user itself, so the hooks needn't
+    cfg.paired_message_shown = true;
     cfg.save()?;
     let store = config::store_token(&cfg, &token)?;
     Unpaired::clear();
@@ -223,7 +265,11 @@ fn pair_inner(code: Option<String>, name: Option<String>, replace_mac_app: bool)
         "Credentials stored in the {store} ({}).",
         config::ccn_dir().display()
     );
-
+    if list_phones(&mut cfg, &api).is_err() {
+        // The server couldn't be asked for the count, but a phone did just pair
+        cfg.record_phones(cfg.phones.unwrap_or(0).max(1) as usize);
+        let _ = cfg.save();
+    }
     sync_settings(&mut cfg, &api);
 
     match paired_with {
@@ -239,12 +285,102 @@ fn pair_inner(code: Option<String>, name: Option<String>, replace_mac_app: bool)
         None => {}
     }
 
+    licence_pitch(&api);
+
     println!();
     println!(
         "Done. Start `claude` as usual: you will get a push when Claude finishes or needs you,"
     );
     println!("and you can approve, deny or answer from the phone. `ccn doctor` checks everything.");
-    Ok(())
+    Ok(PairOutcome::Paired)
+}
+
+/// Pairs with the 6-digit code the phone shows. Prints the result.
+fn claim_with_code(api: &Api, identity: &Value, code: &str) -> Result<PairedPhone> {
+    let code = code.trim();
+    if code.len() != 6 || !code.chars().all(|c| c.is_ascii_digit()) {
+        bail!("the code is the 6 digits shown in the Claude Code Notifier app");
+    }
+    let mut body = identity.clone();
+    body["code"] = Value::String(code.to_string());
+    let result = api.claim_by_client(&body)?;
+    print_paired(result.device.name.as_deref(), &result.device.platform);
+    Ok((result.device.id, result.welcome_notification_id))
+}
+
+fn print_paired(name: Option<&str>, platform: &str) {
+    println!("Paired with {} ({platform}).", name.unwrap_or("your phone"));
+}
+
+/// The server didn't know the code (or it had expired), or it wasn't six digits
+fn code_was_refused(err: &anyhow::Error) -> bool {
+    matches!(
+        telemetry::failure_reason(err),
+        "invalid_code" | "malformed_code"
+    )
+}
+
+/// After a refused code: true when the user pressed Enter for a QR code. Without a terminal there
+/// is nobody to ask, so it prints both ways forward and says no.
+fn offer_qr_instead() -> Result<bool> {
+    use std::io::IsTerminal;
+    if !std::io::stdin().is_terminal() {
+        println!("{OPTIONS_WITHOUT_TERMINAL}");
+        return Ok(false);
+    }
+    println!();
+    println!("{OFFER_QR}");
+    let mut line = String::new();
+    // End of input (Ctrl+D) isn't a yes
+    Ok(matches!(std::io::stdin().read_line(&mut line), Ok(n) if n > 0))
+}
+
+/// "24 hours", "1 hour", "15 minutes": how long a pairing code lasts.
+pub fn duration_text(secs: u64) -> String {
+    if secs >= 3600 {
+        match secs / 3600 {
+            1 => "1 hour".to_string(),
+            h => format!("{h} hours"),
+        }
+    } else {
+        match (secs / 60).max(1) {
+            1 => "1 minute".to_string(),
+            m => format!("{m} minutes"),
+        }
+    }
+}
+
+/// The paired phones, recording how many there are so the hooks know which mode they are in.
+pub fn list_phones(cfg: &mut Config, api: &Api) -> Result<Vec<api::PairedDevice>> {
+    let devices = api.pairings()?;
+    cfg.record_phones(devices.len());
+    let _ = cfg.save();
+    Ok(devices)
+}
+
+/// After pairing, the one place the web licence is offered with its price. The server decides
+/// whether there is an offer and what it costs; an older server sends none.
+fn licence_pitch(api: &Api) {
+    let Ok(status) = api.licence_status(Duration::from_secs(5)) else {
+        return;
+    };
+    if status.licensed {
+        return;
+    }
+    let Some(offer) = status.offer else {
+        return;
+    };
+    println!();
+    println!(
+        "Your phone will offer a subscription in the app. You can also unlock everything from here, outside the app stores:"
+    );
+    println!("  ccn unlock             {} a year", offer.annual_price);
+    println!("  ccn unlock --lifetime  {} once", offer.lifetime_price);
+    println!(
+        "Covers {} computers and every phone paired with them. {}-day money-back.",
+        offer.computers, offer.money_back_days
+    );
+    telemetry::event("cli_pitch_shown", &[]);
 }
 
 /// The server pushed the phone an answerable welcome when it paired. Waiting here for the answer
@@ -291,20 +427,22 @@ fn wait_for_welcome(api: &Api, notification_id: &str) {
 /// fresh `brew install` go straight to the QR code), otherwise say where things stand.
 pub fn default_command() -> Result<()> {
     ensure_setup(false)?;
-    let cfg = Config::load();
+    let mut cfg = Config::load();
     if !cfg.is_paired() {
-        return pair(None, None, false);
+        return pair(None, None, false, false);
     }
-    // Registered without a phone (`ccn activate` or `ccn upgrade` before pairing): pairing is next
-    if matches!(Api::new(&cfg).pairings(), Ok(devices) if devices.is_empty()) {
-        return pair(None, None, false);
+    // Registered without a phone (`ccn activate` or `ccn unlock` before pairing, or a QR code
+    // nobody scanned yet): pairing is next
+    let api = Api::new(&cfg);
+    if matches!(list_phones(&mut cfg, &api), Ok(devices) if devices.is_empty()) {
+        return pair(None, None, false, false);
     }
     println!(
         "ccn {} is set up on this computer as \"{}\".",
         config::VERSION,
         cfg.machine_name()
     );
-    if let Some(line) = licence::status_line(&Api::new(&cfg)) {
+    if let Some(line) = licence::status_line(&api) {
         println!("Licence: {line}");
     }
     println!();
@@ -381,7 +519,7 @@ fn require_paired(cfg: &Config) -> Result<()> {
 }
 
 pub fn doctor() -> Result<()> {
-    let cfg = Config::load();
+    let mut cfg = Config::load();
     let yes = "ok ";
     let no = "!! ";
     println!("ccn {} on {}", config::VERSION, config::platform());
@@ -445,15 +583,18 @@ pub fn doctor() -> Result<()> {
         if let Some(line) = licence::status_line(&api) {
             println!(
                 "{}licence: {line}",
-                if line.ends_with("ccn upgrade") {
+                if line.ends_with("ccn upgrade") || line.ends_with("ccn unlock") {
                     no
                 } else {
                     yes
                 }
             );
         }
-        match api.pairings() {
-            Ok(devices) if devices.is_empty() => println!("{}phones: none paired yet", no),
+        match list_phones(&mut cfg, &api) {
+            Ok(devices) if devices.is_empty() => println!(
+                "{}phones: none paired yet, so notifications stay on this desktop (run `ccn pair`)",
+                no
+            ),
             Ok(devices) => {
                 let names: Vec<String> = devices
                     .iter()
@@ -531,10 +672,10 @@ pub fn doctor() -> Result<()> {
 }
 
 pub fn test() -> Result<()> {
-    let cfg = Config::load();
+    let mut cfg = Config::load();
     require_paired(&cfg)?;
     let api = Api::new(&cfg);
-    let devices = api.pairings()?;
+    let devices = list_phones(&mut cfg, &api)?;
     if devices.is_empty() {
         bail!("no phones are paired. Run `ccn pair <code>`.");
     }
@@ -549,9 +690,10 @@ pub fn test() -> Result<()> {
 }
 
 pub fn devices() -> Result<()> {
-    let cfg = Config::load();
+    let mut cfg = Config::load();
     require_paired(&cfg)?;
-    let devices = Api::new(&cfg).pairings()?;
+    let api = Api::new(&cfg);
+    let devices = list_phones(&mut cfg, &api)?;
     if devices.is_empty() {
         println!("No phones paired. Run `ccn pair <code>` with the code from the app.");
         return Ok(());
@@ -576,10 +718,10 @@ pub fn devices() -> Result<()> {
 }
 
 pub fn revoke(device: &str) -> Result<()> {
-    let cfg = Config::load();
+    let mut cfg = Config::load();
     require_paired(&cfg)?;
     let api = Api::new(&cfg);
-    let devices = api.pairings()?;
+    let devices = list_phones(&mut cfg, &api)?;
     let target = devices
         .iter()
         .find(|d| {
@@ -595,6 +737,7 @@ pub fn revoke(device: &str) -> Result<()> {
         "Revoked {}.",
         target.name.clone().unwrap_or_else(|| target.id.clone())
     );
+    let _ = list_phones(&mut cfg, &api);
     Ok(())
 }
 
@@ -773,4 +916,32 @@ fn remove_local(revoke_on_server: bool) -> Result<()> {
     let _ = std::fs::remove_dir_all(config::ccn_dir());
     println!("Removed {}.", config::ccn_dir().display());
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn code_lifetimes_read_naturally() {
+        assert_eq!(duration_text(24 * 3600), "24 hours");
+        assert_eq!(duration_text(3600), "1 hour");
+        assert_eq!(duration_text(90 * 60), "1 hour");
+        assert_eq!(duration_text(15 * 60), "15 minutes");
+        assert_eq!(duration_text(60), "1 minute");
+        assert_eq!(duration_text(30), "1 minute");
+    }
+
+    #[test]
+    fn only_a_refused_code_offers_the_qr_code() {
+        let refused = anyhow::anyhow!("pairing: Invalid or expired pairing code");
+        let malformed =
+            anyhow::anyhow!("the code is the 6 digits shown in the Claude Code Notifier app");
+        let network = anyhow::anyhow!("POST /api/pairing/claim-by-client: io: Connection refused");
+        let limited = anyhow::anyhow!("pairing: Too many pairing attempts");
+        assert!(code_was_refused(&refused));
+        assert!(code_was_refused(&malformed));
+        assert!(!code_was_refused(&network));
+        assert!(!code_was_refused(&limited));
+    }
 }
