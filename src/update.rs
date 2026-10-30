@@ -609,7 +609,7 @@ fn extract_binary(archive: &[u8]) -> Result<Vec<u8>> {
     use std::io::Read;
     let mut zip = zip::ZipArchive::new(std::io::Cursor::new(archive)).context("reading the zip")?;
     let name = (0..zip.len())
-        .filter_map(|i| zip.by_index(i).ok().map(|f| f.name().to_string()))
+        .filter_map(|i| zip.by_index(i).ok()?.name().ok().map(|n| n.into_owned()))
         .find(|n| {
             Path::new(n)
                 .file_name()
