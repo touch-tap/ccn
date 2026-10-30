@@ -240,12 +240,12 @@ fn pair_inner(
         let deadline = std::time::Instant::now() + Duration::from_secs(issued.expires_in);
         while std::time::Instant::now() < deadline {
             std::thread::sleep(Duration::from_secs(3));
-            if let Ok(devices) = api.pairings() {
-                if let Some(d) = devices.iter().find(|d| !before.contains(&d.id)) {
-                    print_paired(d.name.as_deref(), &d.platform);
-                    paired_with = Some((d.id.clone(), d.welcome_notification_id.clone()));
-                    break;
-                }
+            if let Ok(devices) = api.pairings()
+                && let Some(d) = devices.iter().find(|d| !before.contains(&d.id))
+            {
+                print_paired(d.name.as_deref(), &d.platform);
+                paired_with = Some((d.id.clone(), d.welcome_notification_id.clone()));
+                break;
             }
         }
         if paired_with.is_none() {
