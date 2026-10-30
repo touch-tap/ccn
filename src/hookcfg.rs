@@ -45,9 +45,18 @@ pub fn exe_path() -> Result<PathBuf> {
     if ephemeral() {
         return Ok(user_bin_dir().join(exe_name()));
     }
-    let exe = std::env::current_exe().context("finding the ccn executable")?;
+    let exe = undeleted(std::env::current_exe().context("finding the ccn executable")?);
     let exe = exe.canonicalize().unwrap_or(exe);
     Ok(homebrew_bin(&exe).unwrap_or(exe))
+}
+
+/// Linux reports a binary that has been replaced while running (as `ccn upgrade` does to itself)
+/// as `/path/ccn (deleted)`. The new binary is at the original path, so that is the one to use.
+fn undeleted(exe: PathBuf) -> PathBuf {
+    match exe.to_str().and_then(|s| s.strip_suffix(" (deleted)")) {
+        Some(path) if !exe.exists() => PathBuf::from(path),
+        _ => exe,
+    }
 }
 
 fn ephemeral() -> bool {
