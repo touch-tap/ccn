@@ -20,11 +20,31 @@ const QUICK_TIMEOUT: Duration = Duration::from_secs(2);
 const SETTINGS_MAX_AGE: i64 = 60 * 60;
 const REGISTER_MAX_AGE: i64 = 24 * 60 * 60;
 
-/// Shown in Claude Code when the server no longer knows this computer.
-/// Shown at most once a day when the server says so (an unlicensed computer whose phones don't pay in
-/// their app). It describes this computer, never anyone's store purchase; keep it that way.
-pub const LICENCE_SYSTEM_MESSAGE: &str = "Claude Code Notifier: phone notifications aren't unlocked for this computer. Unlock them: ccn upgrade";
-const LICENCE_CHECK_EVERY: i64 = 24 * 60 * 60;
+const DAY: i64 = 24 * 60 * 60;
+
+/// The licence line for a server that says `nudge: true` without writing the message itself (one
+/// from before Oct 2026). It describes this computer, never anyone's store purchase; keep it that way.
+pub const LICENCE_SYSTEM_MESSAGE: &str = "Claude Code Notifier: phone notifications aren't unlocked for this computer. Unlock them: ccn unlock";
+/// How often a SessionStart asks the server whether to nudge
+const LICENCE_CHECK_EVERY: i64 = DAY;
+/// Once shown, the licence nudge waits this long before it may repeat
+const LICENCE_NUDGE_REPEAT: i64 = 7 * DAY;
+
+/// When the licence nudge may show: on the second and sixth day after pairing, and otherwise once
+/// a week. Never twice in a day. `paired_at` None (an install from before it was recorded) counts
+/// as long ago.
+pub fn licence_nudge_allowed(now: i64, paired_at: Option<i64>, last_shown: Option<i64>) -> bool {
+    if last_shown.is_some_and(|last| now - last < DAY) {
+        return false;
+    }
+    let days = (now - paired_at.unwrap_or(0)) / DAY;
+    let early = days == 2 || days == 6;
+    let weekly = match last_shown {
+        Some(last) => now - last >= LICENCE_NUDGE_REPEAT,
+        None => days >= 7,
+    };
+    early || weekly
+}
 
 pub const UNPAIRED_SYSTEM_MESSAGE: &str = "Claude Code Notifier: this computer isn't paired any more, so your phone won't get notifications. Run `ccn pair` in a terminal to reconnect.";
 const UNPAIRED_NOTIFICATION: &str =
@@ -270,27 +290,53 @@ impl Ctx {
         Ok(self.licence_nudge(now))
     }
 
-    /// Once a day, asks whether this computer should be told about licences. `CCN_NO_NUDGE=1` turns it off.
+    /// Once a day, asks whether this computer should be told about licences, and tells it when the
+    /// cadence allows (`licence_nudge_allowed`). The server writes the message and picks the
+    /// variant; `CCN_NO_NUDGE=1` turns it off.
     fn licence_nudge(&mut self, now: i64) -> Option<Value> {
-        if std::env::var("CCN_NO_NUDGE")
-            .map(|v| !v.is_empty() && v != "0")
-            .unwrap_or(false)
+        if local::no_nudge_env()
             || now - self.cfg.licence_checked_at.unwrap_or(0) < LICENCE_CHECK_EVERY
         {
             return None;
         }
         self.cfg.licence_checked_at = Some(now);
         let _ = self.cfg.save();
-        match self.api.licence_status(QUICK_TIMEOUT) {
-            Ok(status) if status.nudge => {
-                Some(serde_json::json!({ "systemMessage": LICENCE_SYSTEM_MESSAGE }))
-            }
-            Ok(_) => None,
+        let status = match self.api.licence_status(QUICK_TIMEOUT) {
+            Ok(status) => status,
             Err(err) => {
                 log(&format!("licence check skipped: {err:#}"));
-                None
+                return None;
             }
+        };
+        if !status.nudge {
+            return None;
         }
+        let since = self.cfg.paired_at.or(self.cfg.registered_at);
+        if !licence_nudge_allowed(now, since, self.cfg.licence_nudge_last_at) {
+            return None;
+        }
+        self.cfg.licence_nudge_last_at = Some(now);
+        let _ = self.cfg.save();
+        let Some(message) = status.nudge_message else {
+            return Some(serde_json::json!({ "systemMessage": LICENCE_SYSTEM_MESSAGE }));
+        };
+        if self.cfg.desktop_notifications {
+            notify::show(&message.title, &message.body, false);
+        }
+        crate::telemetry::event(
+            "cli_nudge_shown",
+            &[
+                ("id", &message.id),
+                ("kind", &message.kind),
+                ("variant", &message.variant),
+            ],
+        );
+        Some(serde_json::json!({
+            "systemMessage": format!(
+                "Claude Code Notifier: {} {} {}",
+                message.title, message.body, message.command
+            )
+        }))
     }
 
     fn user_prompt(&mut self) -> Result<Option<Value>> {
@@ -593,5 +639,40 @@ impl Ctx {
                 Err(mpsc::RecvTimeoutError::Disconnected) => return Ok(None),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn licence_nudges_on_day_two_and_six_then_weekly() {
+        let paired = 1_700_000_000;
+        let at = |day: i64| paired + day * DAY + 3600;
+        // Days 0 and 1: nothing
+        assert!(!licence_nudge_allowed(at(0), Some(paired), None));
+        assert!(!licence_nudge_allowed(at(1), Some(paired), None));
+        // Day 2 yes, day 3 no (even though never shown), day 6 yes
+        assert!(licence_nudge_allowed(at(2), Some(paired), None));
+        assert!(!licence_nudge_allowed(at(3), Some(paired), Some(at(2))));
+        assert!(!licence_nudge_allowed(at(3), Some(paired), None));
+        assert!(licence_nudge_allowed(at(6), Some(paired), Some(at(2))));
+        // Weekly after that: day 7 is too soon after day 6, day 13 is a week on
+        assert!(!licence_nudge_allowed(at(7), Some(paired), Some(at(6))));
+        assert!(licence_nudge_allowed(at(13), Some(paired), Some(at(6))));
+        assert!(!licence_nudge_allowed(at(19), Some(paired), Some(at(13))));
+        assert!(licence_nudge_allowed(at(20), Some(paired), Some(at(13))));
+        // Never shown and the early days missed: from day 7 on
+        assert!(licence_nudge_allowed(at(9), Some(paired), None));
+        // Never twice in a day, even on a nudge day
+        assert!(!licence_nudge_allowed(
+            at(2) + 60,
+            Some(paired),
+            Some(at(2))
+        ));
+        // No pairing date on record counts as long ago
+        assert!(licence_nudge_allowed(at(0), None, None));
+        assert!(!licence_nudge_allowed(at(0), None, Some(at(0) - 3 * DAY)));
     }
 }
