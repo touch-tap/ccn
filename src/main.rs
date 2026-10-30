@@ -19,6 +19,7 @@ mod qr;
 mod respond;
 mod session;
 mod telemetry;
+mod update;
 
 use clap::{Parser, Subcommand};
 
@@ -76,6 +77,19 @@ enum Command {
         #[arg(long)]
         lifetime: bool,
     },
+    /// Update ccn to the latest release (checked once a day in the background too)
+    #[command(alias = "update")]
+    Upgrade {
+        /// Only say whether a newer release exists: exit 0 when up to date, 10 when one is available
+        #[arg(long)]
+        check: bool,
+        /// Print nothing unless something went wrong
+        #[arg(long)]
+        quiet: bool,
+        /// Started by the daily check: never prints, logs to ccn.log instead
+        #[arg(long, hide = true)]
+        background: bool,
+    },
     /// Use a licence key on this computer (up to 3 computers per licence)
     Activate {
         /// The key from your email, CCN-XXXX-XXXX-XXXX-XXXX
@@ -121,6 +135,7 @@ enum ConfigCommand {
 }
 
 fn main() {
+    update::remove_leftovers();
     let cli = Cli::parse();
     let Some(command) = cli.command else {
         if let Err(err) = commands::default_command() {
@@ -150,10 +165,23 @@ fn main() {
         },
         Command::Config { action } => match action {
             ConfigCommand::Show => commands::config_show(),
+            // Local to this computer and owned by update.rs, so commands.rs needs no change
+            ConfigCommand::Set { key, value } if key == "auto_update" => {
+                update::set_auto_update(&value)
+            }
             ConfigCommand::Set { key, value } => commands::config_set(&key, &value),
         },
         Command::Sync => commands::sync(),
         Command::Unlock { lifetime } => licence::unlock(lifetime),
+        Command::Upgrade {
+            check,
+            quiet,
+            background,
+        } => update::run(update::Mode {
+            check,
+            quiet,
+            background,
+        }),
         Command::Activate { key, replace } => licence::activate(&key, replace),
         Command::Deactivate => licence::deactivate(),
         Command::Licence => licence::show(),

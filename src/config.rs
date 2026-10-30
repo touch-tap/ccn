@@ -276,6 +276,16 @@ pub struct Config {
     pub registered_at: Option<i64>,
     /// When a SessionStart hook last asked the server about this computer's licence (once a day)
     pub licence_checked_at: Option<i64>,
+    /// Look for a newer ccn once a day from the SessionStart hook and install it when ccn owns its
+    /// own binary (`ccn config set auto_update off`, or `CCN_NO_AUTO_UPDATE=1`, turns it off)
+    pub auto_update: bool,
+    /// When the daily check last started a background `ccn upgrade`
+    pub update_checked_at: Option<i64>,
+    /// A newer version the background check found but could not install (Homebrew, npm, scoop,
+    /// winget own the binary); the SessionStart hook mentions it once a week
+    pub update_available: Option<String>,
+    /// When `update_available` was last mentioned in Claude Code
+    pub update_announced_at: Option<i64>,
 }
 
 impl Default for Config {
@@ -293,6 +303,10 @@ impl Default for Config {
             settings_fetched_at: None,
             registered_at: None,
             licence_checked_at: None,
+            auto_update: true,
+            update_checked_at: None,
+            update_available: None,
+            update_announced_at: None,
         }
     }
 }
