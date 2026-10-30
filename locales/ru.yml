@@ -1,0 +1,296 @@
+# Русский. Перевод locales/en.yml; см. locales/README.md. Регистр: «вы» со строчной, как в приложении и push-уведомлениях.
+_version: 1
+
+cli:
+  about: "Claude Code Notifier: получайте push на телефон, когда вы нужны Claude Code, и отвечайте оттуда"
+  pair:
+    about: "Подключить этот компьютер к телефону. Укажите код из приложения или запустите без кода, чтобы получить код для ввода в приложении"
+    code: "6-значный код, который показывает приложение Claude Code Notifier"
+    name: "Как этот компьютер называется на телефоне (по умолчанию: имя хоста)"
+    replace_mac_app: "Также убрать хуки приложения из строки меню Mac, чтобы уведомления не приходили дважды"
+    no_wait: "Показать QR-код и сразу выйти: подключение завершится само, когда телефон подключится"
+  setup:
+    about: "Установить хуки Claude Code и уведомления на рабочем столе (pair и ccn без команды делают это первыми)"
+    replace_mac_app: "Также убрать хуки приложения из строки меню Mac"
+  doctor:
+    about: "Проверить хуки, учётные данные, сервер и возможности этого терминала"
+  test:
+    about: "Отправить тестовое уведомление на все подключённые телефоны"
+  devices:
+    about: "Показать подключённые телефоны или отключить один из них"
+    revoke: "Отключить телефон по имени или id"
+  config:
+    about: "Показать или изменить настройки этого компьютера (их можно менять и с телефона)"
+    show: "Вывести действующие настройки"
+    set: "Задать одну настройку, например `ccn config set hold_ceiling_seconds 300` или `ccn config set quiet_hours 22:00-08:00`"
+  sync:
+    about: "Загрузить последние настройки с сервера сейчас"
+  unlock:
+    about: "Купить лицензию на этот компьютер в браузере: разблокирует каждый подключённый к нему телефон"
+    lifetime: "Заплатить один раз вместо ежегодной оплаты (или перевести годовую лицензию в бессрочную, сохранив ключ)"
+  upgrade:
+    about: "Обновить ccn до последней версии (проверяется также раз в день в фоне)"
+    check: "Только сообщить, есть ли новая версия: код выхода 0, если всё актуально, 10, если версия доступна"
+    quiet: "Ничего не выводить, если не произошло ошибки"
+  activate:
+    about: "Использовать лицензионный ключ на этом компьютере (до 3 компьютеров на лицензию)"
+    key: "Ключ из вашего письма, CCN-XXXX-XXXX-XXXX-XXXX"
+    replace: "Освободить место другого компьютера в лицензии, по его имени, чтобы занять его этим"
+  deactivate:
+    about: "Освободить место этого компьютера в лицензии, чтобы использовать ключ в другом месте"
+  licence:
+    about: "Показать лицензию этого компьютера и компьютеры, которые её используют"
+  uninstall:
+    about: "Удалить хуки, учётные данные, подключения и локальные данные"
+  forget:
+    about: "Стереть этот компьютер и его подключения с сервера, затем удалить ccn"
+    yes: "Не спрашивать подтверждения"
+
+common:
+  your_phone: "ваш телефон"
+  not_paired: "этот компьютер ещё не подключён. Выполните `ccn pair <code>` с кодом из приложения."
+  store_keychain: "связке ключей"
+  store_file: "файле"
+  date_format: "%d.%m.%Y"
+
+pair:
+  reregister: "Старое подключение этого компьютера удалено, поэтому он будет зарегистрирован заново."
+  code_not_recognised: "Этот код не распознан. 6-значный код находится в приложении Claude Code Notifier в разделе Компьютеры > Добавить компьютер; он меняется каждые 24 часа, поэтому скопируйте строку, которую приложение показывает сейчас."
+  offer_qr: "Нажмите Enter, чтобы вместо этого показать здесь QR-код (отсканируйте его телефоном), или Ctrl+C."
+  options_without_terminal: "Выполните `ccn pair <code>` ещё раз с кодом, который приложение показывает сейчас, или выполните `ccn pair`, чтобы показать здесь QR-код и отсканировать его телефоном."
+  scan: "  Отсканируйте это камерой телефона, чтобы подключить его. Если приложения ещё нет,\n  вы попадёте в App Store или Google Play: установите его и отсканируйте снова."
+  or_type_code: "  Или введите этот код в приложении Claude Code Notifier:  %{code}"
+  enter_code: "  Введите этот код в приложении Claude Code Notifier:  %{code}"
+  hooks_already_installed: "  Хуки установлены, так что уведомления на рабочем столе этого компьютера уже приходят."
+  code_lasts: "  Подключайте, когда удобно: этот код действует %{duration}."
+  completes_on_its_own: "  Подключение завершится само, когда телефон подключится."
+  waiting: "  Ожидание телефона... (Ctrl+C не навредит: подключение завершится само, когда телефон подключится)"
+  code_expired: "код истёк раньше, чем его использовал телефон. Выполните `ccn pair` ещё раз."
+  code_is_six_digits: "код — это 6 цифр, которые показывает приложение Claude Code Notifier"
+  credentials_stored: "Учётные данные сохранены в %{store} (%{path})."
+  test_sent: "Тестовое уведомление отправлено на ваш телефон."
+  test_failed: "Пока не удалось отправить тестовое уведомление: %{error}"
+  done: "Готово. Запускайте `claude` как обычно: вы получите push, когда Claude закончит или вы ему\nпонадобитесь, а подтверждать, отклонять и отвечать можно с телефона. `ccn doctor` проверяет всё."
+  paired_with: "Подключено к %{name} (%{platform})."
+  hours_one: "1 час"
+  hours_other: "%{count} ч"
+  minutes_one: "1 минуту"
+  minutes_other: "%{count} мин"
+  pitch: "Телефон предложит подписку в приложении. Можно также разблокировать всё отсюда, минуя магазины приложений:"
+  pitch_annual: "  ccn unlock             %{price} в год"
+  pitch_lifetime: "  ccn unlock --lifetime  %{price} один раз"
+  pitch_covers: "Покрывает %{computers} компьютера и каждый подключённый к ним телефон. Возврат денег в течение %{days} дней."
+  welcome_no_terminal: "Тестовое уведомление уже летит на ваш телефон: попробуйте ответить на него там."
+  welcome: "Тестовое уведомление уже летит на ваш телефон. Попробуйте ответить на него там..."
+  welcome_skip: "(нажмите Enter, чтобы пропустить)"
+  welcome_answered: "✓ Ваш телефон ответил \"%{answer}\". Так вы будете отвечать Claude."
+  welcome_no_answer: "Ответа пока нет. Уведомление останется на телефоне на час."
+
+status:
+  set_up: "ccn %{version} настроен на этом компьютере как \"%{name}\"."
+  licence: "Лицензия: %{line}"
+  hint_doctor: "  ccn doctor     проверить хуки, учётные данные и сервер"
+  hint_test: "  ccn test       отправить тестовое уведомление на телефон"
+  hint_pair: "  ccn pair       подключить ещё один телефон"
+  hint_help: "  ccn --help     всё остальное"
+
+setup:
+  installed_self: "ccn установлен в %{path}."
+  hooks_installed: "Хуки установлены в %{path} (используется %{exe})."
+  mac_app_note: "Внимание: хуки Mac-приложения Claude Code Notifier тоже установлены, поэтому каждое событие\nотправлялось бы дважды. Выполните `ccn setup --replace-mac-app`, чтобы убрать их, или закройте\nMac-приложение."
+  mac_app_removed: "Хуки Mac-приложения убраны; теперь уведомлениями занимается ccn."
+
+sync:
+  not_synced: "Настройки ещё не синхронизированы: %{error}"
+  synced: "Настройки синхронизированы."
+
+doctor:
+  header: "ccn %{version} на %{platform}"
+  config: "конфигурация: %{path}"
+  credentials_present: "учётные данные: есть (%{store})"
+  credentials_missing: "учётные данные: отсутствуют: выполните `ccn pair <code>`"
+  server_reachable: "сервер: %{url} доступен"
+  server_error: "сервер: %{error}"
+  registered: "зарегистрирован как \"%{name}\" (%{kind} %{platform}), возможности: %{capabilities}"
+  not_paired_any_more: "подключение: больше не подключён: выполните `ccn pair`"
+  registration_error: "регистрация: %{error}"
+  licence: "лицензия: %{line}"
+  phones_none: "телефоны: пока ни одного, поэтому уведомления остаются на этом рабочем столе (выполните `ccn pair`)"
+  phones: "телефоны: %{names}"
+  phones_error: "телефоны: %{error}"
+  hooks_all: "хуки: все %{count} установлены в %{path}"
+  hooks_missing: "хуки: отсутствуют %{names} (выполните `ccn setup`)"
+  hooks_error: "хуки: %{error}"
+  hooks_stale: "хуки указывают на другой файл ccn; выполните `ccn setup`, чтобы обновить их"
+  mac_app_hooks: "хуки Mac-приложения тоже установлены (выполните `ccn setup --replace-mac-app`)"
+  presence: "присутствие: бездействие %{idle}с, порог %{threshold}с"
+  presence_none: "присутствие: здесь не определяется, поэтому каждый запрос ждёт телефона"
+  replies: "ответы: подтверждения и ответы на вопросы с телефона работают в любом терминале; свободный текст в бездействующую сессию %{free_text}"
+  replies_tmux: "работает (tmux)"
+  replies_no_tmux: "требует tmux"
+  desktop: "уведомления на рабочем столе: %{line}"
+  log: "журнал: %{path}"
+
+test:
+  none_paired: "нет подключённых телефонов. Выполните `ccn pair <code>`."
+  sent: "Тестовое уведомление отправлено на %{name} (%{platform})."
+  failed: "%{name}: %{error}"
+
+devices:
+  none: "Нет подключённых телефонов. Выполните `ccn pair <code>` с кодом из приложения."
+  # %{name} дополняется до 24 колонок, а %{platform} до 8 перед подстановкой
+  row: "%{name} %{platform} подключён %{since}%{off}"
+  notifications_off: "  (уведомления выключены)"
+  revoked: "%{name} отключён."
+  no_such_phone: "нет подключённого телефона с именем '%{device}'"
+
+config:
+  local_only: "(только локально)"
+  last_changed: "(последнее изменение %{when}; можно менять и с телефона)"
+  credentials_moved: "Учётные данные теперь в %{store}."
+  credential_store_expects: "credential_store принимает keychain или file"
+  auto_update_expects: "auto_update принимает on или off"
+
+settings:
+  expects_on_off: "%{key} принимает on или off"
+  expects_seconds: "%{key} принимает число секунд"
+  seconds_range: "%{key} должен быть от %{min} до %{max} секунд"
+  quiet_hours_format: "quiet_hours принимает HH:MM-HH:MM или off"
+  quiet_hours_example: "quiet_hours принимает HH:MM-HH:MM, например 22:00-08:00"
+  unknown: "неизвестная настройка '%{key}'. Настройки: notify_on_done, notify_on_permission, notify_on_question, sound, quiet_when_present, quiet_hours, hold_ceiling_seconds, presence_threshold_seconds, stop_hold_seconds, reminder_interval_seconds"
+
+forget:
+  needs_yes: "ccn forget нужно ваше подтверждение: выполните его в терминале или добавьте --yes"
+  warning: "Это стирает этот компьютер и его подключения с сервера Claude Code Notifier, затем убирает ccn\nиз Claude Code и удаляет здесь его учётные данные и файлы, как делает `ccn uninstall`.\nТелефоны, подключённые к этому компьютеру, увидят, что он исчез.\nЛицензия, купленная на сайте, не отменяется: сделайте это на claudecodenotifier.com/licence\nчерез \"Стереть мою лицензию\"."
+  # Слово, которое должен ввести пользователь; `yes` принимается всегда
+  yes_word: "да"
+  prompt: "\nВведите %{yes}, чтобы продолжить: "
+  nothing_erased: "Ничего не стёрто."
+  erased: "Этот компьютер и его подключения стёрты с сервера."
+  already_forgotten: "Сервер уже забыл этот компьютер."
+  nothing_removed: "%{error}. С этого компьютера ничего не удалено, так что можно выполнить `ccn forget` ещё раз"
+  not_registered: "Этот компьютер не зарегистрирован на сервере, так что стирать там нечего."
+
+uninstall:
+  hooks_removed: "Хуки ccn убраны из %{path}."
+  slot_freed: "Место этого компьютера в лицензии освобождено."
+  unpaired_all: "Все телефоны отключены."
+  removed_dir: "%{path} удалён."
+
+local:
+  finished_title: "Claude закончил"
+  finished_body: "Claude закончил и ждёт вас."
+  permission_title: "Claude просит разрешение"
+  question_title: "У Claude вопрос"
+  first_nudge: "И на телефон: ccn pair"
+  milestone_nudge: "Уже 10 уведомлений. Получайте их на телефон и подтверждайте с экрана блокировки: выполните ccn pair"
+  pair_message: "Claude Code Notifier: вы получаете уведомления на рабочем столе. Чтобы получать их и на телефон и подтверждать или отвечать оттуда, выполните `ccn pair` в терминале."
+
+hook:
+  licence_message: "Claude Code Notifier: уведомления на телефон не разблокированы для этого компьютера. Разблокируйте их: ccn unlock"
+  unpaired_message: "Claude Code Notifier: этот компьютер больше не подключён, поэтому телефон не получит уведомлений. Выполните `ccn pair` в терминале, чтобы подключить заново."
+  unpaired_notification: "Этот компьютер больше не подключён. Выполните `ccn pair` в терминале, чтобы подключить заново."
+  paired_message: "Claude Code Notifier: подключено к %{phone}. Уведомления теперь идут на телефон."
+  # Сервер пишет заголовок, текст и команду на языке пользователя; здесь они только соединяются
+  nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
+  needs_attention: "Требует вашего внимания"
+
+licence:
+  already_licensed: "У этого компьютера уже есть лицензия (%{licence})."
+  switch_to_lifetime: "Перейти на бессрочную лицензию с тем же ключом: ccn unlock --lifetime"
+  checkout_open: "  Оплата открыта в браузере. Чтобы заплатить с телефона, отсканируйте это:"
+  checkout_link: "  Откройте эту ссылку для оплаты или отсканируйте её телефоном:"
+  waiting_payment: "  Ожидание оплаты... (Ctrl+C — прервать; ключ в любом случае придёт на почту)"
+  upgraded: "✓ Переведено на бессрочную лицензию. Тот же ключ, те же компьютеры; ежегодное продление отменено."
+  licensed: "✓ У этого компьютера есть лицензия (%{licence})."
+  key: "  Ключ: %{key} (отправлен и на почту). Используйте его ещё на 2 компьютерах: ccn activate %{key}"
+  phones_unlocked: "  Каждый телефон, подключённый к этому компьютеру, разблокирован."
+  activate_with_key: "  Выполните `ccn activate <key>` с ключом из письма, чтобы использовать его на этом компьютере."
+  no_payment: "Оплаты нет и через 15 минут. Если вы заплатили, ключ в вашей почте: ccn activate <key>"
+  replace_stale: "\"%{name}\" не появлялся больше недели. Это этот компьютер? Заменить его?"
+  yes_no: " [Д/н] "
+  # Ответ, начинающийся с этой буквы (или n), означает «нет»
+  no_initial: "н"
+  slots_full: "Эта лицензия уже используется на %{count} компьютерах:"
+  free_one: "Освободите одно место через `ccn deactivate` на том компьютере или замените его отсюда:"
+  replace_example: "  ccn activate %{key} --replace \"%{name}\""
+  old_laptop: "Старый ноутбук"
+  no_free_slot: "нет свободного места для компьютера"
+  computers_on_licence: "Компьютеры в этой лицензии:"
+  activated: "✓ Лицензия активна (%{licence}). Занято %{count} из 3 компьютеров."
+  pair_to_unlock: "  Подключите телефон через `ccn pair`, и он сразу будет разблокирован."
+  none: "У этого компьютера нет лицензии."
+  freed: "Освобождено. В этой лицензии теперь занято %{count} из 3 компьютеров."
+  none_buy: "На этом компьютере нет лицензии. Купить: ccn unlock"
+  none_short: "На этом компьютере нет лицензии."
+  buy_options: "  Купить:           ccn unlock (годовая) или ccn unlock --lifetime"
+  have_key: "  Уже есть ключ:    ccn activate <key>"
+  show_licence: "Лицензия:     %{licence}"
+  show_key: "Ключ:         CCN-…-%{last4}"
+  show_unlocks: "Разблокирует: %{value}"
+  unlocks_yes: "да, каждый телефон, подключённый к этому компьютеру"
+  unlocks_no: "нет"
+  show_computers: "Компьютеры:   %{count} из 3"
+  switch_lifetime_keep_key: "Перейти на бессрочную с тем же ключом: ccn unlock --lifetime"
+  status_licensed: "%{licence}, %{count} из 3 компьютеров"
+  status_unlicensed: "%{licence}: ccn unlock"
+  status_none: "нет: ccn unlock"
+  describe_refunded: "возвращена"
+  describe_lifetime: "бессрочная"
+  describe_renews: "годовая, продление %{date}"
+  describe_past_due: "годовая, платёж повторяется"
+  describe_ends: "годовая, закончится %{date}"
+  describe_ended: "годовая, закончилась %{date}"
+  describe_other: "%{plan}, %{status}"
+  unnamed_computer: "компьютер без имени"
+  last_seen: "последний раз %{date}"
+  not_seen_recently: "давно не появлялся"
+  this_computer: "  (этот компьютер)"
+  # %{name} дополняется до 28 колонок перед подстановкой
+  computer_row: "  %{name} %{seen}%{current}"
+
+update:
+  latest: "ccn %{version} — последняя версия."
+  available_check: "Доступен ccn %{version} (у вас %{current})."
+  update_with: "  Обновить: %{command}"
+  available_run: "Доступен ccn %{version}: %{command}"
+  nothing_to_update: "обновлять нечего: %{path} не установлен%{npx}"
+  npx_note: " (npx каждый раз запускает последний ccn)"
+  no_release_build: "нет сборки для %{os}-%{arch}"
+  no_build_named: "у ccn %{version} нет сборки с именем %{asset}"
+  no_checksum: "в SHA256SUMS нет записи для %{asset}"
+  checksum_mismatch: "контрольная сумма %{asset} не совпадает: ничего не изменено"
+  archive_empty: "в архиве нет ccn"
+  zip_empty: "в zip нет ccn.exe"
+  did_not_run: "загруженный ccn не запустился, поэтому оставлен установленный"
+  updated: "ccn обновлён %{from} → %{to}."
+  available_message: "Claude Code Notifier: доступен ccn %{version}: %{command}"
+
+notify:
+  registered_windows: "\"Claude Code Notifier\" зарегистрирован для уведомлений Windows."
+  icon_installed: "Значок уведомлений установлен в %{path}."
+  doctor_applescript: "AppleScript (в этой сборке нет приложения для уведомлений)"
+  doctor_allowed: "разрешены для \"%{app}\""
+  doctor_denied: "выключены: Системные настройки > Уведомления > %{app}"
+  doctor_not_allowed: "пока не разрешены: выполните `ccn setup`"
+  mac_denied: "Уведомления на рабочем столе выключены для \"%{app}\". Включите их в Системные настройки > Уведомления."
+  mac_asking: "Запрашиваем у macOS разрешение на уведомления от \"%{app}\"..."
+  mac_allowed: "Уведомления на рабочем столе разрешены для \"%{app}\"."
+  mac_not_allowed: "Уведомления на рабочем столе не разрешены. Включите их в Системные настройки > Уведомления > %{app}."
+
+api:
+  rejected: "этот компьютер больше не подключён (сервер его не узнаёт). Выполните `ccn pair`, чтобы подключить заново"
+  server_returned: "сервер вернул %{status}"
+  # Что делалось, когда сервер отказал; собственное сообщение сервера идёт после двоеточия
+  registering: "регистрация этого компьютера"
+  pairing: "подключение"
+  requesting_code: "запрос кода подключения"
+  reading_record: "чтение записи этого компьютера"
+  erasing: "стирание этого компьютера"
+  listing_phones: "получение списка телефонов"
+  revoking: "отключение телефона"
+  health: "состояние сервера"
+  reading_settings: "чтение настроек"
+  saving_settings: "сохранение настроек"
+  sending_event: "отправка события"
+  waiting_response: "ожидание ответа: %{error}"
