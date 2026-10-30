@@ -1,6 +1,7 @@
 #!/bin/sh
 # Starts a release from this Mac, which holds the Developer ID certificate:
 #   scripts/release.sh 0.2.0
+#   scripts/release.sh 0.2.0 --resume   (after the wait failed: skips to signing the macOS binaries)
 # Builds the macOS notifier app, signs and notarizes it, creates the DRAFT release with it attached,
 # then pushes the tag. The Release workflow builds every target with that app embedded and adds them
 # to the draft; this script waits for it, then signs and notarizes the two macOS binaries with the
@@ -8,6 +9,7 @@
 # (see RELEASING.md).
 set -eu
 version=$1
+resume=${2:-}
 tag="v$version"
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
@@ -19,7 +21,14 @@ fail() { echo "release: $*" >&2; exit 1; }
 git fetch -q origin main
 [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || fail "main isn't the same as origin/main"
 grep -q "^version = \"$version\"$" Cargo.toml || fail "Cargo.toml's version isn't $version"
-! git rev-parse -q --verify "refs/tags/$tag" >/dev/null || fail "$tag already exists"
+if [ "$resume" = --resume ]; then
+  git fetch -q origin tag "$tag"
+  sha=$(git rev-parse "$tag^{commit}")
+  gh release view "$tag" --json isDraft --jq .isDraft | grep -q true || fail "$tag isn't a draft release"
+else
+  ! git rev-parse -q --verify "refs/tags/$tag" >/dev/null || fail "$tag already exists"
+  sha=$(git rev-parse HEAD)
+fi
 
 identity=${CODESIGN_IDENTITY:-$(security find-identity -v -p codesigning \
   | grep -o '"Developer ID Application[^"]*"' | head -1 | tr -d '"')}
@@ -27,6 +36,7 @@ identity=${CODESIGN_IDENTITY:-$(security find-identity -v -p codesigning \
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
+if [ "$resume" != --resume ]; then
 CODESIGN_IDENTITY="$identity" scripts/build-macos-notifier.sh "$version" "$work" >/dev/null
 app="$work/Claude Code Notifier.app"
 
@@ -37,10 +47,11 @@ xcrun stapler staple "$app"
 spctl --assess --type exec "$app" || fail "Gatekeeper rejects the notarized app"
 
 ditto -c -k --keepParent "$app" "$work/ccn-notifier-macos.zip"
-gh release create "$tag" "$work/ccn-notifier-macos.zip" --draft --target "$(git rev-parse HEAD)" \
+gh release create "$tag" "$work/ccn-notifier-macos.zip" --draft --target "$sha" \
   --title "ccn $tag" --generate-notes
 git tag "$tag"
 git push origin "$tag"
+fi
 
 # The workflow builds every target. The macOS binaries then get the Developer ID signature here,
 # where the certificate is: with a stable identity, the keychain lets each new version read the
@@ -48,8 +59,9 @@ git push origin "$tag"
 echo "Waiting for the Release workflow..."
 run_id=""
 for _ in $(seq 1 30); do
-  run_id=$(gh run list --workflow release.yml --event push --limit 10 --json databaseId,headBranch \
-    --jq ".[] | select(.headBranch == \"$tag\") | .databaseId" | head -1)
+  # Matched on the commit too: a tag deleted and pushed again leaves the old tag's runs listed
+  run_id=$(gh run list --workflow release.yml --event push --limit 10 --json databaseId,headBranch,headSha \
+    --jq ".[] | select(.headBranch == \"$tag\" and .headSha == \"$sha\") | .databaseId" | head -1)
   [ -n "$run_id" ] && break
   sleep 5
 done
