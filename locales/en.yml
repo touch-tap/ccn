@@ -153,6 +153,15 @@ config:
   last_changed: "(last changed %{when}; also editable from the phone)"
   credentials_moved: "Credentials are now in the %{store}."
   credential_store_expects: "credential_store expects keychain or file"
+  auto_update_expects: "auto_update expects on or off"
+
+settings:
+  expects_on_off: "%{key} expects on or off"
+  expects_seconds: "%{key} expects a number of seconds"
+  seconds_range: "%{key} must be between %{min} and %{max} seconds"
+  quiet_hours_format: "quiet_hours expects HH:MM-HH:MM, or off"
+  quiet_hours_example: "quiet_hours expects HH:MM-HH:MM, e.g. 22:00-08:00"
+  unknown: "unknown setting '%{key}'. Settings: notify_on_done, notify_on_permission, notify_on_question, sound, quiet_when_present, quiet_hours, hold_ceiling_seconds, presence_threshold_seconds, stop_hold_seconds, reminder_interval_seconds"
 
 forget:
   needs_yes: "ccn forget needs a yes from you: run it in a terminal, or add --yes"
@@ -244,6 +253,23 @@ licence:
   # %{name} is padded to 28 columns before it is filled in
   computer_row: "  %{name} %{seen}%{current}"
 
+update:
+  latest: "ccn %{version} is the latest."
+  available_check: "ccn %{version} is available (you have %{current})."
+  update_with: "  Update: %{command}"
+  available_run: "ccn %{version} is available: %{command}"
+  nothing_to_update: "nothing to update: %{path} is not installed%{npx}"
+  npx_note: " (npx runs the latest ccn each time)"
+  no_release_build: "no release build for %{os}-%{arch}"
+  no_build_named: "ccn %{version} has no build named %{asset}"
+  no_checksum: "SHA256SUMS has no entry for %{asset}"
+  checksum_mismatch: "checksum mismatch for %{asset}: nothing was changed"
+  archive_empty: "the archive has no ccn in it"
+  zip_empty: "the zip has no ccn.exe in it"
+  did_not_run: "the downloaded ccn did not run, so the installed one was kept"
+  updated: "Updated ccn %{from} → %{to}."
+  available_message: "Claude Code Notifier: ccn %{version} is available: %{command}"
+
 notify:
   registered_windows: "Registered \"Claude Code Notifier\" for Windows notifications."
   icon_installed: "Installed the notification icon at %{path}."
@@ -255,3 +281,20 @@ notify:
   mac_asking: "Asking macOS to allow notifications from \"%{app}\"..."
   mac_allowed: "Desktop notifications are allowed for \"%{app}\"."
   mac_not_allowed: "Desktop notifications aren't allowed. Turn them on in System Settings > Notifications > %{app}."
+
+api:
+  rejected: "this computer isn't paired any more (the server no longer recognises it). Run `ccn pair` to reconnect"
+  server_returned: "server returned %{status}"
+  # What was being done when the server said no; the server's own message follows a colon
+  registering: "registering this computer"
+  pairing: "pairing"
+  requesting_code: "requesting a pairing code"
+  reading_record: "reading this computer's record"
+  erasing: "erasing this computer"
+  listing_phones: "listing paired phones"
+  revoking: "revoking the pairing"
+  health: "server health"
+  reading_settings: "reading settings"
+  saving_settings: "saving settings"
+  sending_event: "sending the event"
+  waiting_response: "waiting for a response: %{error}"

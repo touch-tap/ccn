@@ -19,6 +19,7 @@
 //! running mid-update never sees a half-written file.
 
 use anyhow::{Context, Result, bail};
+use rust_i18n::t;
 use serde_json::{Value, json};
 use std::cmp::Ordering;
 use std::fs;
@@ -98,7 +99,7 @@ fn run_inner(mode: &Mode) -> Result<i32> {
             cfg.update_available = None;
             let _ = cfg.save();
         }
-        say(format!("ccn {VERSION} is the latest."));
+        say(t!("update.latest", version = VERSION).into_owned());
         return Ok(0);
     }
 
@@ -108,8 +109,18 @@ fn run_inner(mode: &Mode) -> Result<i32> {
 
     if mode.check {
         if !mode.quiet && !mode.background {
-            println!("ccn {} is available (you have {VERSION}).", latest.version);
-            println!("  Update: {}", update_command(&action));
+            println!(
+                "{}",
+                t!(
+                    "update.available_check",
+                    version = latest.version,
+                    current = VERSION
+                )
+            );
+            println!(
+                "{}",
+                t!("update.update_with", command = update_command(&action))
+            );
         }
         return Ok(EXIT_UPDATE_AVAILABLE);
     }
@@ -125,7 +136,14 @@ fn run_inner(mode: &Mode) -> Result<i32> {
                 ));
             } else {
                 // Not a success, so --quiet still says it
-                println!("ccn {} is available: {command}", latest.version);
+                println!(
+                    "{}",
+                    t!(
+                        "update.available_run",
+                        version = latest.version,
+                        command = command
+                    )
+                );
             }
             return Ok(0);
         }
@@ -133,23 +151,27 @@ fn run_inner(mode: &Mode) -> Result<i32> {
     };
     if !target.exists() {
         bail!(
-            "nothing to update: {} is not installed{}",
-            target.display(),
-            if method == "npx" {
-                " (npx runs the latest ccn each time)"
-            } else {
-                ""
-            }
+            "{}",
+            t!(
+                "update.nothing_to_update",
+                path = target.display(),
+                npx = if method == "npx" {
+                    t!("update.npx_note")
+                } else {
+                    "".into()
+                }
+            )
         );
     }
 
     let asset = this_asset()
         .with_context(|| {
-            format!(
-                "no release build for {}-{}",
-                std::env::consts::OS,
-                std::env::consts::ARCH
+            t!(
+                "update.no_release_build",
+                os = std::env::consts::OS,
+                arch = std::env::consts::ARCH
             )
+            .into_owned()
         })
         .map_err(|e| failed("check", e))?;
     if let Some(assets) = &latest.assets
@@ -157,7 +179,14 @@ fn run_inner(mode: &Mode) -> Result<i32> {
     {
         return Err(failed(
             "check",
-            anyhow::anyhow!("ccn {} has no build named {asset}", latest.version),
+            anyhow::anyhow!(
+                "{}",
+                t!(
+                    "update.no_build_named",
+                    version = latest.version,
+                    asset = asset
+                )
+            ),
         ));
     }
 
@@ -165,13 +194,13 @@ fn run_inner(mode: &Mode) -> Result<i32> {
     let archive = download(&format!("{base}/{asset}")).map_err(|e| failed("download", e))?;
     let sums = download(&format!("{base}/SHA256SUMS")).map_err(|e| failed("download", e))?;
     let expected = checksum_for(&String::from_utf8_lossy(&sums), &asset)
-        .with_context(|| format!("SHA256SUMS has no entry for {asset}"))
+        .with_context(|| t!("update.no_checksum", asset = asset).into_owned())
         .map_err(|e| failed("checksum", e))?;
     let actual = sha256_hex(&archive);
     if actual != expected {
         return Err(failed(
             "checksum",
-            anyhow::anyhow!("checksum mismatch for {asset}: nothing was changed"),
+            anyhow::anyhow!("{}", t!("update.checksum_mismatch", asset = asset)),
         ));
     }
 
@@ -197,7 +226,7 @@ fn run_inner(mode: &Mode) -> Result<i32> {
         cfg.update_available = None;
         let _ = cfg.save();
     }
-    say(format!("Updated ccn {VERSION} → {}.", latest.version));
+    say(t!("update.updated", from = VERSION, to = latest.version).into_owned());
     Ok(0)
 }
 
@@ -219,14 +248,15 @@ pub fn set_auto_update(value: &str) -> Result<()> {
     let on = match value.to_ascii_lowercase().as_str() {
         "true" | "on" | "yes" | "1" => true,
         "false" | "off" | "no" | "0" => false,
-        _ => bail!("auto_update expects on or off"),
+        _ => bail!("{}", t!("config.auto_update_expects")),
     };
     let mut cfg = Config::load();
     cfg.auto_update = on;
     cfg.save()?;
     println!(
-        "auto_update                {} (local only)",
-        if on { "on" } else { "off" }
+        "auto_update                {} {}",
+        if on { "on" } else { "off" },
+        t!("config.local_only")
     );
     Ok(())
 }
@@ -286,7 +316,7 @@ pub fn daily_check(cfg: &mut Config) -> Option<Value> {
     cfg.update_announced_at = Some(now);
     let _ = cfg.save();
     Some(json!({
-        "systemMessage": format!("Claude Code Notifier: ccn {version} is available: {command}")
+        "systemMessage": t!("update.available_message", version = version, command = command)
     }))
 }
 
@@ -571,7 +601,7 @@ fn extract_binary(archive: &[u8]) -> Result<Vec<u8>> {
             return Ok(bytes);
         }
     }
-    bail!("the archive has no ccn in it")
+    bail!("{}", t!("update.archive_empty"))
 }
 
 #[cfg(windows)]
@@ -586,7 +616,7 @@ fn extract_binary(archive: &[u8]) -> Result<Vec<u8>> {
                 .map(|f| f.eq_ignore_ascii_case("ccn.exe"))
                 .unwrap_or(false)
         })
-        .context("the zip has no ccn.exe in it")?;
+        .with_context(|| t!("update.zip_empty").into_owned())?;
     let mut file = zip.by_name(&name).context("unpacking ccn.exe")?;
     let mut bytes = Vec::with_capacity(file.size() as usize);
     file.read_to_end(&mut bytes).context("unpacking ccn.exe")?;
@@ -634,7 +664,7 @@ fn write_and_swap(bytes: &[u8], tmp: &Path, target: &Path) -> Result<()> {
         .map(|o| o.status.success() && !o.stdout.is_empty())
         .unwrap_or(false);
     if !runs {
-        bail!("the downloaded ccn did not run, so the installed one was kept");
+        bail!("{}", t!("update.did_not_run"));
     }
     swap(tmp, target)
 }

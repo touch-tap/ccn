@@ -1,6 +1,7 @@
 //! The server over HTTPS. Every call has a short timeout: a hook must never hang Claude Code.
 
 use anyhow::{Context, Result, anyhow};
+use rust_i18n::t;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -25,7 +26,7 @@ pub struct Rejected;
 
 impl std::fmt::Display for Rejected {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("this computer isn't paired any more (the server no longer recognises it). Run `ccn pair` to reconnect")
+        f.write_str(&t!("api.rejected"))
     }
 }
 
@@ -209,7 +210,7 @@ impl Api {
         serde_json::from_str::<Value>(&reply.body)
             .ok()
             .and_then(|v| v["error"]["message"].as_str().map(|s| s.to_string()))
-            .unwrap_or_else(|| format!("server returned {}", reply.status))
+            .unwrap_or_else(|| t!("api.server_returned", status = reply.status).into_owned())
     }
 
     fn expect_ok(reply: Reply, what: &str) -> Result<Reply> {
@@ -224,7 +225,7 @@ impl Api {
 
     pub fn register(&self, identity: &Value) -> Result<()> {
         let reply = self.send("POST", "/api/clients/register", Some(identity), QUICK, &[])?;
-        Self::expect_ok(reply, "registering this computer").map(|_| ())
+        Self::expect_ok(reply, &t!("api.registering")).map(|_| ())
     }
 
     pub fn claim_by_client(&self, body: &Value) -> Result<ClaimResult> {
@@ -235,19 +236,19 @@ impl Api {
             QUICK,
             &[],
         )?;
-        let reply = Self::expect_ok(reply, "pairing")?;
+        let reply = Self::expect_ok(reply, &t!("api.pairing"))?;
         serde_json::from_str(&reply.body).context("unexpected pairing response")
     }
 
     pub fn request_code(&self) -> Result<CodeResponse> {
         let reply = self.send("POST", "/api/pairing/request", None, QUICK, &[])?;
-        let reply = Self::expect_ok(reply, "requesting a pairing code")?;
+        let reply = Self::expect_ok(reply, &t!("api.requesting_code"))?;
         serde_json::from_str(&reply.body).context("unexpected code response")
     }
 
     pub fn me(&self) -> Result<Me> {
         let reply = self.send("GET", "/api/clients/me", None, QUICK, &[])?;
-        let reply = Self::expect_ok(reply, "reading this computer's record")?;
+        let reply = Self::expect_ok(reply, &t!("api.reading_record"))?;
         serde_json::from_str(&reply.body).context("unexpected /me response")
     }
 
@@ -255,7 +256,7 @@ impl Api {
     /// licence-slot name. A computer the server doesn't know comes back as `Rejected`.
     pub fn erase(&self) -> Result<()> {
         let reply = self.send("DELETE", "/api/clients/me", None, QUICK, &[])?;
-        Self::expect_ok(reply, "erasing this computer").map(|_| ())
+        Self::expect_ok(reply, &t!("api.erasing")).map(|_| ())
     }
 
     pub fn pairings(&self) -> Result<Vec<PairedDevice>> {
@@ -265,7 +266,7 @@ impl Api {
     /// The paired phones, with a hook-sized timeout.
     pub fn pairings_within(&self, timeout: Duration) -> Result<Vec<PairedDevice>> {
         let reply = self.send("GET", "/api/pairings", None, timeout, &[])?;
-        let reply = Self::expect_ok(reply, "listing paired phones")?;
+        let reply = Self::expect_ok(reply, &t!("api.listing_phones"))?;
         #[derive(Deserialize)]
         struct Devices {
             devices: Vec<PairedDevice>,
@@ -283,12 +284,12 @@ impl Api {
             QUICK,
             &[],
         )?;
-        Self::expect_ok(reply, "revoking the pairing").map(|_| ())
+        Self::expect_ok(reply, &t!("api.revoking")).map(|_| ())
     }
 
     pub fn health(&self) -> Result<()> {
         let reply = self.send("GET", "/health", None, Duration::from_secs(5), &[])?;
-        Self::expect_ok(reply, "server health").map(|_| ())
+        Self::expect_ok(reply, &t!("api.health")).map(|_| ())
     }
 
     // ---- settings ----
@@ -304,14 +305,14 @@ impl Api {
         if reply.status == 304 {
             return Ok(None);
         }
-        let reply = Self::expect_ok(reply, "reading settings")?;
+        let reply = Self::expect_ok(reply, &t!("api.reading_settings"))?;
         Self::parse_settings(reply).map(Some)
     }
 
     pub fn put_settings(&self, settings: &Settings) -> Result<SettingsResult> {
         let body = json!({ "settings": settings });
         let reply = self.send("PUT", "/api/clients/me/settings", Some(&body), QUICK, &[])?;
-        let reply = Self::expect_ok(reply, "saving settings")?;
+        let reply = Self::expect_ok(reply, &t!("api.saving_settings"))?;
         Self::parse_settings(reply)
     }
 
@@ -336,7 +337,7 @@ impl Api {
     /// Posts one event. Returns the stored notification id for a `notification` event.
     pub fn post_event(&self, event: &Value, timeout: Duration) -> Result<Option<String>> {
         let reply = self.send("POST", "/api/clients/me/events", Some(event), timeout, &[])?;
-        let reply = Self::expect_ok(reply, "sending the event")?;
+        let reply = Self::expect_ok(reply, &t!("api.sending_event"))?;
         Ok(serde_json::from_str::<Value>(&reply.body)
             .ok()
             .and_then(|v| v["notificationId"].as_str().map(|s| s.to_string())))
@@ -363,8 +364,8 @@ impl Api {
             }
             404 => Ok(Wait::Settled("gone".to_string())),
             _ => Err(anyhow!(
-                "waiting for a response: {}",
-                Self::error_message(&reply)
+                "{}",
+                t!("api.waiting_response", error = Self::error_message(&reply))
             )),
         }
     }

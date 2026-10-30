@@ -1,6 +1,7 @@
 //! Paths, the config file, the credential store and the per-machine settings mirror.
 
 use anyhow::{Context, Result};
+use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -170,16 +171,17 @@ impl Settings {
             match value.to_ascii_lowercase().as_str() {
                 "true" | "on" | "yes" | "1" => Ok(true),
                 "false" | "off" | "no" | "0" => Ok(false),
-                _ => anyhow::bail!("{key} expects on or off"),
+                _ => anyhow::bail!("{}", t!("settings.expects_on_off", key = key)),
             }
         };
         let as_secs = |min: u64, max: u64| -> Result<u64> {
             let n: u64 = value
                 .parse()
-                .with_context(|| format!("{key} expects a number of seconds"))?;
+                .with_context(|| t!("settings.expects_seconds", key = key).into_owned())?;
             anyhow::ensure!(
                 (min..=max).contains(&n),
-                "{key} must be between {min} and {max} seconds"
+                "{}",
+                t!("settings.seconds_range", key = key, min = min, max = max)
             );
             Ok(n)
         };
@@ -212,10 +214,11 @@ impl Settings {
                 } else {
                     let (start, end) = value
                         .split_once('-')
-                        .context("quiet_hours expects HH:MM-HH:MM, or off")?;
+                        .with_context(|| t!("settings.quiet_hours_format").into_owned())?;
                     anyhow::ensure!(
                         parse_hhmm(start).is_some() && parse_hhmm(end).is_some(),
-                        "quiet_hours expects HH:MM-HH:MM, e.g. 22:00-08:00"
+                        "{}",
+                        t!("settings.quiet_hours_example")
                     );
                     self.quiet_hours = Some(QuietHours {
                         enabled: true,
@@ -224,9 +227,7 @@ impl Settings {
                     });
                 }
             }
-            other => anyhow::bail!(
-                "unknown setting '{other}'. Settings: notify_on_done, notify_on_permission, notify_on_question, sound, quiet_when_present, quiet_hours, hold_ceiling_seconds, presence_threshold_seconds, stop_hold_seconds, reminder_interval_seconds"
-            ),
+            other => anyhow::bail!("{}", t!("settings.unknown", key = other)),
         }
         Ok(())
     }
