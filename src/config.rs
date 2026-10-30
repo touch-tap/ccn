@@ -293,6 +293,16 @@ pub struct Config {
     pub pair_nudge_due: bool,
     /// Whether to suggest pairing at all (`ccn config set pair_nudges off`; default on)
     pub pair_nudges: bool,
+    /// Look for a newer ccn once a day from the SessionStart hook and install it when ccn owns its
+    /// own binary (`ccn config set auto_update off`, or `CCN_NO_AUTO_UPDATE=1`, turns it off)
+    pub auto_update: bool,
+    /// When the daily check last started a background `ccn upgrade`
+    pub update_checked_at: Option<i64>,
+    /// A newer version the background check found but could not install (Homebrew, npm, scoop,
+    /// winget own the binary); the SessionStart hook mentions it once a week
+    pub update_available: Option<String>,
+    /// When `update_available` was last mentioned in Claude Code
+    pub update_announced_at: Option<i64>,
 }
 
 impl Default for Config {
@@ -318,6 +328,10 @@ impl Default for Config {
             pair_nudge_last_at: None,
             pair_nudge_due: false,
             pair_nudges: true,
+            auto_update: true,
+            update_checked_at: None,
+            update_available: None,
+            update_announced_at: None,
         }
     }
 }

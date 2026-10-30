@@ -10,7 +10,10 @@
    push a release tag by hand: the macOS builds need the notarized app from the draft and fail
    without it, and the binaries would stay unsigned.
 3. Check the draft, then publish it. The install scripts download from
-   `releases/latest/download/…`, so they serve the new version the moment it is published.
+   `releases/latest/download/…`, so they serve the new version the moment it is published, and
+   `ccn upgrade` (and the daily background check behind it) picks it up the same way: it asks the
+   server's `GET /api/cli/latest`, or GitHub's releases API, for the latest published release and
+   verifies the download against its `SHA256SUMS`. A draft is invisible to both.
    The repository must be public for the scripts, Homebrew and npm to reach the assets.
 4. Homebrew: copy `ccn.rb` from the release to `touch-tap/homebrew-tap` as `Formula/ccn.rb`, push.
 5. npm: download the release assets into `dist/`, run `scripts/npm-packages.sh 0.2.0 dist`, then
