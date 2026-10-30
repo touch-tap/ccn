@@ -50,7 +50,30 @@ jobs:
           # An unpaired hook must exit 0 quickly and print nothing that changes Claude's behaviour
           out=$(echo '{"hook_event_name":"Stop","session_id":"ci","cwd":"/tmp"}' | ./target/debug/ccn hook)
           test -z "$out"
+          # Local mode: ten desktop notifications (suppressed here) earn one "ccn pair" message
+          # in Claude Code at the next SessionStart, and none before that
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            out=$(echo "{\"hook_event_name\":\"Stop\",\"session_id\":\"ci\",\"cwd\":\"/tmp\",\"last_assistant_message\":\"done $i\"}" | CCN_PRESENCE=away ./target/debug/ccn hook)
+            test -z "$out"
+            if [ "$i" = 9 ]; then
+              out=$(echo '{"hook_event_name":"SessionStart","session_id":"ci","cwd":"/tmp"}' | ./target/debug/ccn hook)
+              test -z "$out"
+            fi
+          done
+          out=$(echo '{"hook_event_name":"SessionStart","session_id":"ci","cwd":"/tmp"}' | ./target/debug/ccn hook)
+          echo "$out" | grep -q systemMessage
+          echo "$out" | grep -q 'ccn pair'
+          # Once a day at most
+          out=$(echo '{"hook_event_name":"SessionStart","session_id":"ci2","cwd":"/tmp"}' | ./target/debug/ccn hook)
+          test -z "$out"
+          # The hooks wrote nothing to Claude's settings
+          test "$(tr -d ' \n\r' < "$CLAUDE_CONFIG_DIR/settings.json")" = '{"permissions":{"allow":["Bash(ls)"]}}'
           ./target/debug/ccn setup
+          # A second setup changes nothing and says nothing about the hooks
+          before=$(cat "$CLAUDE_CONFIG_DIR/settings.json")
+          out=$(./target/debug/ccn setup)
+          test "$before" = "$(cat "$CLAUDE_CONFIG_DIR/settings.json")"
+          case "$out" in *"Hooks installed"*) echo "setup was not idempotent"; exit 1;; esac
           grep -q '"Stop"' "$CLAUDE_CONFIG_DIR/settings.json"
           grep -q 'Bash(ls)' "$CLAUDE_CONFIG_DIR/settings.json"
           aumid='HKCU\Software\Classes\AppUserModelId\TouchTap.ccn'
@@ -101,18 +124,28 @@ jobs:
         env:
           CCN_DOWNLOAD_BASE: http://127.0.0.1:8765
           CCN_INSTALL_DIR: ${{ runner.temp }}/bin
+          # The script installs the hooks and, with no terminal, shows a QR code: keep both off the
+          # runner's real settings and the real server
+          CCN_HOME: ${{ runner.temp }}/ccn-install
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-install
+          CCN_SERVER_URL: http://127.0.0.1:9
         run: |
           sh install/install.sh
           "$CCN_INSTALL_DIR/ccn" --version
+          grep -q '"Stop"' "$CLAUDE_CONFIG_DIR/settings.json"
       - name: install.ps1
         if: runner.os == 'Windows'
         shell: pwsh
         env:
           CCN_DOWNLOAD_BASE: http://127.0.0.1:8765
           CCN_INSTALL_DIR: ${{ runner.temp }}\bin
+          CCN_HOME: ${{ runner.temp }}\ccn-install
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}\claude-install
+          CCN_SERVER_URL: http://127.0.0.1:9
         run: |
           Get-Content install/install.ps1 -Raw | iex
           ccn --version
+          if (-not (Select-String -Path "$env:CLAUDE_CONFIG_DIR\settings.json" -Pattern '"Stop"' -Quiet)) { throw "hooks not installed" }
           # Running it again replaces the binary in place
           Get-Content install/install.ps1 -Raw | iex
           ccn --version

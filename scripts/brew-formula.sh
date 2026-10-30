@@ -41,9 +41,8 @@ class Ccn < Formula
 
   def caveats
     <<~EOS
-      Connect your phone: run
-        ccn
-      and scan the QR code with the phone's camera, or run
+      Run \`ccn\` to finish setting up: it installs the Claude Code hooks (desktop
+      notifications from then on) and shows a QR code to pair your phone, or run
         ccn pair <the code on your phone>
     EOS
   end

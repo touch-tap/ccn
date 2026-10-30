@@ -1,8 +1,8 @@
 #!/bin/sh
 # Installs ccn, the Claude Code Notifier CLI, on macOS or Linux.
 #
-#   curl -fsSL https://claudecodenotifier.com/install.sh | sh              # install only
-#   curl -fsSL https://claudecodenotifier.com/install.sh | sh -s 482913    # install and pair
+#   curl -fsSL https://claudecodenotifier.com/install.sh | sh              # install, hooks, then a QR code to pair
+#   curl -fsSL https://claudecodenotifier.com/install.sh | sh -s 482913    # install, hooks, and pair with the app's code
 #   curl -fsSL https://claudecodenotifier.com/install.sh | sh -s 482913 --licence CCN-XXXX-XXXX-XXXX-XXXX
 #   curl -fsSL https://claudecodenotifier.com/install.sh | sh -s -- --licence CCN-XXXX-XXXX-XXXX-XXXX
 #                                                     # install, use a licence key (and pair)
@@ -121,8 +121,12 @@ on_path=yes
 track cli_install_finished "\"pairing\":\"$([ -n "$code" ] && echo yes || echo no)\",\"on_path\":\"$on_path\""
 
 export CCN_INSTALL_METHOD=script
-# The licence first, so the phone paired next is unlocked as soon as it connects. A bad key doesn't
-# stop the install; the message says what to do.
+# Hooks and desktop notifications first, before any pairing: from here on every claude session is
+# covered, phone or no phone. A problem with settings.json doesn't stop the install.
+say ""
+"$dir/ccn" setup < /dev/null || say "The hooks weren't installed. Fix the message above, then run: $ccn setup"
+# The licence next, so the phone paired after it is unlocked as soon as it connects. A bad key
+# doesn't stop the install; the message says what to do.
 if [ -n "$licence" ]; then
   say ""
   "$dir/ccn" activate "$licence" < /dev/null || say "The licence wasn't applied. Try again later: $ccn activate $licence"
@@ -140,8 +144,13 @@ elif (: < /dev/tty) 2>/dev/null; then
   say ""
   exec "$dir/ccn" pair < /dev/tty
 else
+  # No terminal to wait on: show the QR code and let the phone finish the pairing by itself
   say ""
-  say "Next: run \`$ccn\` and scan the QR code with your phone, or open Claude Code Notifier,"
-  say "add a computer, and run"
-  say "  $ccn pair <the code on your phone>"
+  if ! "$dir/ccn" pair --no-wait < /dev/null; then
+    say ""
+    say "Hooks are installed, so you already get desktop notifications on this computer."
+    say "To get them on your phone: run \`$ccn\` and scan the QR code, or open Claude Code Notifier,"
+    say "add a computer, and run"
+    say "  $ccn pair <the code on your phone>"
+  fi
 fi

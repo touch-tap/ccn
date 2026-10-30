@@ -75,5 +75,11 @@ Send-SetupEvent 'cli_install_finished'
 # The install line runs `ccn pair` next in this same session
 $env:CCN_INSTALL_METHOD = 'powershell'
 
+# Hooks and desktop notifications first, before any pairing: from here on every claude session is
+# covered, phone or no phone. A problem with settings.json doesn't stop the install.
 Write-Host ""
+try { & $target setup } catch { Write-Host "The hooks weren't installed: $_`nFix that, then run: ccn setup" }
+
+Write-Host ""
+Write-Host "Hooks are installed, so you already get desktop notifications on this computer."
 Write-Host "Next: run ccn and scan the QR code with your phone, or ccn pair <the code on your phone>"
