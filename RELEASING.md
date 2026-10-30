@@ -6,7 +6,9 @@
    six targets and adds the archives, `SHA256SUMS` and `ccn.rb` to that draft. The script waits for
    it, then signs the two macOS binaries with the Developer ID (identifier `com.touchtap.ccn`,
    hardened runtime), notarizes them, and replaces them, `SHA256SUMS` and `ccn.rb` in the draft.
-   The stable signature is what lets each version read the keychain token without a prompt. Never
+   The stable signature is what lets each version read the keychain token without a prompt. If the
+   wait fails (a GitHub API error, or the workflow failed and was re-run), `scripts/release.sh
+   0.2.0 --resume` skips straight to waiting and signing, without notarizing the app again. Never
    push a release tag by hand: the macOS builds need the notarized app from the draft and fail
    without it, and the binaries would stay unsigned.
 3. Check the draft, then publish it. The install scripts download from
