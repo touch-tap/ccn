@@ -11,6 +11,7 @@ mod hook;
 mod hookcfg;
 mod licence;
 mod live;
+mod local;
 mod logger;
 mod notify;
 mod payload;

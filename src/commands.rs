@@ -631,6 +631,10 @@ pub fn config_show() -> Result<()> {
         "credential_store           {} (local only)",
         config::credential_store(&cfg)
     );
+    println!(
+        "pair_nudges                {} (local only)",
+        if cfg.pair_nudges { "on" } else { "off" }
+    );
     if let Some(at) = cfg.settings_updated_at {
         let when = chrono::DateTime::from_timestamp(at, 0)
             .map(|t| t.to_rfc3339())
@@ -644,6 +648,14 @@ pub fn config_set(key: &str, value: &str) -> Result<()> {
     let mut cfg = Config::load();
     if key == "desktop_notifications" {
         cfg.desktop_notifications = matches!(
+            value.to_ascii_lowercase().as_str(),
+            "on" | "true" | "yes" | "1"
+        );
+        cfg.save()?;
+        return config_show();
+    }
+    if key == "pair_nudges" {
+        cfg.pair_nudges = matches!(
             value.to_ascii_lowercase().as_str(),
             "on" | "true" | "yes" | "1"
         );

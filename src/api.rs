@@ -259,7 +259,12 @@ impl Api {
     }
 
     pub fn pairings(&self) -> Result<Vec<PairedDevice>> {
-        let reply = self.send("GET", "/api/pairings", None, QUICK, &[])?;
+        self.pairings_within(QUICK)
+    }
+
+    /// The paired phones, with a hook-sized timeout.
+    pub fn pairings_within(&self, timeout: Duration) -> Result<Vec<PairedDevice>> {
+        let reply = self.send("GET", "/api/pairings", None, timeout, &[])?;
         let reply = Self::expect_ok(reply, "listing paired phones")?;
         #[derive(Deserialize)]
         struct Devices {

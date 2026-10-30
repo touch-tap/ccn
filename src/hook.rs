@@ -13,7 +13,7 @@ use crate::config::{self, Config, Unpaired};
 use crate::logger::log;
 use crate::payload::{self, Input};
 use crate::session::{self, Card, SessionState};
-use crate::{live, notify, presence, respond};
+use crate::{live, local, notify, presence, respond};
 
 const EVENT_TIMEOUT: Duration = Duration::from_secs(3);
 const QUICK_TIMEOUT: Duration = Duration::from_secs(2);
@@ -29,6 +29,12 @@ const LICENCE_CHECK_EVERY: i64 = 24 * 60 * 60;
 pub const UNPAIRED_SYSTEM_MESSAGE: &str = "Claude Code Notifier: this computer isn't paired any more, so your phone won't get notifications. Run `ccn pair` in a terminal to reconnect.";
 const UNPAIRED_NOTIFICATION: &str =
     "This computer isn't paired any more. Run `ccn pair` in a terminal to reconnect.";
+
+/// Shown once, when a SessionStart finds the first phone paired (the user paired from the phone
+/// after leaving `ccn pair`, or scanned the QR code later)
+fn paired_system_message(phone: &str) -> String {
+    format!("Claude Code Notifier: paired with {phone}. Notifications now go to your phone.")
+}
 
 pub fn run() -> Result<()> {
     match std::panic::catch_unwind(run_inner) {
@@ -54,13 +60,14 @@ fn run_inner() -> Result<Option<Value>> {
     let event = input["hook_event_name"].as_str().unwrap_or("").to_string();
     let session_id = Input(&input).session_id();
 
-    let cfg = Config::load();
-    if !cfg.is_paired() {
-        return Ok(None);
-    }
-    let api = Api::new(&cfg);
+    let mut cfg = Config::load();
     let mut state = SessionState::load(&session_id);
     state.touch(&input);
+    if !cfg.is_paired() {
+        // No credentials: desktop notifications only, and no network at all
+        return Ok(local::run(&mut cfg, &event, &input, &mut state));
+    }
+    let api = Api::new(&cfg);
 
     if let Some(mut flag) = Unpaired::load() {
         // No network while unpaired, except a once-a-day check at SessionStart in case the
@@ -71,6 +78,18 @@ fn run_inner() -> Result<Option<Value>> {
             return Ok(unpaired(&cfg, &event, &mut state, flag));
         }
         log("the server accepts this computer again");
+    }
+
+    // Registered but no phone known to be paired: one quick question at SessionStart, so a phone
+    // that paired while no `ccn pair` was watching is picked up
+    let announce = if event == "SessionStart" && cfg.phones.unwrap_or(0) == 0 {
+        check_phones(&mut cfg, &api)
+    } else {
+        None
+    };
+    if cfg.local_mode() {
+        let message = local::run(&mut cfg, &event, &input, &mut state);
+        return Ok(announce.or(message));
     }
 
     let mut ctx = Ctx {
@@ -86,7 +105,35 @@ fn run_inner() -> Result<Option<Value>> {
         ));
         return Ok(unpaired(&ctx.cfg, &event, &mut ctx.state, Unpaired::new()));
     }
-    result
+    match announce {
+        Some(message) => Ok(Some(message)),
+        None => result,
+    }
+}
+
+/// Asks the server how many phones are paired and records the answer. Returns the one-time
+/// "paired with" message when the first phone has arrived since the last look.
+fn check_phones(cfg: &mut Config, api: &Api) -> Option<Value> {
+    let devices = match api.pairings_within(QUICK_TIMEOUT) {
+        Ok(devices) => devices,
+        Err(err) => {
+            log(&format!("phone check skipped: {err:#}"));
+            return None;
+        }
+    };
+    cfg.record_phones(devices.len());
+    let mut message = None;
+    if !devices.is_empty() && !cfg.paired_message_shown {
+        cfg.paired_message_shown = true;
+        let newest = devices.iter().max_by_key(|d| d.created_at)?;
+        let name = newest
+            .name
+            .clone()
+            .unwrap_or_else(|| "your phone".to_string());
+        message = Some(serde_json::json!({ "systemMessage": paired_system_message(&name) }));
+    }
+    let _ = cfg.save();
+    message
 }
 
 /// Asks the server whether it accepts this computer after all. Clears the flag when it does.
