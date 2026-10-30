@@ -10,8 +10,13 @@ is_ccn() {
   [ -f "$1" ] && [ -x "$1" ] && [ "$(head -c 2 "$1" 2>/dev/null)" != "#!" ]
 }
 
+# On Windows (Git Bash, MSYS2) that includes the install script's folder, winget's portable link
+# (also a native .exe) and Scoop's shim (a native .exe that forwards to the real one).
 for candidate in "$HOME/.local/bin/ccn" "$(command -v ccn 2>/dev/null)" /opt/homebrew/bin/ccn /usr/local/bin/ccn \
-  "${LOCALAPPDATA:+$LOCALAPPDATA/Programs/ccn/ccn.exe}"; do
+  "${LOCALAPPDATA:+$LOCALAPPDATA/Programs/ccn/ccn.exe}" \
+  "${LOCALAPPDATA:+$LOCALAPPDATA/Microsoft/WinGet/Links/ccn.exe}" \
+  "${SCOOP:+$SCOOP/shims/ccn.exe}" "$HOME/scoop/shims/ccn.exe" "${USERPROFILE:+$USERPROFILE/scoop/shims/ccn.exe}" \
+  "${SCOOP_GLOBAL:+$SCOOP_GLOBAL/shims/ccn.exe}" "${ProgramData:+$ProgramData/scoop/shims/ccn.exe}"; do
   if [ -n "$candidate" ] && is_ccn "$candidate"; then
     exec "$candidate" hook --plugin
   fi
