@@ -152,13 +152,13 @@ fn run_inner(mode: &Mode) -> Result<i32> {
             )
         })
         .map_err(|e| failed("check", e))?;
-    if let Some(assets) = &latest.assets {
-        if !assets.iter().any(|a| a == &asset) {
-            return Err(failed(
-                "check",
-                anyhow::anyhow!("ccn {} has no build named {asset}", latest.version),
-            ));
-        }
+    if let Some(assets) = &latest.assets
+        && !assets.iter().any(|a| a == &asset)
+    {
+        return Err(failed(
+            "check",
+            anyhow::anyhow!("ccn {} has no build named {asset}", latest.version),
+        ));
     }
 
     let base = latest.download_base.trim_end_matches('/');
@@ -179,10 +179,10 @@ fn run_inner(mode: &Mode) -> Result<i32> {
     install_binary(&binary, &target).map_err(|e| failed("install", e))?;
 
     // The hooks point at this same path, so this only does anything if they were somewhere else
-    if hookcfg::status().map(|s| s.stale_exe).unwrap_or(false) {
-        if let Err(err) = hookcfg::install(false) {
-            log(&format!("update: reinstalling the hooks failed: {err:#}"));
-        }
+    if hookcfg::status().map(|s| s.stale_exe).unwrap_or(false)
+        && let Err(err) = hookcfg::install(false)
+    {
+        log(&format!("update: reinstalling the hooks failed: {err:#}"));
     }
 
     telemetry::event(
