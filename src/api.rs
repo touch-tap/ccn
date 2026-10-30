@@ -213,11 +213,25 @@ impl Api {
             .unwrap_or_else(|| t!("api.server_returned", status = reply.status).into_owned())
     }
 
+    fn error_code(reply: &Reply) -> String {
+        serde_json::from_str::<Value>(&reply.body)
+            .ok()
+            .and_then(|v| v["error"]["code"].as_str().map(|s| s.to_string()))
+            .unwrap_or_default()
+    }
+
+    /// A non-2xx reply becomes a `ServerError` (so callers can act on the server's error code
+    /// whatever language its message is in) shown as "what: message".
     fn expect_ok(reply: Reply, what: &str) -> Result<Reply> {
         if (200..300).contains(&reply.status) {
             Ok(reply)
         } else {
-            Err(anyhow!("{what}: {}", Self::error_message(&reply)))
+            Err(anyhow::Error::new(ServerError {
+                status: reply.status,
+                code: Self::error_code(&reply),
+                message: Self::error_message(&reply),
+            })
+            .context(what.to_string()))
         }
     }
 
@@ -566,6 +580,27 @@ impl Api {
                 .unwrap_or(false),
         )
     }
+}
+
+/// The server answered with an error: its machine-readable code (INVALID_CODE, RATE_LIMITED,
+/// MAX_DEVICES, ...) and the message it showed. Displays as the message alone.
+#[derive(Debug)]
+pub struct ServerError {
+    pub status: u16,
+    pub code: String,
+    pub message: String,
+}
+
+impl std::fmt::Display for ServerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for ServerError {}
+
+pub fn server_error(err: &anyhow::Error) -> Option<&ServerError> {
+    err.downcast_ref::<ServerError>()
 }
 
 pub fn licence_error(err: &anyhow::Error) -> Option<&LicenceError> {

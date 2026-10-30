@@ -89,6 +89,15 @@ pub fn failure_reason(err: &anyhow::Error) -> &'static str {
             PairFailure::CodeTimeout => "code_timeout",
         };
     }
+    // The server's code is language-independent; the text matches below are for older servers
+    if let Some(server) = crate::api::server_error(err) {
+        match server.code.as_str() {
+            "INVALID_CODE" => return "invalid_code",
+            "RATE_LIMITED" => return "rate_limited",
+            "MAX_DEVICES" => return "max_devices",
+            _ => {}
+        }
+    }
     let text = format!("{err:#}").to_lowercase();
     if text.contains("invalid or expired pairing code") {
         "invalid_code"
@@ -142,5 +151,20 @@ mod tests {
             "network"
         );
         assert_eq!(r("something else"), "other");
+    }
+
+    #[test]
+    fn the_servers_code_wins_whatever_language_its_message_is_in() {
+        let err = anyhow::Error::new(crate::api::ServerError {
+            status: 400,
+            code: "INVALID_CODE".into(),
+            message: "Code de jumelage invalide ou expiré".into(),
+        })
+        .context("pairing");
+        assert_eq!(failure_reason(&err), "invalid_code");
+        assert_eq!(
+            format!("{err:#}"),
+            "pairing: Code de jumelage invalide ou expiré"
+        );
     }
 }
