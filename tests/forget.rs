@@ -7,6 +7,8 @@ use std::process::{Command, Output, Stdio};
 
 struct Sandbox {
     root: PathBuf,
+    /// What `CCN_LANG` says; English unless a test is about the language
+    lang: &'static str,
 }
 
 impl Sandbox {
@@ -26,7 +28,7 @@ impl Sandbox {
             r#"{"permissions":{"allow":["Bash(ls)"]}}"#,
         )
         .unwrap();
-        Sandbox { root }
+        Sandbox { root, lang: "en" }
     }
 
     fn ccn_dir(&self) -> PathBuf {
@@ -43,7 +45,7 @@ impl Sandbox {
             .env("CCN_CREDENTIAL_STORE", "file")
             .env("CCN_NOTIFY", "off")
             .env("CCN_NO_ANALYTICS", "1")
-            .env("CCN_LANG", "pt_PT.UTF-8")
+            .env("CCN_LANG", self.lang)
             .stdin(Stdio::null())
             .output()
             .unwrap()
@@ -99,9 +101,7 @@ fn erases_on_the_server_then_removes_everything_local() {
         "{request}"
     );
     assert!(
-        request
-            .to_ascii_lowercase()
-            .contains("accept-language: pt-br"),
+        request.to_ascii_lowercase().contains("accept-language: en"),
         "{request}"
     );
     let stdout = text(&out.stdout);
@@ -112,6 +112,24 @@ fn erases_on_the_server_then_removes_everything_local() {
     assert!(stdout.contains("Erase my licence"), "{stdout}");
     assert!(!sandbox.ccn_dir().exists());
     assert!(settings_hooks_gone(&sandbox));
+}
+
+/// The OS language (or `CCN_LANG`) reaches the server as `Accept-Language`, mapped onto one of
+/// the supported tags, whatever locales/*.yml files exist.
+#[test]
+fn asks_the_server_in_the_users_language() {
+    let mut sandbox = Sandbox::new("lang");
+    sandbox.lang = "pt_PT.UTF-8";
+    let (url, server) = fake_server(200, r#"{"erased":true,"purged":true}"#);
+    let out = sandbox.run(&url, &["forget", "--yes"]);
+    assert!(out.status.success(), "{}", text(&out.stderr));
+    let request = server.join().unwrap();
+    assert!(
+        request
+            .to_ascii_lowercase()
+            .contains("accept-language: pt-br"),
+        "{request}"
+    );
 }
 
 #[test]
