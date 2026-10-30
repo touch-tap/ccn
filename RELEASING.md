@@ -13,11 +13,27 @@
    `releases/latest/download/…`, so they serve the new version the moment it is published.
    The repository must be public for the scripts, Homebrew and npm to reach the assets.
 4. Homebrew: copy `ccn.rb` from the release to `touch-tap/homebrew-tap` as `Formula/ccn.rb`, push.
-5. npm: download the release assets into `dist/`, run `scripts/npm-packages.sh 0.2.0 dist`, then
+5. winget: `scripts/winget-manifests.sh 0.2.0` downloads the release's `SHA256SUMS` and writes the
+   three manifests to `packaging/winget/manifests/t/TouchTap/ccn/0.2.0/` (schema 1.28.0; commit
+   them). Submit them to [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs) either
+   with `wingetcreate submit --token <github token> packaging/winget/manifests/t/TouchTap/ccn/0.2.0`
+   on a Windows machine, or by hand: fork `winget-pkgs`, copy the folder to the same path, and open
+   a PR titled `New version: TouchTap.ccn version 0.2.0` (`New package:` the first time). The
+   first submission is reviewed by a person; later ones are usually merged by the bot once its
+   validation passes, a day or two later. `winget install TouchTap.ccn` works once it is merged.
+6. Scoop: `scripts/scoop-bucket.sh 0.2.0` writes `packaging/scoop/ccn.json` here (commit it) and
+   `bucket/ccn.json` in a checkout of `touch-tap/scoop-bucket` next to this repo (or at
+   `SCOOP_BUCKET_DIR`), and commits there; push that checkout. The bucket repository is created
+   once by the owner: `gh repo create touch-tap/scoop-bucket --public --clone`, then run the
+   script, push, and users add it with `scoop bucket add touch-tap
+   https://github.com/touch-tap/scoop-bucket`. The manifest's `checkver`/`autoupdate` fields also
+   let Scoop's own tooling (`bin/checkver.ps1 -u`, if the bucket is made from
+   ScoopInstaller/BucketTemplate) bump it from the next release's `SHA256SUMS` without this script.
+7. npm: download the release assets into `dist/`, run `scripts/npm-packages.sh 0.2.0 dist`, then
    `scripts/npm-publish.sh` in a real terminal (signed in with `npm login` as an owner of the
    `touchtap` org; npm asks for the passkey in the browser). It skips versions already on npm, so
    an interrupted run can be repeated.
-6. Website: `install/install.sh` and `install/install.ps1` are served from claudecodenotifier.com.
+8. Website: `install/install.sh` and `install/install.ps1` are served from claudecodenotifier.com.
    Copy them to the CCNotifier_Website repo root when they change.
 
 The phone apps read the install lines from `GET /api/cli/install` on the server
