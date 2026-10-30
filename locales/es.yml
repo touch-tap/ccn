@@ -1,0 +1,297 @@
+# Español. Traduce locales/en.yml; ver locales/README.md. Registro: tú, sin vosotros. Vocabulario de
+# la app Claude Code Notifier: vincular (pair), conectar (connect), licencia, desbloquear, móvil, ordenador.
+_version: 1
+
+cli:
+  about: "Claude Code Notifier: recibe un aviso en el móvil cuando Claude Code te necesite y responde desde ahí"
+  pair:
+    about: "Vincular este ordenador con tu móvil. Pasa el código que muestra la app, o ejecútalo sin código para obtener uno que escribir en la app"
+    code: "El código de 6 dígitos que muestra la app Claude Code Notifier"
+    name: "Cómo se llama este ordenador en tu móvil (por defecto: el nombre de host)"
+    replace_mac_app: "Quitar también los hooks de la app de la barra de menús del Mac, para no enviar las notificaciones dos veces"
+    no_wait: "Mostrar el código QR y volver de inmediato: la vinculación se completa sola cuando el móvil se conecta"
+  setup:
+    about: "Instalar los hooks de Claude Code y las notificaciones de escritorio (pair y ccn sin argumentos lo hacen primero)"
+    replace_mac_app: "Quitar también los hooks de la app de la barra de menús del Mac"
+  doctor:
+    about: "Comprobar los hooks, las credenciales, el servidor y lo que admite esta terminal"
+  test:
+    about: "Enviar una notificación de prueba a cada móvil vinculado"
+  devices:
+    about: "Listar los móviles vinculados, o revocar uno"
+    revoke: "Revocar un móvil vinculado por su nombre o id"
+  config:
+    about: "Ver o cambiar los ajustes de este ordenador (también editables desde el móvil)"
+    show: "Mostrar los ajustes en vigor"
+    set: "Cambiar un ajuste, p. ej. `ccn config set hold_ceiling_seconds 300` o `ccn config set quiet_hours 22:00-08:00`"
+  sync:
+    about: "Traer ahora los últimos ajustes del servidor"
+  unlock:
+    about: "Comprar una licencia para este ordenador en el navegador: desbloquea todos los móviles vinculados con él"
+    lifetime: "Pagar una sola vez en lugar de cada año (o pasar una licencia anual a permanente, conservando la clave)"
+  upgrade:
+    about: "Actualizar ccn a la última versión (también se comprueba una vez al día en segundo plano)"
+    check: "Solo decir si existe una versión más reciente: código 0 si está al día, 10 si hay una disponible"
+    quiet: "No mostrar nada salvo que algo haya fallado"
+  activate:
+    about: "Usar una clave de licencia en este ordenador (hasta 3 ordenadores por licencia)"
+    key: "La clave de tu correo, CCN-XXXX-XXXX-XXXX-XXXX"
+    replace: "Liberar la plaza de otro ordenador en la licencia, por su nombre, para hacer sitio a este"
+  deactivate:
+    about: "Liberar la plaza de este ordenador en la licencia para usar la clave en otro sitio"
+  licence:
+    about: "Mostrar la licencia de este ordenador y los ordenadores que la usan"
+  uninstall:
+    about: "Quitar los hooks, las credenciales, las vinculaciones y el estado local"
+  forget:
+    about: "Borrar este ordenador y sus vinculaciones del servidor, y luego desinstalar"
+    yes: "No pedir confirmación"
+
+common:
+  your_phone: "tu móvil"
+  not_paired: "este ordenador aún no está vinculado. Ejecuta `ccn pair <código>` con el código de la app."
+  store_keychain: "llavero"
+  store_file: "archivo"
+  date_format: "%d/%m/%Y"
+
+pair:
+  reregister: "La vinculación anterior de este ordenador se ha eliminado, así que se registrará de nuevo."
+  code_not_recognised: "Ese código no se ha reconocido. El código de 6 dígitos está en la app Claude Code Notifier, en Ordenadores > Añadir ordenador; cambia cada 24 horas, así que copia la línea que la app muestra ahora mismo."
+  offer_qr: "Pulsa Enter para mostrar aquí un código QR en su lugar (escanéalo con el móvil), o Ctrl+C."
+  options_without_terminal: "Vuelve a ejecutar `ccn pair <código>` con el código que la app muestra ahora, o ejecuta `ccn pair` para mostrar aquí un código QR y escanearlo con el móvil."
+  scan: "  Escanea esto con la cámara de tu móvil para conectarlo. Si aún no tienes la app, te\n  lleva al App Store o a Google Play: instálala y vuelve a escanear."
+  or_type_code: "  O escribe este código en la app Claude Code Notifier:  %{code}"
+  enter_code: "  Escribe este código en la app Claude Code Notifier:  %{code}"
+  hooks_already_installed: "  Los hooks están instalados, así que ya recibes notificaciones de escritorio en este ordenador."
+  code_lasts: "  Vincula cuando quieras: este código dura %{duration}."
+  completes_on_its_own: "  La vinculación se completa sola cuando el móvil se conecta."
+  waiting: "  Esperando a tu móvil... (Ctrl+C no hace daño: la vinculación se completa sola cuando el móvil se conecta)"
+  code_expired: "el código caducó antes de que un móvil lo usara. Vuelve a ejecutar `ccn pair`."
+  code_is_six_digits: "el código son los 6 dígitos que muestra la app Claude Code Notifier"
+  credentials_stored: "Credenciales guardadas en el %{store} (%{path})."
+  test_sent: "Notificación de prueba enviada a tu móvil."
+  test_failed: "Todavía no se pudo enviar una notificación de prueba: %{error}"
+  done: "Listo. Inicia `claude` como siempre: recibirás un aviso cuando Claude termine o te necesite,\ny podrás permitir, denegar o responder desde el móvil. `ccn doctor` lo comprueba todo."
+  paired_with: "Vinculado con %{name} (%{platform})."
+  hours_one: "1 hora"
+  hours_other: "%{count} horas"
+  minutes_one: "1 minuto"
+  minutes_other: "%{count} minutos"
+  pitch: "Tu móvil te ofrecerá una suscripción en la app. También puedes desbloquearlo todo desde aquí, fuera de las tiendas de apps:"
+  pitch_annual: "  ccn unlock             %{price} al año"
+  pitch_lifetime: "  ccn unlock --lifetime  %{price} una sola vez"
+  pitch_covers: "Cubre %{computers} ordenadores y todos los móviles vinculados con ellos. %{days} días de garantía de devolución."
+  welcome_no_terminal: "Una notificación de prueba va de camino a tu móvil: prueba a responderla desde ahí."
+  welcome: "Una notificación de prueba va de camino a tu móvil. Prueba a responderla desde ahí..."
+  welcome_skip: "(pulsa Enter para saltar)"
+  welcome_answered: "✓ Tu móvil respondió \"%{answer}\". Así es como responderás a Claude."
+  welcome_no_answer: "Aún sin respuesta. La notificación se queda en tu móvil durante una hora."
+
+status:
+  set_up: "ccn %{version} está configurado en este ordenador como \"%{name}\"."
+  licence: "Licencia: %{line}"
+  hint_doctor: "  ccn doctor     comprobar hooks, credenciales y servidor"
+  hint_test: "  ccn test       enviar una notificación de prueba a tu móvil"
+  hint_pair: "  ccn pair       vincular otro móvil"
+  hint_help: "  ccn --help     todo lo demás"
+
+setup:
+  installed_self: "ccn instalado en %{path}."
+  hooks_installed: "Hooks instalados en %{path} (usando %{exe})."
+  mac_app_note: "Nota: los hooks de la app Claude Code Notifier para Mac también están instalados, así que\ncada evento se enviaría dos veces. Ejecuta `ccn setup --replace-mac-app` para quitarlos,\no cierra la app del Mac."
+  mac_app_removed: "Hooks de la app del Mac eliminados; desde ahora ccn se encarga de las notificaciones."
+
+sync:
+  not_synced: "Ajustes aún sin sincronizar: %{error}"
+  synced: "Ajustes sincronizados."
+
+doctor:
+  header: "ccn %{version} en %{platform}"
+  config: "config: %{path}"
+  credentials_present: "credenciales: presentes (%{store})"
+  credentials_missing: "credenciales: faltan: ejecuta `ccn pair <código>`"
+  server_reachable: "servidor: %{url} accesible"
+  server_error: "servidor: %{error}"
+  registered: "registrado como \"%{name}\" (%{kind} %{platform}), capacidades: %{capabilities}"
+  not_paired_any_more: "vinculación: ya no está vinculado: ejecuta `ccn pair`"
+  registration_error: "registro: %{error}"
+  licence: "licencia: %{line}"
+  phones_none: "móviles: ninguno vinculado todavía, así que las notificaciones se quedan en este escritorio (ejecuta `ccn pair`)"
+  phones: "móviles: %{names}"
+  phones_error: "móviles: %{error}"
+  hooks_all: "hooks: los %{count} instalados en %{path}"
+  hooks_missing: "hooks: faltan %{names} (ejecuta `ccn setup`)"
+  hooks_error: "hooks: %{error}"
+  hooks_stale: "los hooks apuntan a otro binario de ccn; ejecuta `ccn setup` para actualizarlos"
+  mac_app_hooks: "los hooks de la app del Mac también están instalados (ejecuta `ccn setup --replace-mac-app`)"
+  presence: "presencia: inactivo desde hace %{idle}s, umbral %{threshold}s"
+  presence_none: "presencia: no detectable aquí, así que cada solicitud espera al móvil"
+  replies: "respuestas: las aprobaciones y las respuestas a preguntas desde el móvil funcionan en cualquier terminal; el texto libre a una sesión inactiva %{free_text}"
+  replies_tmux: "funciona (tmux)"
+  replies_no_tmux: "necesita tmux"
+  desktop: "notificaciones de escritorio: %{line}"
+  log: "registro: %{path}"
+
+test:
+  none_paired: "no hay móviles vinculados. Ejecuta `ccn pair <código>`."
+  sent: "Notificación de prueba enviada a %{name} (%{platform})."
+  failed: "%{name}: %{error}"
+
+devices:
+  none: "No hay móviles vinculados. Ejecuta `ccn pair <código>` con el código de la app."
+  # %{name} se rellena hasta 24 columnas y %{platform} hasta 8 antes de insertarse
+  row: "%{name} %{platform} vinculado %{since}%{off}"
+  notifications_off: "  (notificaciones desactivadas)"
+  revoked: "%{name} revocado."
+  no_such_phone: "no hay ningún móvil vinculado llamado '%{device}'"
+
+config:
+  local_only: "(solo local)"
+  last_changed: "(último cambio %{when}; también editable desde el móvil)"
+  credentials_moved: "Las credenciales están ahora en el %{store}."
+  credential_store_expects: "credential_store espera keychain o file"
+  auto_update_expects: "auto_update espera on u off"
+
+settings:
+  expects_on_off: "%{key} espera on u off"
+  expects_seconds: "%{key} espera un número de segundos"
+  seconds_range: "%{key} debe estar entre %{min} y %{max} segundos"
+  quiet_hours_format: "quiet_hours espera HH:MM-HH:MM, u off"
+  quiet_hours_example: "quiet_hours espera HH:MM-HH:MM, p. ej. 22:00-08:00"
+  unknown: "ajuste desconocido '%{key}'. Ajustes: notify_on_done, notify_on_permission, notify_on_question, sound, quiet_when_present, quiet_hours, hold_ceiling_seconds, presence_threshold_seconds, stop_hold_seconds, reminder_interval_seconds"
+
+forget:
+  needs_yes: "ccn forget necesita un sí por tu parte: ejecútalo en una terminal, o añade --yes"
+  warning: "Esto borra este ordenador y sus vinculaciones del servidor de Claude Code Notifier, luego quita\nccn de Claude Code y elimina sus credenciales y archivos de aquí, como hace `ccn uninstall`.\nLos móviles vinculados con este ordenador lo verán desaparecer.\nUna licencia comprada en la web no se cancela: hazlo en claudecodenotifier.com/licence\ncon \"Erase my licence\"."
+  # La palabra que el usuario debe escribir; `yes` siempre se acepta también
+  yes_word: "sí"
+  prompt: "\nEscribe %{yes} para continuar: "
+  nothing_erased: "No se ha borrado nada."
+  erased: "Este ordenador y sus vinculaciones se han borrado del servidor."
+  already_forgotten: "El servidor ya había olvidado este ordenador."
+  nothing_removed: "%{error}. No se quitó nada de este ordenador, así que puedes volver a ejecutar `ccn forget`"
+  not_registered: "Este ordenador no está registrado en el servidor, así que allí no hay nada que borrar."
+
+uninstall:
+  hooks_removed: "Hooks de ccn eliminados de %{path}."
+  slot_freed: "Plaza de este ordenador en la licencia liberada."
+  unpaired_all: "Todos los móviles desvinculados."
+  removed_dir: "%{path} eliminado."
+
+local:
+  finished_title: "Claude ha terminado"
+  finished_body: "Claude ha terminado y te está esperando."
+  permission_title: "Claude necesita permiso"
+  question_title: "Claude tiene una pregunta"
+  first_nudge: "Recíbelas en el móvil: ccn pair"
+  milestone_nudge: "Ya van 10 notificaciones. Recíbelas en el móvil, con aprobaciones desde la pantalla de bloqueo: ejecuta ccn pair"
+  pair_message: "Claude Code Notifier: recibes notificaciones de escritorio. Para recibirlas también en el móvil, y permitir o responder desde ahí, ejecuta `ccn pair` en una terminal."
+
+hook:
+  licence_message: "Claude Code Notifier: las notificaciones al móvil no están desbloqueadas para este ordenador. Desbloquéalas: ccn unlock"
+  unpaired_message: "Claude Code Notifier: este ordenador ya no está vinculado, así que tu móvil no recibirá notificaciones. Ejecuta `ccn pair` en una terminal para volver a conectarlo."
+  unpaired_notification: "Este ordenador ya no está vinculado. Ejecuta `ccn pair` en una terminal para volver a conectarlo."
+  paired_message: "Claude Code Notifier: vinculado con %{phone}. Las notificaciones ahora van a tu móvil."
+  # El servidor escribe título, cuerpo y comando en el idioma del usuario; esto solo los une
+  nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
+  needs_attention: "Necesita tu atención"
+
+licence:
+  already_licensed: "Este ordenador ya tiene licencia (%{licence})."
+  switch_to_lifetime: "Para pasar a una licencia permanente, conservando la misma clave: ccn unlock --lifetime"
+  checkout_open: "  El pago está abierto en tu navegador. Para pagar desde el móvil, escanea esto:"
+  checkout_link: "  Abre este enlace para pagar, o escanéalo con el móvil:"
+  waiting_payment: "  Esperando el pago... (Ctrl+C para parar; la clave te llega por correo de todas formas)"
+  upgraded: "✓ Cambiado a una licencia permanente. Misma clave, mismos ordenadores; la renovación anual queda cancelada."
+  licensed: "✓ Este ordenador tiene licencia (%{licence})."
+  key: "  Clave: %{key} (también por correo). Úsala en hasta 2 ordenadores más: ccn activate %{key}"
+  phones_unlocked: "  Todos los móviles vinculados con este ordenador están desbloqueados."
+  activate_with_key: "  Ejecuta `ccn activate <clave>` con la clave del correo para usarla en este ordenador."
+  no_payment: "Sigue sin haber pago después de 15 minutos. Si pagaste, la clave está en tu correo: ccn activate <clave>"
+  replace_stale: "\"%{name}\" lleva más de una semana sin verse. ¿Es este ordenador? ¿Sustituirlo?"
+  yes_no: " [S/n] "
+  # Una respuesta que empiece por esta letra (o por n) significa no
+  no_initial: "n"
+  slots_full: "Esta licencia ya está en %{count} ordenadores:"
+  free_one: "Libera uno con `ccn deactivate` en ese ordenador, o sustitúyelo desde aquí:"
+  replace_example: "  ccn activate %{key} --replace \"%{name}\""
+  old_laptop: "Portátil viejo"
+  no_free_slot: "no hay plaza libre para otro ordenador"
+  computers_on_licence: "Ordenadores en esta licencia:"
+  activated: "✓ Con licencia (%{licence}). %{count} de 3 ordenadores en uso."
+  pair_to_unlock: "  Vincula un móvil con `ccn pair` y queda desbloqueado al momento."
+  none: "Este ordenador no tiene licencia."
+  freed: "Liberado. Esta licencia tiene ahora %{count} de 3 ordenadores en uso."
+  none_buy: "No hay licencia en este ordenador. Compra una: ccn unlock"
+  none_short: "No hay licencia en este ordenador."
+  buy_options: "  Compra una:           ccn unlock (anual) o ccn unlock --lifetime"
+  have_key: "  ¿Ya tienes una clave? ccn activate <clave>"
+  show_licence: "Licencia:    %{licence}"
+  show_key: "Clave:       CCN-…-%{last4}"
+  show_unlocks: "Desbloquea:  %{value}"
+  unlocks_yes: "sí, todos los móviles vinculados con este ordenador"
+  unlocks_no: "no"
+  show_computers: "Ordenadores: %{count} de 3"
+  switch_lifetime_keep_key: "Pasar a permanente, conservando la clave: ccn unlock --lifetime"
+  status_licensed: "%{licence}, %{count} de 3 ordenadores"
+  status_unlicensed: "%{licence}: ccn unlock"
+  status_none: "ninguna: ccn unlock"
+  describe_refunded: "reembolsada"
+  describe_lifetime: "permanente"
+  describe_renews: "anual, se renueva el %{date}"
+  describe_past_due: "anual, reintentando el pago"
+  describe_ends: "anual, termina el %{date}"
+  describe_ended: "anual, terminó el %{date}"
+  describe_other: "%{plan}, %{status}"
+  unnamed_computer: "ordenador sin nombre"
+  last_seen: "visto por última vez el %{date}"
+  not_seen_recently: "sin verse últimamente"
+  this_computer: "  (este ordenador)"
+  # %{name} se rellena hasta 28 columnas antes de insertarse
+  computer_row: "  %{name} %{seen}%{current}"
+
+update:
+  latest: "ccn %{version} es la última versión."
+  available_check: "ccn %{version} está disponible (tienes %{current})."
+  update_with: "  Actualizar: %{command}"
+  available_run: "ccn %{version} está disponible: %{command}"
+  nothing_to_update: "nada que actualizar: %{path} no está instalado%{npx}"
+  npx_note: " (npx ejecuta cada vez el ccn más reciente)"
+  no_release_build: "no hay build publicado para %{os}-%{arch}"
+  no_build_named: "ccn %{version} no tiene ningún build llamado %{asset}"
+  no_checksum: "SHA256SUMS no tiene entrada para %{asset}"
+  checksum_mismatch: "la suma de comprobación de %{asset} no coincide: no se ha cambiado nada"
+  archive_empty: "el archivo comprimido no contiene ccn"
+  zip_empty: "el zip no contiene ccn.exe"
+  did_not_run: "el ccn descargado no arrancó, así que se ha conservado el instalado"
+  updated: "ccn actualizado %{from} → %{to}."
+  available_message: "Claude Code Notifier: ccn %{version} está disponible: %{command}"
+
+notify:
+  registered_windows: "\"Claude Code Notifier\" registrado para las notificaciones de Windows."
+  icon_installed: "Icono de notificación instalado en %{path}."
+  doctor_applescript: "AppleScript (este build no tiene app de notificaciones)"
+  doctor_allowed: "permitidas para \"%{app}\""
+  doctor_denied: "desactivadas: Ajustes del Sistema > Notificaciones > %{app}"
+  doctor_not_allowed: "aún no permitidas: ejecuta `ccn setup`"
+  mac_denied: "Las notificaciones de escritorio están desactivadas para \"%{app}\". Actívalas en Ajustes del Sistema > Notificaciones."
+  mac_asking: "Pidiendo a macOS que permita las notificaciones de \"%{app}\"..."
+  mac_allowed: "Las notificaciones de escritorio están permitidas para \"%{app}\"."
+  mac_not_allowed: "Las notificaciones de escritorio no están permitidas. Actívalas en Ajustes del Sistema > Notificaciones > %{app}."
+
+api:
+  rejected: "este ordenador ya no está vinculado (el servidor ya no lo reconoce). Ejecuta `ccn pair` para volver a conectarlo"
+  server_returned: "el servidor devolvió %{status}"
+  # Lo que se estaba haciendo cuando el servidor dijo que no; el mensaje del servidor sigue tras dos puntos
+  registering: "registrando este ordenador"
+  pairing: "vinculando"
+  requesting_code: "solicitando un código de vinculación"
+  reading_record: "leyendo el registro de este ordenador"
+  erasing: "borrando este ordenador"
+  listing_phones: "listando los móviles vinculados"
+  revoking: "revocando la vinculación"
+  health: "estado del servidor"
+  reading_settings: "leyendo los ajustes"
+  saving_settings: "guardando los ajustes"
+  sending_event: "enviando el evento"
+  waiting_response: "esperando una respuesta: %{error}"

@@ -1,0 +1,297 @@
+# Deutsch. Übersetzt locales/en.yml; siehe locales/README.md. Register: du. Begriffe wie in der
+# Claude Code Notifier App: koppeln (pair), verbinden (connect), Lizenz, freischalten, Handy, Computer.
+_version: 1
+
+cli:
+  about: "Claude Code Notifier: bekomme einen Push aufs Handy, wenn Claude Code dich braucht, und antworte von dort"
+  pair:
+    about: "Diesen Computer mit deinem Handy koppeln. Gib den Code aus der App an, oder starte ohne Code und bekomme einen zum Eintippen in die App"
+    code: "Der 6-stellige Code aus der Claude Code Notifier App"
+    name: "Wie dieser Computer auf deinem Handy heißt (Standard: der Hostname)"
+    replace_mac_app: "Auch die Hook-Einträge der Mac-Menüleisten-App entfernen, damit Mitteilungen nicht doppelt gesendet werden"
+    no_wait: "QR-Code anzeigen und sofort zurückkehren: die Kopplung wird von selbst abgeschlossen, sobald das Handy sich verbindet"
+  setup:
+    about: "Die Claude Code Hooks und Desktop-Mitteilungen installieren (pair und ccn ohne Argumente tun das zuerst)"
+    replace_mac_app: "Auch die Hook-Einträge der Mac-Menüleisten-App entfernen"
+  doctor:
+    about: "Hooks, Zugangsdaten, Server und die Fähigkeiten dieses Terminals prüfen"
+  test:
+    about: "Eine Testmitteilung an jedes gekoppelte Handy senden"
+  devices:
+    about: "Gekoppelte Handys auflisten oder eines entkoppeln"
+    revoke: "Ein gekoppeltes Handy per Name oder ID entkoppeln"
+  config:
+    about: "Einstellungen dieses Computers anzeigen oder ändern (auch vom Handy aus änderbar)"
+    show: "Die wirksamen Einstellungen ausgeben"
+    set: "Eine Einstellung setzen, z. B. `ccn config set hold_ceiling_seconds 300` oder `ccn config set quiet_hours 22:00-08:00`"
+  sync:
+    about: "Die neuesten Einstellungen jetzt vom Server holen"
+  unlock:
+    about: "Eine Lizenz für diesen Computer im Browser kaufen: schaltet jedes damit gekoppelte Handy frei"
+    lifetime: "Einmal zahlen statt jährlich (oder eine Jahreslizenz auf lebenslang umstellen, der Schlüssel bleibt)"
+  upgrade:
+    about: "ccn auf die neueste Version aktualisieren (wird auch einmal täglich im Hintergrund geprüft)"
+    check: "Nur sagen, ob eine neuere Version existiert: Exit 0 wenn aktuell, 10 wenn eine verfügbar ist"
+    quiet: "Nichts ausgeben, außer etwas ist schiefgegangen"
+  activate:
+    about: "Einen Lizenzschlüssel auf diesem Computer verwenden (bis zu 3 Computer pro Lizenz)"
+    key: "Der Schlüssel aus deiner E-Mail, CCN-XXXX-XXXX-XXXX-XXXX"
+    replace: "Den Platz eines anderen Computers auf der Lizenz freigeben, per Name, um Platz für diesen zu machen"
+  deactivate:
+    about: "Den Lizenzplatz dieses Computers freigeben, damit der Schlüssel anderswo verwendet werden kann"
+  licence:
+    about: "Die Lizenz dieses Computers und die Computer, die sie nutzen, anzeigen"
+  uninstall:
+    about: "Hooks, Zugangsdaten, Kopplungen und lokalen Zustand entfernen"
+  forget:
+    about: "Diesen Computer und seine Kopplungen vom Server löschen, dann deinstallieren"
+    yes: "Nicht um Bestätigung fragen"
+
+common:
+  your_phone: "dein Handy"
+  not_paired: "dieser Computer ist noch nicht gekoppelt. Führe `ccn pair <code>` mit dem Code aus der App aus."
+  store_keychain: "Schlüsselbund"
+  store_file: "Datei"
+  date_format: "%d.%m.%Y"
+
+pair:
+  reregister: "Die alte Kopplung dieses Computers wurde entfernt, deshalb wird er neu registriert."
+  code_not_recognised: "Dieser Code wurde nicht erkannt. Der 6-stellige Code steht in der Claude Code Notifier App unter Computer > Computer hinzufügen; er ändert sich alle 24 Stunden, kopiere also die Zeile, die die App gerade jetzt anzeigt."
+  offer_qr: "Drücke Enter, um stattdessen hier einen QR-Code anzuzeigen (mit dem Handy scannen), oder Ctrl+C."
+  options_without_terminal: "Führe `ccn pair <code>` noch einmal mit dem Code aus, den die App jetzt anzeigt, oder `ccn pair`, um hier einen QR-Code anzuzeigen und ihn mit dem Handy zu scannen."
+  scan: "  Scanne das mit der Kamera deines Handys, um es zu verbinden. Ohne die App führt es\n  dich zum App Store oder zu Google Play: installieren, dann noch einmal scannen."
+  or_type_code: "  Oder tippe diesen Code in der Claude Code Notifier App ein:  %{code}"
+  enter_code: "  Gib diesen Code in der Claude Code Notifier App ein:  %{code}"
+  hooks_already_installed: "  Die Hooks sind installiert, du bekommst auf diesem Computer also schon Desktop-Mitteilungen."
+  code_lasts: "  Kopple, wann du willst: dieser Code gilt %{duration}."
+  completes_on_its_own: "  Die Kopplung wird von selbst abgeschlossen, sobald das Handy sich verbindet."
+  waiting: "  Warte auf dein Handy... (Ctrl+C ist unbedenklich: die Kopplung wird von selbst abgeschlossen, sobald das Handy sich verbindet)"
+  code_expired: "der Code ist abgelaufen, bevor ein Handy ihn eingelöst hat. Führe `ccn pair` noch einmal aus."
+  code_is_six_digits: "der Code sind die 6 Ziffern aus der Claude Code Notifier App"
+  credentials_stored: "Zugangsdaten gespeichert: %{store} (%{path})."
+  test_sent: "Testmitteilung an dein Handy gesendet."
+  test_failed: "Testmitteilung konnte noch nicht gesendet werden: %{error}"
+  done: "Fertig. Starte `claude` wie gewohnt: du bekommst einen Push, wenn Claude fertig ist oder dich\nbraucht, und kannst vom Handy aus erlauben, ablehnen oder antworten. `ccn doctor` prüft alles."
+  paired_with: "Gekoppelt mit %{name} (%{platform})."
+  hours_one: "1 Stunde"
+  hours_other: "%{count} Stunden"
+  minutes_one: "1 Minute"
+  minutes_other: "%{count} Minuten"
+  pitch: "Dein Handy bietet in der App ein Abo an. Du kannst auch von hier aus alles freischalten, ohne die App-Stores:"
+  pitch_annual: "  ccn unlock             %{price} im Jahr"
+  pitch_lifetime: "  ccn unlock --lifetime  %{price} einmalig"
+  pitch_covers: "Gilt für %{computers} Computer und jedes damit gekoppelte Handy. %{days} Tage Geld-zurück."
+  welcome_no_terminal: "Eine Testmitteilung ist auf dem Weg zu deinem Handy: antworte dort doch gleich darauf."
+  welcome: "Eine Testmitteilung ist auf dem Weg zu deinem Handy. Antworte dort doch gleich darauf..."
+  welcome_skip: "(Enter zum Überspringen)"
+  welcome_answered: "✓ Dein Handy hat mit \"%{answer}\" geantwortet. So wirst du Claude antworten."
+  welcome_no_answer: "Noch keine Antwort. Die Mitteilung bleibt eine Stunde auf deinem Handy."
+
+status:
+  set_up: "ccn %{version} ist auf diesem Computer als \"%{name}\" eingerichtet."
+  licence: "Lizenz: %{line}"
+  hint_doctor: "  ccn doctor     Hooks, Zugangsdaten und Server prüfen"
+  hint_test: "  ccn test       eine Testmitteilung an dein Handy senden"
+  hint_pair: "  ccn pair       ein weiteres Handy koppeln"
+  hint_help: "  ccn --help     alles andere"
+
+setup:
+  installed_self: "ccn installiert nach %{path}."
+  hooks_installed: "Hooks installiert in %{path} (verwendet %{exe})."
+  mac_app_note: "Hinweis: die Hooks der Claude Code Notifier Mac-App sind auch installiert, deshalb würde jedes\nEreignis doppelt gesendet. Führe `ccn setup --replace-mac-app` aus, um sie zu entfernen,\noder beende die Mac-App."
+  mac_app_removed: "Hook-Einträge der Mac-App entfernt; ab jetzt übernimmt ccn die Mitteilungen."
+
+sync:
+  not_synced: "Einstellungen noch nicht synchronisiert: %{error}"
+  synced: "Einstellungen synchronisiert."
+
+doctor:
+  header: "ccn %{version} auf %{platform}"
+  config: "Konfiguration: %{path}"
+  credentials_present: "Zugangsdaten: vorhanden (%{store})"
+  credentials_missing: "Zugangsdaten: fehlen: führe `ccn pair <code>` aus"
+  server_reachable: "Server: %{url} erreichbar"
+  server_error: "Server: %{error}"
+  registered: "registriert als \"%{name}\" (%{kind} %{platform}), Fähigkeiten: %{capabilities}"
+  not_paired_any_more: "Kopplung: nicht mehr gekoppelt: führe `ccn pair` aus"
+  registration_error: "Registrierung: %{error}"
+  licence: "Lizenz: %{line}"
+  phones_none: "Handys: noch keins gekoppelt, Mitteilungen bleiben also auf diesem Desktop (führe `ccn pair` aus)"
+  phones: "Handys: %{names}"
+  phones_error: "Handys: %{error}"
+  hooks_all: "Hooks: alle %{count} installiert in %{path}"
+  hooks_missing: "Hooks: es fehlen %{names} (führe `ccn setup` aus)"
+  hooks_error: "Hooks: %{error}"
+  hooks_stale: "die Hooks zeigen auf eine andere ccn-Binary; führe `ccn setup` aus, um sie zu aktualisieren"
+  mac_app_hooks: "die Hooks der Mac-App sind auch installiert (führe `ccn setup --replace-mac-app` aus)"
+  presence: "Anwesenheit: gerade %{idle}s untätig, Schwelle %{threshold}s"
+  presence_none: "Anwesenheit: hier nicht erkennbar, deshalb wartet jede Anfrage auf das Handy"
+  replies: "Antworten: Freigaben und Antworten auf Fragen vom Handy funktionieren in jedem Terminal; freier Text in eine untätige Sitzung %{free_text}"
+  replies_tmux: "funktioniert (tmux)"
+  replies_no_tmux: "braucht tmux"
+  desktop: "Desktop-Mitteilungen: %{line}"
+  log: "Log: %{path}"
+
+test:
+  none_paired: "kein Handy ist gekoppelt. Führe `ccn pair <code>` aus."
+  sent: "Testmitteilung an %{name} (%{platform}) gesendet."
+  failed: "%{name}: %{error}"
+
+devices:
+  none: "Keine Handys gekoppelt. Führe `ccn pair <code>` mit dem Code aus der App aus."
+  # %{name} wird auf 24 Spalten aufgefüllt, %{platform} auf 8, bevor sie eingesetzt werden
+  row: "%{name} %{platform} gekoppelt %{since}%{off}"
+  notifications_off: "  (Mitteilungen aus)"
+  revoked: "%{name} entkoppelt."
+  no_such_phone: "kein gekoppeltes Handy namens '%{device}'"
+
+config:
+  local_only: "(nur lokal)"
+  last_changed: "(zuletzt geändert %{when}; auch vom Handy aus änderbar)"
+  credentials_moved: "Die Zugangsdaten liegen jetzt hier: %{store}."
+  credential_store_expects: "credential_store erwartet keychain oder file"
+  auto_update_expects: "auto_update erwartet on oder off"
+
+settings:
+  expects_on_off: "%{key} erwartet on oder off"
+  expects_seconds: "%{key} erwartet eine Anzahl Sekunden"
+  seconds_range: "%{key} muss zwischen %{min} und %{max} Sekunden liegen"
+  quiet_hours_format: "quiet_hours erwartet HH:MM-HH:MM oder off"
+  quiet_hours_example: "quiet_hours erwartet HH:MM-HH:MM, z. B. 22:00-08:00"
+  unknown: "unbekannte Einstellung '%{key}'. Einstellungen: notify_on_done, notify_on_permission, notify_on_question, sound, quiet_when_present, quiet_hours, hold_ceiling_seconds, presence_threshold_seconds, stop_hold_seconds, reminder_interval_seconds"
+
+forget:
+  needs_yes: "ccn forget braucht ein Ja von dir: führe es in einem Terminal aus oder ergänze --yes"
+  warning: "Das löscht diesen Computer und seine Kopplungen vom Claude Code Notifier Server, entfernt dann\nccn aus Claude Code und löscht seine Zugangsdaten und Dateien hier, wie `ccn uninstall`.\nHandys, die mit diesem Computer gekoppelt sind, sehen ihn verschwinden.\nEine auf der Website gekaufte Lizenz wird nicht gekündigt: das geht auf\nclaudecodenotifier.com/licence mit \"Erase my licence\"."
+  # Das Wort, das der Nutzer tippen muss; `yes` wird immer auch akzeptiert
+  yes_word: "ja"
+  prompt: "\nTippe %{yes}, um fortzufahren: "
+  nothing_erased: "Nichts wurde gelöscht."
+  erased: "Dieser Computer und seine Kopplungen wurden vom Server gelöscht."
+  already_forgotten: "Der Server kannte diesen Computer schon nicht mehr."
+  nothing_removed: "%{error}. Auf diesem Computer wurde nichts entfernt, du kannst `ccn forget` also noch einmal ausführen"
+  not_registered: "Dieser Computer ist nicht beim Server registriert, dort gibt es also nichts zu löschen."
+
+uninstall:
+  hooks_removed: "Die Hooks von ccn aus %{path} entfernt."
+  slot_freed: "Lizenzplatz dieses Computers freigegeben."
+  unpaired_all: "Alle Handys entkoppelt."
+  removed_dir: "%{path} entfernt."
+
+local:
+  finished_title: "Claude ist fertig"
+  finished_body: "Claude ist fertig und wartet auf dich."
+  permission_title: "Claude braucht eine Freigabe"
+  question_title: "Claude hat eine Frage"
+  first_nudge: "Aufs Handy holen: ccn pair"
+  milestone_nudge: "Schon 10 Mitteilungen. Hol sie dir aufs Handy, mit Freigaben vom Sperrbildschirm: führe ccn pair aus"
+  pair_message: "Claude Code Notifier: du bekommst Desktop-Mitteilungen. Um sie auch auf dem Handy zu bekommen und von dort zu erlauben oder zu antworten, führe `ccn pair` in einem Terminal aus."
+
+hook:
+  licence_message: "Claude Code Notifier: Handy-Mitteilungen sind für diesen Computer nicht freigeschaltet. Freischalten: ccn unlock"
+  unpaired_message: "Claude Code Notifier: dieser Computer ist nicht mehr gekoppelt, dein Handy bekommt also keine Mitteilungen. Führe `ccn pair` in einem Terminal aus, um ihn neu zu verbinden."
+  unpaired_notification: "Dieser Computer ist nicht mehr gekoppelt. Führe `ccn pair` in einem Terminal aus, um ihn neu zu verbinden."
+  paired_message: "Claude Code Notifier: gekoppelt mit %{phone}. Mitteilungen gehen jetzt an dein Handy."
+  # Der Server schreibt Titel, Text und Befehl in der Sprache des Nutzers; das hier fügt sie nur zusammen
+  nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
+  needs_attention: "Braucht deine Aufmerksamkeit"
+
+licence:
+  already_licensed: "Dieser Computer ist bereits lizenziert (%{licence})."
+  switch_to_lifetime: "Auf eine lebenslange Lizenz umstellen, mit demselben Schlüssel: ccn unlock --lifetime"
+  checkout_open: "  Die Kasse ist in deinem Browser geöffnet. Um stattdessen am Handy zu zahlen, scanne das:"
+  checkout_link: "  Öffne diesen Link zum Zahlen, oder scanne ihn mit deinem Handy:"
+  waiting_payment: "  Warte auf die Zahlung... (Ctrl+C zum Abbrechen; den Schlüssel bekommst du so oder so per E-Mail)"
+  upgraded: "✓ Auf eine lebenslange Lizenz umgestellt. Gleicher Schlüssel, gleiche Computer; die jährliche Verlängerung ist gekündigt."
+  licensed: "✓ Dieser Computer ist lizenziert (%{licence})."
+  key: "  Schlüssel: %{key} (auch per E-Mail). Nutze ihn auf bis zu 2 weiteren Computern: ccn activate %{key}"
+  phones_unlocked: "  Jedes mit diesem Computer gekoppelte Handy ist freigeschaltet."
+  activate_with_key: "  Führe `ccn activate <key>` mit dem Schlüssel aus der E-Mail aus, um ihn auf diesem Computer zu nutzen."
+  no_payment: "Nach 15 Minuten immer noch keine Zahlung. Falls du bezahlt hast, steht der Schlüssel in deiner E-Mail: ccn activate <key>"
+  replace_stale: "\"%{name}\" wurde seit über einer Woche nicht gesehen. Ist das dieser Computer? Ersetzen?"
+  yes_no: " [J/n] "
+  # Eine Antwort, die mit diesem Buchstaben (oder n) beginnt, bedeutet nein
+  no_initial: "n"
+  slots_full: "Diese Lizenz ist schon auf %{count} Computern:"
+  free_one: "Gib einen mit `ccn deactivate` auf diesem Computer frei, oder ersetze ihn von hier aus:"
+  replace_example: "  ccn activate %{key} --replace \"%{name}\""
+  old_laptop: "Altes Laptop"
+  no_free_slot: "kein freier Computerplatz"
+  computers_on_licence: "Computer auf dieser Lizenz:"
+  activated: "✓ Lizenziert (%{licence}). %{count} von 3 Computern in Benutzung."
+  pair_to_unlock: "  Kopple ein Handy mit `ccn pair`, und es ist sofort freigeschaltet."
+  none: "Dieser Computer hat keine Lizenz."
+  freed: "Freigegeben. Diese Lizenz hat jetzt %{count} von 3 Computern in Benutzung."
+  none_buy: "Keine Lizenz auf diesem Computer. Eine kaufen: ccn unlock"
+  none_short: "Keine Lizenz auf diesem Computer."
+  buy_options: "  Eine kaufen:        ccn unlock (jährlich) oder ccn unlock --lifetime"
+  have_key: "  Schlüssel schon da: ccn activate <key>"
+  show_licence: "Lizenz:        %{licence}"
+  show_key: "Schlüssel:     CCN-…-%{last4}"
+  show_unlocks: "Freischaltung: %{value}"
+  unlocks_yes: "ja, jedes mit diesem Computer gekoppelte Handy"
+  unlocks_no: "nein"
+  show_computers: "Computer:      %{count} von 3"
+  switch_lifetime_keep_key: "Auf lebenslang umstellen, Schlüssel bleibt: ccn unlock --lifetime"
+  status_licensed: "%{licence}, %{count} von 3 Computern"
+  status_unlicensed: "%{licence}: ccn unlock"
+  status_none: "keine: ccn unlock"
+  describe_refunded: "erstattet"
+  describe_lifetime: "lebenslang"
+  describe_renews: "jährlich, verlängert sich am %{date}"
+  describe_past_due: "jährlich, Zahlung wird wiederholt"
+  describe_ends: "jährlich, endet am %{date}"
+  describe_ended: "jährlich, endete am %{date}"
+  describe_other: "%{plan}, %{status}"
+  unnamed_computer: "unbenannter Computer"
+  last_seen: "zuletzt gesehen %{date}"
+  not_seen_recently: "länger nicht gesehen"
+  this_computer: "  (dieser Computer)"
+  # %{name} wird auf 28 Spalten aufgefüllt, bevor es eingesetzt wird
+  computer_row: "  %{name} %{seen}%{current}"
+
+update:
+  latest: "ccn %{version} ist die neueste Version."
+  available_check: "ccn %{version} ist verfügbar (du hast %{current})."
+  update_with: "  Aktualisieren: %{command}"
+  available_run: "ccn %{version} ist verfügbar: %{command}"
+  nothing_to_update: "nichts zu aktualisieren: %{path} ist nicht installiert%{npx}"
+  npx_note: " (npx führt jedes Mal das neueste ccn aus)"
+  no_release_build: "kein Release-Build für %{os}-%{arch}"
+  no_build_named: "ccn %{version} hat keinen Build namens %{asset}"
+  no_checksum: "SHA256SUMS hat keinen Eintrag für %{asset}"
+  checksum_mismatch: "Prüfsumme von %{asset} stimmt nicht: nichts wurde geändert"
+  archive_empty: "im Archiv ist kein ccn"
+  zip_empty: "in der Zip-Datei ist keine ccn.exe"
+  did_not_run: "das heruntergeladene ccn ließ sich nicht starten, deshalb wurde das installierte behalten"
+  updated: "ccn aktualisiert: %{from} → %{to}."
+  available_message: "Claude Code Notifier: ccn %{version} ist verfügbar: %{command}"
+
+notify:
+  registered_windows: "\"Claude Code Notifier\" für Windows-Benachrichtigungen registriert."
+  icon_installed: "Mitteilungssymbol installiert unter %{path}."
+  doctor_applescript: "AppleScript (dieser Build hat keine Mitteilungs-App)"
+  doctor_allowed: "erlaubt für \"%{app}\""
+  doctor_denied: "ausgeschaltet: Systemeinstellungen > Mitteilungen > %{app}"
+  doctor_not_allowed: "noch nicht erlaubt: führe `ccn setup` aus"
+  mac_denied: "Desktop-Mitteilungen sind für \"%{app}\" ausgeschaltet. Schalte sie in Systemeinstellungen > Mitteilungen ein."
+  mac_asking: "Bitte macOS, Mitteilungen von \"%{app}\" zu erlauben..."
+  mac_allowed: "Desktop-Mitteilungen sind für \"%{app}\" erlaubt."
+  mac_not_allowed: "Desktop-Mitteilungen sind nicht erlaubt. Schalte sie in Systemeinstellungen > Mitteilungen > %{app} ein."
+
+api:
+  rejected: "dieser Computer ist nicht mehr gekoppelt (der Server kennt ihn nicht mehr). Führe `ccn pair` aus, um ihn neu zu verbinden"
+  server_returned: "Server antwortete mit %{status}"
+  # Was gerade getan wurde, als der Server ablehnte; die Meldung des Servers folgt nach einem Doppelpunkt
+  registering: "Registrieren dieses Computers"
+  pairing: "Koppeln"
+  requesting_code: "Anfordern eines Kopplungscodes"
+  reading_record: "Lesen des Eintrags dieses Computers"
+  erasing: "Löschen dieses Computers"
+  listing_phones: "Auflisten der gekoppelten Handys"
+  revoking: "Aufheben der Kopplung"
+  health: "Serverstatus"
+  reading_settings: "Lesen der Einstellungen"
+  saving_settings: "Speichern der Einstellungen"
+  sending_event: "Senden des Ereignisses"
+  waiting_response: "Warten auf eine Antwort: %{error}"
