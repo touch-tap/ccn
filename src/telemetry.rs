@@ -156,7 +156,6 @@ mod tests {
     #[test]
     fn the_servers_code_wins_whatever_language_its_message_is_in() {
         let err = anyhow::Error::new(crate::api::ServerError {
-            status: 400,
             code: "INVALID_CODE".into(),
             message: "Code de jumelage invalide ou expiré".into(),
         })

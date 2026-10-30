@@ -227,7 +227,6 @@ impl Api {
             Ok(reply)
         } else {
             Err(anyhow::Error::new(ServerError {
-                status: reply.status,
                 code: Self::error_code(&reply),
                 message: Self::error_message(&reply),
             })
@@ -586,7 +585,6 @@ impl Api {
 /// MAX_DEVICES, ...) and the message it showed. Displays as the message alone.
 #[derive(Debug)]
 pub struct ServerError {
-    pub status: u16,
     pub code: String,
     pub message: String,
 }
