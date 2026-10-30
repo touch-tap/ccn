@@ -1,0 +1,299 @@
+# Turkish. "Siz" throughout, as the phone app and the push copy. Terminology follows the app:
+# eşleme/eşlemek (pair), lisans (licence), lisans anahtarı (licence key), kilidini açmak / kilidi
+# açık (unlock/unlocked), bilgisayar, telefon, onaylar, bildirimler, terminal. `hook` stays as the
+# developers' word (it is the settings.json section name).
+_version: 1
+
+cli:
+  about: "Claude Code Notifier: Claude Code size ihtiyaç duyduğunda telefonunuza bildirim alın ve oradan yanıtlayın"
+  pair:
+    about: "Bu bilgisayarı telefonunuzla eşleyin. Uygulamanın gösterdiği kodu verin ya da kod olmadan çalıştırıp uygulamaya yazacağınız bir kod alın"
+    code: "Claude Code Notifier uygulamasında gösterilen 6 haneli kod"
+    name: "Bu bilgisayarın telefonunuzda görünen adı (varsayılan: ana makine adı)"
+    replace_mac_app: "Bildirimler iki kez gönderilmesin diye Mac menü çubuğu uygulamasının hook girdilerini de kaldır"
+    no_wait: "QR kodunu gösterip hemen çık: telefon bağlandığında eşleme kendiliğinden tamamlanır"
+  setup:
+    about: "Claude Code hook'larını ve masaüstü bildirimlerini kur (pair ve tek başına ccn bunu önce yapar)"
+    replace_mac_app: "Mac menü çubuğu uygulamasının hook girdilerini de kaldır"
+  doctor:
+    about: "Hook'ları, kimlik bilgilerini, sunucuyu ve bu terminalin neleri desteklediğini denetle"
+  test:
+    about: "Eşlenmiş her telefona bir deneme bildirimi gönder"
+  devices:
+    about: "Eşlenmiş telefonları listele ya da birinin eşlemesini kaldır"
+    revoke: "Bir telefonun eşlemesini adına veya kimliğine göre kaldır"
+  config:
+    about: "Bu bilgisayarın ayarlarını göster veya değiştir (telefondan da düzenlenebilir)"
+    show: "Geçerli ayarları yazdır"
+    set: "Tek bir ayarı değiştir, örn. `ccn config set hold_ceiling_seconds 300` veya `ccn config set quiet_hours 22:00-08:00`"
+  sync:
+    about: "En güncel ayarları sunucudan şimdi çek"
+  unlock:
+    about: "Bu bilgisayar için tarayıcıda bir lisans satın al: onunla eşlenen her telefonun kilidini açar"
+    lifetime: "Yıllık yerine tek seferlik öde (ya da yıllık lisansı anahtarı koruyarak ömür boyuna çevir)"
+  upgrade:
+    about: "ccn'i en son sürüme güncelle (arka planda günde bir kez de denetlenir)"
+    check: "Yalnızca daha yeni bir sürüm var mı söyle: güncelse 0, yeni sürüm varsa 10 koduyla çık"
+    quiet: "Bir şey ters gitmedikçe hiçbir şey yazdırma"
+  activate:
+    about: "Bu bilgisayarda bir lisans anahtarı kullan (lisans başına en fazla 3 bilgisayar)"
+    key: "E-postanızdaki anahtar, CCN-XXXX-XXXX-XXXX-XXXX"
+    replace: "Buna yer açmak için lisanstaki başka bir bilgisayarın yerini adıyla boşalt"
+  deactivate:
+    about: "Anahtar başka yerde kullanılabilsin diye bu bilgisayarın lisans yerini boşalt"
+  licence:
+    about: "Bu bilgisayarın lisansını ve onu kullanan bilgisayarları göster"
+  uninstall:
+    about: "Hook'ları, kimlik bilgilerini, eşlemeleri ve yerel durumu kaldır"
+  forget:
+    about: "Bu bilgisayarı ve eşlemelerini sunucudan sil, sonra kaldır"
+    yes: "Onay isteme"
+
+common:
+  your_phone: "telefonunuz"
+  not_paired: "bu bilgisayar henüz eşlenmedi. Uygulamadaki kodla `ccn pair <kod>` komutunu çalıştırın."
+  store_keychain: "anahtar zinciri"
+  store_file: "dosya"
+  date_format: "%d.%m.%Y"
+
+pair:
+  reregister: "Bu bilgisayarın eski eşlemesi kaldırıldı, bu yüzden yeniden kaydedilecek."
+  code_not_recognised: "Bu kod tanınmadı. 6 haneli kod, Claude Code Notifier uygulamasında Bilgisayarlar > Bilgisayar ekle altında; her 24 saatte değişir, bu yüzden uygulamanın şu an gösterdiği satırı kopyalayın."
+  offer_qr: "Bunun yerine burada bir QR kodu göstermek için Enter'a basın (telefonunuzla tarayın) ya da Ctrl+C."
+  options_without_terminal: "Uygulamanın şu an gösterdiği kodla `ccn pair <kod>` komutunu yeniden çalıştırın ya da burada bir QR kodu gösterip telefonunuzla taramak için `ccn pair` çalıştırın."
+  scan: "  Telefonunuzu bağlamak için bunu kamerasıyla tarayın. Uygulama henüz yoksa sizi\n  App Store'a veya Google Play'e götürür: kurun, sonra yeniden tarayın."
+  or_type_code: "  Ya da bu kodu Claude Code Notifier uygulamasına yazın:  %{code}"
+  enter_code: "  Bu kodu Claude Code Notifier uygulamasına girin:  %{code}"
+  hooks_already_installed: "  Hook'lar kurulu, yani bu bilgisayarda masaüstü bildirimlerini zaten alıyorsunuz."
+  code_lasts: "  İstediğiniz zaman eşleyin: bu kod %{duration} geçerli."
+  completes_on_its_own: "  Telefon bağlandığında eşleme kendiliğinden tamamlanır."
+  waiting: "  Telefonunuz bekleniyor... (Ctrl+C güvenlidir: telefon bağlandığında eşleme kendiliğinden tamamlanır)"
+  code_expired: "bir telefon kullanmadan kodun süresi doldu. `ccn pair` komutunu yeniden çalıştırın."
+  code_is_six_digits: "kod, Claude Code Notifier uygulamasında gösterilen 6 hanedir"
+  credentials_stored: "Kimlik bilgileri %{store} içinde saklandı (%{path})."
+  test_sent: "Telefonunuza bir deneme bildirimi gönderildi."
+  test_failed: "Deneme bildirimi henüz gönderilemedi: %{error}"
+  done: "Tamam. `claude` komutunu her zamanki gibi başlatın: Claude bitirdiğinde ya da size ihtiyaç\nduyduğunda bildirim alır, telefondan onaylar, reddeder veya yanıtlarsınız. `ccn doctor` her şeyi denetler."
+  paired_with: "%{name} (%{platform}) ile eşlendi."
+  hours_one: "1 saat"
+  hours_other: "%{count} saat"
+  minutes_one: "1 dakika"
+  minutes_other: "%{count} dakika"
+  pitch: "Telefonunuz uygulamada bir abonelik önerecek. Her şeyin kilidini uygulama mağazalarının dışında, buradan da açabilirsiniz:"
+  pitch_annual: "  ccn unlock             yılda %{price}"
+  pitch_lifetime: "  ccn unlock --lifetime  tek seferlik %{price}"
+  pitch_covers: "%{computers} bilgisayarı ve onlarla eşlenen her telefonu kapsar. %{days} gün para iade garantisi."
+  welcome_no_terminal: "Telefonunuza bir deneme bildirimi yolda: oradan yanıtlamayı deneyin."
+  welcome: "Telefonunuza bir deneme bildirimi yolda. Oradan yanıtlamayı deneyin..."
+  welcome_skip: "(geçmek için Enter'a basın)"
+  welcome_answered: "✓ Telefonunuz \"%{answer}\" yanıtını verdi. Claude'a böyle yanıt vereceksiniz."
+  welcome_no_answer: "Henüz yanıt yok. Bildirim telefonunuzda bir saat kalır."
+
+status:
+  set_up: "ccn %{version} bu bilgisayarda \"%{name}\" adıyla kurulu."
+  licence: "Lisans: %{line}"
+  hint_doctor: "  ccn doctor     hook'ları, kimlik bilgilerini ve sunucuyu denetle"
+  hint_test: "  ccn test       telefonunuza bir deneme bildirimi gönder"
+  hint_pair: "  ccn pair       başka bir telefon eşle"
+  hint_help: "  ccn --help     geri kalan her şey"
+
+setup:
+  installed_self: "ccn %{path} konumuna kuruldu."
+  hooks_installed: "Hook'lar %{path} içine kuruldu (%{exe} kullanılıyor)."
+  mac_app_note: "Not: Claude Code Notifier Mac uygulamasının hook'ları da kurulu, bu yüzden her olay iki kez\ngönderilir. Kaldırmak için `ccn setup --replace-mac-app` çalıştırın ya da Mac uygulamasından çıkın."
+  mac_app_removed: "Mac uygulamasının hook girdileri kaldırıldı; bildirimleri artık ccn yönetiyor."
+
+sync:
+  not_synced: "Ayarlar henüz eşitlenmedi: %{error}"
+  synced: "Ayarlar eşitlendi."
+
+doctor:
+  header: "ccn %{version}, %{platform} üzerinde"
+  config: "yapılandırma: %{path}"
+  credentials_present: "kimlik bilgileri: var (%{store})"
+  credentials_missing: "kimlik bilgileri: yok: `ccn pair <kod>` çalıştırın"
+  server_reachable: "sunucu: %{url} erişilebilir"
+  server_error: "sunucu: %{error}"
+  registered: "\"%{name}\" (%{kind} %{platform}) olarak kayıtlı, yetenekler: %{capabilities}"
+  not_paired_any_more: "eşleme: artık eşlenmiş değil: `ccn pair` çalıştırın"
+  registration_error: "kayıt: %{error}"
+  licence: "lisans: %{line}"
+  phones_none: "telefonlar: henüz eşlenen yok, bu yüzden bildirimler bu masaüstünde kalıyor (`ccn pair` çalıştırın)"
+  phones: "telefonlar: %{names}"
+  phones_error: "telefonlar: %{error}"
+  hooks_all: "hook'lar: %{count} tanesinin hepsi %{path} içinde kurulu"
+  hooks_missing: "hook'lar: eksik: %{names} (`ccn setup` çalıştırın)"
+  hooks_error: "hook'lar: %{error}"
+  hooks_stale: "hook'lar farklı bir ccn dosyasına işaret ediyor; güncellemek için `ccn setup` çalıştırın"
+  mac_app_hooks: "Mac uygulamasının hook'ları da kurulu (`ccn setup --replace-mac-app` çalıştırın)"
+  presence: "varlık: şu an %{idle} sn boşta, eşik %{threshold} sn"
+  presence_none: "varlık: burada algılanamıyor, bu yüzden her istek telefonu bekler"
+  replies: "yanıtlar: telefondan onaylar ve soru yanıtları her terminalde çalışır; boşta bir oturuma serbest metin %{free_text}"
+  replies_tmux: "çalışır (tmux)"
+  replies_no_tmux: "tmux gerektirir"
+  desktop: "masaüstü bildirimleri: %{line}"
+  log: "günlük: %{path}"
+
+test:
+  none_paired: "eşlenmiş telefon yok. `ccn pair <kod>` çalıştırın."
+  sent: "%{name} (%{platform}) adresine bir deneme bildirimi gönderildi."
+  failed: "%{name}: %{error}"
+
+devices:
+  none: "Eşlenmiş telefon yok. Uygulamadaki kodla `ccn pair <kod>` çalıştırın."
+  # %{name} is padded to 24 columns and %{platform} to 8 before they are filled in
+  row: "%{name} %{platform} eşlendi: %{since}%{off}"
+  notifications_off: "  (bildirimler kapalı)"
+  revoked: "%{name} eşlemesi kaldırıldı."
+  no_such_phone: "'%{device}' adında eşlenmiş telefon yok"
+
+config:
+  local_only: "(yalnızca yerel)"
+  last_changed: "(son değişiklik %{when}; telefondan da düzenlenebilir)"
+  credentials_moved: "Kimlik bilgileri artık %{store} içinde."
+  credential_store_expects: "credential_store için keychain veya file bekleniyor"
+  auto_update_expects: "auto_update için on veya off bekleniyor"
+
+settings:
+  expects_on_off: "%{key} için on veya off bekleniyor"
+  expects_seconds: "%{key} için saniye cinsinden bir sayı bekleniyor"
+  seconds_range: "%{key} %{min} ile %{max} saniye arasında olmalı"
+  quiet_hours_format: "quiet_hours için HH:MM-HH:MM veya off bekleniyor"
+  quiet_hours_example: "quiet_hours için HH:MM-HH:MM bekleniyor, örn. 22:00-08:00"
+  unknown: "bilinmeyen ayar '%{key}'. Ayarlar: notify_on_done, notify_on_permission, notify_on_question, sound, quiet_when_present, quiet_hours, hold_ceiling_seconds, presence_threshold_seconds, stop_hold_seconds, reminder_interval_seconds"
+
+forget:
+  needs_yes: "ccn forget sizden bir onay bekler: bir terminalde çalıştırın ya da --yes ekleyin"
+  warning: "Bu, bu bilgisayarı ve eşlemelerini Claude Code Notifier sunucusundan siler, sonra `ccn uninstall`\ngibi ccn'i Claude Code'dan kaldırır ve buradaki kimlik bilgilerini ve dosyalarını siler.\nBu bilgisayarla eşlenen telefonlar onun kaybolduğunu görür.\nWeb sitesinden satın alınan bir lisans iptal edilmez: bunu claudecodenotifier.com/licence\nadresinde \"Lisansımı sil\" ile yapın."
+  # The word the user must type; `yes` is always accepted as well
+  yes_word: "evet"
+  prompt: "\nDevam etmek için %{yes} yazın: "
+  nothing_erased: "Hiçbir şey silinmedi."
+  erased: "Bu bilgisayar ve eşlemeleri sunucudan silindi."
+  already_forgotten: "Sunucu bu bilgisayarı zaten unutmuştu."
+  nothing_removed: "%{error}. Bu bilgisayardan hiçbir şey kaldırılmadı, `ccn forget` komutunu yeniden çalıştırabilirsiniz"
+  not_registered: "Bu bilgisayar sunucuda kayıtlı değil, dolayısıyla orada silinecek bir şey yok."
+
+uninstall:
+  hooks_removed: "ccn hook'ları %{path} içinden kaldırıldı."
+  slot_freed: "Bu bilgisayarın lisans yeri boşaltıldı."
+  unpaired_all: "Tüm telefonların eşlemesi kaldırıldı."
+  removed_dir: "%{path} kaldırıldı."
+
+local:
+  finished_title: "Claude bitirdi"
+  finished_body: "Claude bitirdi ve sizi bekliyor."
+  permission_title: "Claude izin istiyor"
+  question_title: "Claude'un bir sorusu var"
+  first_nudge: "Telefonunuzda da: ccn pair"
+  milestone_nudge: "Şimdiye kadar 10 bildirim. Bunları kilit ekranından onaylarla telefonunuzda alın: ccn pair"
+  pair_message: "Claude Code Notifier: masaüstü bildirimleri alıyorsunuz. Telefonunuzda da almak ve oradan onaylamak ya da yanıtlamak için bir terminalde `ccn pair` çalıştırın."
+
+hook:
+  licence_message: "Claude Code Notifier: bu bilgisayar için telefon bildirimlerinin kilidi açık değil. Açmak için: ccn unlock"
+  unpaired_message: "Claude Code Notifier: bu bilgisayar artık eşlenmiş değil, bu yüzden telefonunuz bildirim almayacak. Yeniden bağlamak için bir terminalde `ccn pair` çalıştırın."
+  unpaired_notification: "Bu bilgisayar artık eşlenmiş değil. Yeniden bağlamak için bir terminalde `ccn pair` çalıştırın."
+  paired_message: "Claude Code Notifier: %{phone} ile eşlendi. Bildirimler artık telefonunuza gidiyor."
+  # The server writes title, body and command in the user's language; this only joins them
+  nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
+  needs_attention: "İlginizi bekliyor"
+
+licence:
+  already_licensed: "Bu bilgisayar zaten lisanslı (%{licence})."
+  switch_to_lifetime: "Aynı anahtarı koruyarak ömür boyu lisansa geçmek için: ccn unlock --lifetime"
+  checkout_open: "  Ödeme sayfası tarayıcınızda açık. Bunun yerine telefonunuzdan ödemek için bunu tarayın:"
+  checkout_link: "  Ödemek için bu bağlantıyı açın ya da telefonunuzla tarayın:"
+  waiting_payment: "  Ödeme bekleniyor... (durdurmak için Ctrl+C; anahtar her durumda size e-postayla gelir)"
+  upgraded: "✓ Ömür boyu lisansa geçildi. Aynı anahtar, aynı bilgisayarlar; yıllık yenileme iptal edildi."
+  licensed: "✓ Bu bilgisayar lisanslı (%{licence})."
+  key: "  Anahtar: %{key} (e-postayla da gönderildi). En fazla 2 bilgisayarda daha kullanın: ccn activate %{key}"
+  phones_unlocked: "  Bu bilgisayarla eşlenen her telefonun kilidi açık."
+  activate_with_key: "  Bu bilgisayarda kullanmak için e-postayla gelen anahtarla `ccn activate <anahtar>` çalıştırın."
+  no_payment: "15 dakika sonra hâlâ ödeme yok. Ödediyseniz anahtar e-postanızda: ccn activate <anahtar>"
+  replace_stale: "\"%{name}\" bir haftadan uzun süredir görülmedi. Bu bilgisayar o mu? Değiştirilsin mi?"
+  yes_no: " [E/h] "
+  # An answer starting with this letter (or n) means no
+  no_initial: "h"
+  slots_full: "Bu lisans zaten %{count} bilgisayarda kullanılıyor:"
+  free_one: "O bilgisayarda `ccn deactivate` ile birini boşaltın ya da buradan değiştirin:"
+  replace_example: "  ccn activate %{key} --replace \"%{name}\""
+  old_laptop: "Eski dizüstü"
+  no_free_slot: "boş bilgisayar yeri yok"
+  computers_on_licence: "Bu lisanstaki bilgisayarlar:"
+  activated: "✓ Lisanslı (%{licence}). 3 bilgisayarın %{count} tanesi kullanımda."
+  pair_to_unlock: "  `ccn pair` ile bir telefon eşleyin, kilidi hemen açılır."
+  none: "Bu bilgisayarın lisansı yok."
+  freed: "Boşaltıldı. Bu lisansta artık 3 bilgisayarın %{count} tanesi kullanımda."
+  none_buy: "Bu bilgisayarda lisans yok. Satın almak için: ccn unlock"
+  none_short: "Bu bilgisayarda lisans yok."
+  buy_options: "  Satın alın:         ccn unlock (yıllık) veya ccn unlock --lifetime"
+  have_key: "  Anahtarınız var mı: ccn activate <anahtar>"
+  show_licence: "Lisans:        %{licence}"
+  show_key: "Anahtar:       CCN-…-%{last4}"
+  show_unlocks: "Kilidi açar:   %{value}"
+  unlocks_yes: "evet, bu bilgisayarla eşlenen her telefonun"
+  unlocks_no: "hayır"
+  show_computers: "Bilgisayarlar: %{count} / 3"
+  switch_lifetime_keep_key: "Anahtarı koruyarak ömür boyuna geçmek için: ccn unlock --lifetime"
+  status_licensed: "%{licence}, 3 bilgisayarın %{count} tanesi"
+  status_unlicensed: "%{licence}: ccn unlock"
+  status_none: "yok: ccn unlock"
+  describe_refunded: "iade edildi"
+  describe_lifetime: "ömür boyu"
+  describe_renews: "yıllık, %{date} tarihinde yenilenir"
+  describe_past_due: "yıllık, ödeme yeniden deneniyor"
+  describe_ends: "yıllık, %{date} tarihinde biter"
+  describe_ended: "yıllık, %{date} tarihinde bitti"
+  describe_other: "%{plan}, %{status}"
+  unnamed_computer: "adsız bilgisayar"
+  last_seen: "son görülme %{date}"
+  not_seen_recently: "yakınlarda görülmedi"
+  this_computer: "  (bu bilgisayar)"
+  # %{name} is padded to 28 columns before it is filled in
+  computer_row: "  %{name} %{seen}%{current}"
+
+update:
+  latest: "ccn %{version} en son sürüm."
+  available_check: "ccn %{version} çıktı (sizdeki %{current})."
+  update_with: "  Güncellemek için: %{command}"
+  available_run: "ccn %{version} çıktı: %{command}"
+  nothing_to_update: "güncellenecek bir şey yok: %{path} kurulu değil%{npx}"
+  npx_note: " (npx her seferinde en son ccn'i çalıştırır)"
+  no_release_build: "%{os}-%{arch} için yayın derlemesi yok"
+  no_build_named: "ccn %{version} sürümünde %{asset} adlı derleme yok"
+  no_checksum: "SHA256SUMS içinde %{asset} için kayıt yok"
+  checksum_mismatch: "%{asset} için sağlama toplamı uyuşmuyor: hiçbir şey değiştirilmedi"
+  archive_empty: "arşivin içinde ccn yok"
+  zip_empty: "zip dosyasının içinde ccn.exe yok"
+  did_not_run: "indirilen ccn çalışmadı, bu yüzden kurulu olan korundu"
+  updated: "ccn güncellendi: %{from} → %{to}."
+  available_message: "Claude Code Notifier: ccn %{version} çıktı: %{command}"
+
+notify:
+  registered_windows: "\"Claude Code Notifier\" Windows bildirimleri için kaydedildi."
+  icon_installed: "Bildirim simgesi %{path} konumuna kuruldu."
+  doctor_applescript: "AppleScript (bu derlemede bildirim uygulaması yok)"
+  doctor_allowed: "\"%{app}\" için izin verildi"
+  doctor_denied: "kapalı: Sistem Ayarları > Bildirimler > %{app}"
+  doctor_not_allowed: "henüz izin verilmedi: `ccn setup` çalıştırın"
+  mac_denied: "\"%{app}\" için masaüstü bildirimleri kapalı. Sistem Ayarları > Bildirimler'den açın."
+  mac_asking: "macOS'tan \"%{app}\" bildirimlerine izin vermesi isteniyor..."
+  mac_allowed: "\"%{app}\" için masaüstü bildirimlerine izin verildi."
+  mac_not_allowed: "Masaüstü bildirimlerine izin verilmedi. Sistem Ayarları > Bildirimler > %{app} altından açın."
+
+api:
+  rejected: "bu bilgisayar artık eşlenmiş değil (sunucu onu artık tanımıyor). Yeniden bağlamak için `ccn pair` çalıştırın"
+  server_returned: "sunucu %{status} döndürdü"
+  # What was being done when the server said no; the server's own message follows a colon
+  registering: "bu bilgisayar kaydedilirken"
+  pairing: "eşlenirken"
+  requesting_code: "eşleme kodu istenirken"
+  reading_record: "bu bilgisayarın kaydı okunurken"
+  erasing: "bu bilgisayar silinirken"
+  listing_phones: "eşlenmiş telefonlar listelenirken"
+  revoking: "eşleme kaldırılırken"
+  health: "sunucu sağlığı denetlenirken"
+  reading_settings: "ayarlar okunurken"
+  saving_settings: "ayarlar kaydedilirken"
+  sending_event: "olay gönderilirken"
+  waiting_response: "yanıt beklenirken: %{error}"

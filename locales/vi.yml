@@ -1,0 +1,299 @@
+# Vietnamese. "Bạn" throughout, as the phone app and the push copy. Terminology follows the app:
+# ghép nối (pair), giấy phép (licence), khóa giấy phép (licence key), mở khóa (unlock), máy tính,
+# điện thoại, phê duyệt, thông báo, terminal. `hook` stays as the developers' word (it is the
+# settings.json section name).
+_version: 1
+
+cli:
+  about: "Claude Code Notifier: nhận thông báo trên điện thoại khi Claude Code cần bạn, và trả lời ngay từ đó"
+  pair:
+    about: "Ghép nối máy tính này với điện thoại của bạn. Truyền mã mà ứng dụng hiển thị, hoặc chạy không kèm mã để nhận một mã rồi nhập vào ứng dụng"
+    code: "Mã 6 chữ số hiển thị trong ứng dụng Claude Code Notifier"
+    name: "Tên của máy tính này trên điện thoại của bạn (mặc định: hostname)"
+    replace_mac_app: "Đồng thời gỡ các mục hook của ứng dụng thanh menu trên Mac, để thông báo không bị gửi hai lần"
+    no_wait: "Hiển thị mã QR rồi thoát ngay: việc ghép nối tự hoàn tất khi điện thoại kết nối"
+  setup:
+    about: "Cài các hook của Claude Code và thông báo trên máy tính (pair và ccn không kèm lệnh sẽ làm việc này trước)"
+    replace_mac_app: "Đồng thời gỡ các mục hook của ứng dụng thanh menu trên Mac"
+  doctor:
+    about: "Kiểm tra hook, thông tin xác thực, máy chủ và những gì terminal này hỗ trợ"
+  test:
+    about: "Gửi một thông báo thử tới mọi điện thoại đã ghép nối"
+  devices:
+    about: "Liệt kê các điện thoại đã ghép nối, hoặc hủy ghép nối một chiếc"
+    revoke: "Hủy ghép nối một điện thoại theo tên hoặc id"
+  config:
+    about: "Xem hoặc thay đổi cài đặt của máy tính này (cũng có thể chỉnh từ điện thoại)"
+    show: "In ra các cài đặt đang có hiệu lực"
+    set: "Đặt một cài đặt, ví dụ `ccn config set hold_ceiling_seconds 300` hoặc `ccn config set quiet_hours 22:00-08:00`"
+  sync:
+    about: "Lấy cài đặt mới nhất từ máy chủ ngay bây giờ"
+  unlock:
+    about: "Mua giấy phép cho máy tính này trong trình duyệt: mở khóa mọi điện thoại đã ghép nối với nó"
+    lifetime: "Trả một lần thay vì hằng năm (hoặc chuyển giấy phép hằng năm sang trọn đời, giữ nguyên khóa)"
+  upgrade:
+    about: "Cập nhật ccn lên bản phát hành mới nhất (cũng được kiểm tra mỗi ngày một lần ở chế độ nền)"
+    check: "Chỉ cho biết có bản mới hơn hay không: thoát với mã 0 khi đã mới nhất, 10 khi có bản mới"
+    quiet: "Không in gì trừ khi có lỗi"
+  activate:
+    about: "Dùng một khóa giấy phép trên máy tính này (tối đa 3 máy tính cho mỗi giấy phép)"
+    key: "Khóa trong email của bạn, CCN-XXXX-XXXX-XXXX-XXXX"
+    replace: "Giải phóng chỗ của một máy tính khác trong giấy phép, theo tên, để nhường chỗ cho máy này"
+  deactivate:
+    about: "Giải phóng chỗ của máy tính này trong giấy phép để dùng khóa ở nơi khác"
+  licence:
+    about: "Xem giấy phép của máy tính này và các máy tính đang dùng nó"
+  uninstall:
+    about: "Gỡ các hook, thông tin xác thực, ghép nối và trạng thái cục bộ"
+  forget:
+    about: "Xóa máy tính này và các ghép nối của nó khỏi máy chủ, rồi gỡ cài đặt"
+    yes: "Không hỏi xác nhận"
+
+common:
+  your_phone: "điện thoại của bạn"
+  not_paired: "máy tính này chưa được ghép nối. Chạy `ccn pair <mã>` với mã trong ứng dụng."
+  store_keychain: "keychain"
+  store_file: "tệp"
+  date_format: "%d/%m/%Y"
+
+pair:
+  reregister: "Ghép nối cũ của máy tính này đã bị gỡ, nên nó sẽ được đăng ký lại."
+  code_not_recognised: "Mã này không được nhận ra. Mã 6 chữ số nằm trong ứng dụng Claude Code Notifier, mục Máy tính > Thêm máy tính; mã thay đổi mỗi 24 giờ, nên hãy sao chép dòng mà ứng dụng đang hiển thị lúc này."
+  offer_qr: "Nhấn Enter để hiển thị mã QR ở đây thay thế (quét bằng điện thoại của bạn), hoặc Ctrl+C."
+  options_without_terminal: "Chạy lại `ccn pair <mã>` với mã mà ứng dụng đang hiển thị, hoặc chạy `ccn pair` để hiển thị mã QR ở đây rồi quét bằng điện thoại."
+  scan: "  Quét mã này bằng camera điện thoại để kết nối. Nếu chưa có ứng dụng, mã sẽ đưa bạn\n  tới App Store hoặc Google Play: cài xong rồi quét lại."
+  or_type_code: "  Hoặc nhập mã này vào ứng dụng Claude Code Notifier:  %{code}"
+  enter_code: "  Nhập mã này vào ứng dụng Claude Code Notifier:  %{code}"
+  hooks_already_installed: "  Hook đã được cài, nên bạn đã nhận thông báo trên máy tính này rồi."
+  code_lasts: "  Ghép nối khi bạn muốn: mã này có hiệu lực trong %{duration}."
+  completes_on_its_own: "  Việc ghép nối tự hoàn tất khi điện thoại kết nối."
+  waiting: "  Đang chờ điện thoại của bạn... (Ctrl+C không sao: việc ghép nối tự hoàn tất khi điện thoại kết nối)"
+  code_expired: "mã đã hết hạn trước khi có điện thoại nào dùng nó. Chạy lại `ccn pair`."
+  code_is_six_digits: "mã là 6 chữ số hiển thị trong ứng dụng Claude Code Notifier"
+  credentials_stored: "Thông tin xác thực đã được lưu trong %{store} (%{path})."
+  test_sent: "Đã gửi một thông báo thử tới điện thoại của bạn."
+  test_failed: "Chưa gửi được thông báo thử: %{error}"
+  done: "Xong. Khởi động `claude` như thường lệ: bạn sẽ nhận thông báo khi Claude hoàn tất hoặc cần bạn,\nvà có thể phê duyệt, từ chối hoặc trả lời từ điện thoại. `ccn doctor` kiểm tra mọi thứ."
+  paired_with: "Đã ghép nối với %{name} (%{platform})."
+  hours_one: "1 giờ"
+  hours_other: "%{count} giờ"
+  minutes_one: "1 phút"
+  minutes_other: "%{count} phút"
+  pitch: "Điện thoại của bạn sẽ đề xuất một gói đăng ký trong ứng dụng. Bạn cũng có thể mở khóa mọi thứ từ đây, ngoài các cửa hàng ứng dụng:"
+  pitch_annual: "  ccn unlock             %{price} mỗi năm"
+  pitch_lifetime: "  ccn unlock --lifetime  %{price} một lần"
+  pitch_covers: "Bao gồm %{computers} máy tính và mọi điện thoại đã ghép nối với chúng. Hoàn tiền trong %{days} ngày."
+  welcome_no_terminal: "Một thông báo thử đang được gửi tới điện thoại của bạn: hãy thử trả lời từ đó."
+  welcome: "Một thông báo thử đang được gửi tới điện thoại của bạn. Hãy thử trả lời từ đó..."
+  welcome_skip: "(nhấn Enter để bỏ qua)"
+  welcome_answered: "✓ Điện thoại của bạn đã trả lời \"%{answer}\". Đó là cách bạn sẽ trả lời Claude."
+  welcome_no_answer: "Chưa có trả lời. Thông báo sẽ ở lại trên điện thoại trong một giờ."
+
+status:
+  set_up: "ccn %{version} đã được thiết lập trên máy tính này với tên \"%{name}\"."
+  licence: "Giấy phép: %{line}"
+  hint_doctor: "  ccn doctor     kiểm tra hook, thông tin xác thực và máy chủ"
+  hint_test: "  ccn test       gửi một thông báo thử tới điện thoại của bạn"
+  hint_pair: "  ccn pair       ghép nối thêm một điện thoại"
+  hint_help: "  ccn --help     mọi thứ còn lại"
+
+setup:
+  installed_self: "Đã cài ccn vào %{path}."
+  hooks_installed: "Đã cài hook vào %{path} (dùng %{exe})."
+  mac_app_note: "Lưu ý: hook của ứng dụng Claude Code Notifier trên Mac cũng đang được cài, nên mỗi sự kiện\nsẽ bị gửi hai lần. Chạy `ccn setup --replace-mac-app` để gỡ chúng, hoặc thoát ứng dụng Mac."
+  mac_app_removed: "Đã gỡ các mục hook của ứng dụng Mac; từ giờ ccn đảm nhận thông báo."
+
+sync:
+  not_synced: "Cài đặt chưa được đồng bộ: %{error}"
+  synced: "Đã đồng bộ cài đặt."
+
+doctor:
+  header: "ccn %{version} trên %{platform}"
+  config: "cấu hình: %{path}"
+  credentials_present: "thông tin xác thực: có (%{store})"
+  credentials_missing: "thông tin xác thực: thiếu: chạy `ccn pair <mã>`"
+  server_reachable: "máy chủ: %{url} truy cập được"
+  server_error: "máy chủ: %{error}"
+  registered: "đã đăng ký với tên \"%{name}\" (%{kind} %{platform}), khả năng: %{capabilities}"
+  not_paired_any_more: "ghép nối: không còn được ghép nối: chạy `ccn pair`"
+  registration_error: "đăng ký: %{error}"
+  licence: "giấy phép: %{line}"
+  phones_none: "điện thoại: chưa ghép nối chiếc nào, nên thông báo chỉ ở lại trên máy tính này (chạy `ccn pair`)"
+  phones: "điện thoại: %{names}"
+  phones_error: "điện thoại: %{error}"
+  hooks_all: "hook: đã cài đủ %{count} trong %{path}"
+  hooks_missing: "hook: thiếu %{names} (chạy `ccn setup`)"
+  hooks_error: "hook: %{error}"
+  hooks_stale: "hook đang trỏ tới một tệp ccn khác; chạy `ccn setup` để cập nhật"
+  mac_app_hooks: "hook của ứng dụng Mac cũng đang được cài (chạy `ccn setup --replace-mac-app`)"
+  presence: "hiện diện: đã rảnh %{idle}s, ngưỡng %{threshold}s"
+  presence_none: "hiện diện: không phát hiện được ở đây, nên mọi yêu cầu đều chờ điện thoại"
+  replies: "trả lời: phê duyệt và trả lời câu hỏi từ điện thoại hoạt động trong mọi terminal; văn bản tự do vào một phiên đang rảnh %{free_text}"
+  replies_tmux: "hoạt động (tmux)"
+  replies_no_tmux: "cần tmux"
+  desktop: "thông báo trên máy tính: %{line}"
+  log: "nhật ký: %{path}"
+
+test:
+  none_paired: "chưa có điện thoại nào được ghép nối. Chạy `ccn pair <mã>`."
+  sent: "Đã gửi một thông báo thử tới %{name} (%{platform})."
+  failed: "%{name}: %{error}"
+
+devices:
+  none: "Chưa có điện thoại nào được ghép nối. Chạy `ccn pair <mã>` với mã trong ứng dụng."
+  # %{name} is padded to 24 columns and %{platform} to 8 before they are filled in
+  row: "%{name} %{platform} đã ghép nối %{since}%{off}"
+  notifications_off: "  (thông báo đang tắt)"
+  revoked: "Đã hủy ghép nối %{name}."
+  no_such_phone: "không có điện thoại đã ghép nối nào tên '%{device}'"
+
+config:
+  local_only: "(chỉ cục bộ)"
+  last_changed: "(thay đổi lần cuối %{when}; cũng có thể chỉnh từ điện thoại)"
+  credentials_moved: "Thông tin xác thực hiện nằm trong %{store}."
+  credential_store_expects: "credential_store cần keychain hoặc file"
+  auto_update_expects: "auto_update cần on hoặc off"
+
+settings:
+  expects_on_off: "%{key} cần on hoặc off"
+  expects_seconds: "%{key} cần một số giây"
+  seconds_range: "%{key} phải nằm trong khoảng %{min} đến %{max} giây"
+  quiet_hours_format: "quiet_hours cần HH:MM-HH:MM, hoặc off"
+  quiet_hours_example: "quiet_hours cần HH:MM-HH:MM, ví dụ 22:00-08:00"
+  unknown: "cài đặt không xác định '%{key}'. Các cài đặt: notify_on_done, notify_on_permission, notify_on_question, sound, quiet_when_present, quiet_hours, hold_ceiling_seconds, presence_threshold_seconds, stop_hold_seconds, reminder_interval_seconds"
+
+forget:
+  needs_yes: "ccn forget cần bạn xác nhận: chạy trong terminal, hoặc thêm --yes"
+  warning: "Lệnh này xóa máy tính này và các ghép nối của nó khỏi máy chủ Claude Code Notifier, rồi gỡ ccn\nkhỏi Claude Code và xóa thông tin xác thực cùng các tệp của nó ở đây, như `ccn uninstall` làm.\nCác điện thoại đã ghép nối với máy tính này sẽ thấy nó biến mất.\nGiấy phép mua trên trang web không bị hủy: hãy làm việc đó tại claudecodenotifier.com/licence\nbằng \"Xóa giấy phép của tôi\"."
+  # The word the user must type; `yes` is always accepted as well
+  yes_word: "có"
+  prompt: "\nNhập %{yes} để tiếp tục: "
+  nothing_erased: "Không có gì bị xóa."
+  erased: "Đã xóa máy tính này và các ghép nối của nó khỏi máy chủ."
+  already_forgotten: "Máy chủ đã quên máy tính này từ trước."
+  nothing_removed: "%{error}. Chưa gỡ gì khỏi máy tính này, nên bạn có thể chạy lại `ccn forget`"
+  not_registered: "Máy tính này chưa đăng ký với máy chủ, nên không có gì để xóa ở đó."
+
+uninstall:
+  hooks_removed: "Đã gỡ các hook của ccn khỏi %{path}."
+  slot_freed: "Đã giải phóng chỗ của máy tính này trong giấy phép."
+  unpaired_all: "Đã hủy ghép nối mọi điện thoại."
+  removed_dir: "Đã xóa %{path}."
+
+local:
+  finished_title: "Claude đã hoàn tất"
+  finished_body: "Claude đã hoàn tất và đang chờ bạn."
+  permission_title: "Claude cần quyền"
+  question_title: "Claude có một câu hỏi"
+  first_nudge: "Nhận trên điện thoại: ccn pair"
+  milestone_nudge: "Đã có 10 thông báo. Nhận chúng trên điện thoại, phê duyệt ngay từ màn hình khóa: chạy ccn pair"
+  pair_message: "Claude Code Notifier: bạn đang nhận thông báo trên máy tính. Để nhận cả trên điện thoại và phê duyệt hoặc trả lời từ đó, hãy chạy `ccn pair` trong terminal."
+
+hook:
+  licence_message: "Claude Code Notifier: thông báo điện thoại chưa được mở khóa cho máy tính này. Mở khóa: ccn unlock"
+  unpaired_message: "Claude Code Notifier: máy tính này không còn được ghép nối, nên điện thoại của bạn sẽ không nhận thông báo. Chạy `ccn pair` trong terminal để kết nối lại."
+  unpaired_notification: "Máy tính này không còn được ghép nối. Chạy `ccn pair` trong terminal để kết nối lại."
+  paired_message: "Claude Code Notifier: đã ghép nối với %{phone}. Thông báo giờ sẽ tới điện thoại của bạn."
+  # The server writes title, body and command in the user's language; this only joins them
+  nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
+  needs_attention: "Cần bạn chú ý"
+
+licence:
+  already_licensed: "Máy tính này đã có giấy phép (%{licence})."
+  switch_to_lifetime: "Để chuyển sang giấy phép trọn đời, giữ nguyên khóa: ccn unlock --lifetime"
+  checkout_open: "  Trang thanh toán đã mở trong trình duyệt. Để thanh toán trên điện thoại thay thế, quét mã này:"
+  checkout_link: "  Mở liên kết này để thanh toán, hoặc quét bằng điện thoại:"
+  waiting_payment: "  Đang chờ thanh toán... (Ctrl+C để dừng; khóa sẽ được gửi vào email của bạn dù thế nào)"
+  upgraded: "✓ Đã nâng cấp lên giấy phép trọn đời. Cùng khóa, cùng các máy tính; gia hạn hằng năm đã bị hủy."
+  licensed: "✓ Máy tính này đã có giấy phép (%{licence})."
+  key: "  Khóa: %{key} (cũng đã gửi qua email). Dùng trên tối đa 2 máy tính nữa: ccn activate %{key}"
+  phones_unlocked: "  Mọi điện thoại đã ghép nối với máy tính này đều được mở khóa."
+  activate_with_key: "  Chạy `ccn activate <khóa>` với khóa trong email để dùng trên máy tính này."
+  no_payment: "Sau 15 phút vẫn chưa có thanh toán. Nếu bạn đã trả, khóa nằm trong email của bạn: ccn activate <khóa>"
+  replace_stale: "\"%{name}\" đã hơn một tuần không xuất hiện. Đó có phải máy tính này không? Thay thế nó?"
+  yes_no: " [C/k] "
+  # An answer starting with this letter (or n) means no
+  no_initial: "k"
+  slots_full: "Giấy phép này đã dùng trên %{count} máy tính:"
+  free_one: "Giải phóng một chỗ bằng `ccn deactivate` trên máy đó, hoặc thay thế từ đây:"
+  replace_example: "  ccn activate %{key} --replace \"%{name}\""
+  old_laptop: "Laptop cũ"
+  no_free_slot: "không còn chỗ trống cho máy tính"
+  computers_on_licence: "Các máy tính trong giấy phép này:"
+  activated: "✓ Đã có giấy phép (%{licence}). Đang dùng %{count} trong 3 máy tính."
+  pair_to_unlock: "  Ghép nối một điện thoại bằng `ccn pair` và nó được mở khóa ngay."
+  none: "Máy tính này không có giấy phép."
+  freed: "Đã giải phóng. Giấy phép này hiện dùng %{count} trong 3 máy tính."
+  none_buy: "Máy tính này chưa có giấy phép. Mua một giấy phép: ccn unlock"
+  none_short: "Máy tính này chưa có giấy phép."
+  buy_options: "  Mua giấy phép:      ccn unlock (hằng năm) hoặc ccn unlock --lifetime"
+  have_key: "  Đã có khóa:         ccn activate <khóa>"
+  show_licence: "Giấy phép: %{licence}"
+  show_key: "Khóa:      CCN-…-%{last4}"
+  show_unlocks: "Mở khóa:   %{value}"
+  unlocks_yes: "có, mọi điện thoại đã ghép nối với máy tính này"
+  unlocks_no: "không"
+  show_computers: "Máy tính:  %{count} trong 3"
+  switch_lifetime_keep_key: "Chuyển sang trọn đời, giữ nguyên khóa: ccn unlock --lifetime"
+  status_licensed: "%{licence}, %{count} trong 3 máy tính"
+  status_unlicensed: "%{licence}: ccn unlock"
+  status_none: "không có: ccn unlock"
+  describe_refunded: "đã hoàn tiền"
+  describe_lifetime: "trọn đời"
+  describe_renews: "hằng năm, gia hạn ngày %{date}"
+  describe_past_due: "hằng năm, đang thử thanh toán lại"
+  describe_ends: "hằng năm, kết thúc ngày %{date}"
+  describe_ended: "hằng năm, đã kết thúc ngày %{date}"
+  describe_other: "%{plan}, %{status}"
+  unnamed_computer: "máy tính chưa đặt tên"
+  last_seen: "xuất hiện lần cuối %{date}"
+  not_seen_recently: "gần đây không xuất hiện"
+  this_computer: "  (máy tính này)"
+  # %{name} is padded to 28 columns before it is filled in
+  computer_row: "  %{name} %{seen}%{current}"
+
+update:
+  latest: "ccn %{version} là bản mới nhất."
+  available_check: "Đã có ccn %{version} (bạn đang dùng %{current})."
+  update_with: "  Cập nhật: %{command}"
+  available_run: "Đã có ccn %{version}: %{command}"
+  nothing_to_update: "không có gì để cập nhật: %{path} chưa được cài%{npx}"
+  npx_note: " (npx chạy bản ccn mới nhất mỗi lần)"
+  no_release_build: "không có bản phát hành cho %{os}-%{arch}"
+  no_build_named: "ccn %{version} không có bản dựng tên %{asset}"
+  no_checksum: "SHA256SUMS không có mục cho %{asset}"
+  checksum_mismatch: "checksum của %{asset} không khớp: không có gì bị thay đổi"
+  archive_empty: "tệp nén không chứa ccn"
+  zip_empty: "tệp zip không chứa ccn.exe"
+  did_not_run: "bản ccn vừa tải không chạy được, nên bản đang cài được giữ lại"
+  updated: "Đã cập nhật ccn %{from} → %{to}."
+  available_message: "Claude Code Notifier: đã có ccn %{version}: %{command}"
+
+notify:
+  registered_windows: "Đã đăng ký \"Claude Code Notifier\" cho thông báo của Windows."
+  icon_installed: "Đã cài biểu tượng thông báo tại %{path}."
+  doctor_applescript: "AppleScript (bản dựng này không có ứng dụng thông báo)"
+  doctor_allowed: "đã cho phép cho \"%{app}\""
+  doctor_denied: "đang tắt: Cài đặt Hệ thống > Thông báo > %{app}"
+  doctor_not_allowed: "chưa được cho phép: chạy `ccn setup`"
+  mac_denied: "Thông báo trên máy tính đang tắt cho \"%{app}\". Bật trong Cài đặt Hệ thống > Thông báo."
+  mac_asking: "Đang yêu cầu macOS cho phép thông báo từ \"%{app}\"..."
+  mac_allowed: "Thông báo trên máy tính đã được cho phép cho \"%{app}\"."
+  mac_not_allowed: "Thông báo trên máy tính chưa được cho phép. Bật trong Cài đặt Hệ thống > Thông báo > %{app}."
+
+api:
+  rejected: "máy tính này không còn được ghép nối (máy chủ không còn nhận ra nó). Chạy `ccn pair` để kết nối lại"
+  server_returned: "máy chủ trả về %{status}"
+  # What was being done when the server said no; the server's own message follows a colon
+  registering: "đăng ký máy tính này"
+  pairing: "ghép nối"
+  requesting_code: "yêu cầu mã ghép nối"
+  reading_record: "đọc bản ghi của máy tính này"
+  erasing: "xóa máy tính này"
+  listing_phones: "liệt kê điện thoại đã ghép nối"
+  revoking: "hủy ghép nối"
+  health: "tình trạng máy chủ"
+  reading_settings: "đọc cài đặt"
+  saving_settings: "lưu cài đặt"
+  sending_event: "gửi sự kiện"
+  waiting_response: "chờ phản hồi: %{error}"

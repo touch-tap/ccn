@@ -1,0 +1,300 @@
+# Arabic. Modern Standard Arabic, second person singular for instructions, as the phone app does.
+# Terminology follows the app and the server push copy: ربط (pair), ترخيص (licence), مفتاح ترخيص
+# (licence key), تفعيل/مفعّل (unlock/unlocked), الكمبيوتر, الهاتف, الموافقات, الإشعارات, الطرفية.
+# `hooks` stays in Latin (it is the settings.json section name); commands sit at the start or the
+# end of a sentence so a left-to-right terminal shows mixed lines readably.
+_version: 1
+
+cli:
+  about: "Claude Code Notifier: يصلك إشعار على هاتفك عندما يحتاجك Claude Code، وتجيب من هناك"
+  pair:
+    about: "اربط هذا الكمبيوتر بهاتفك. أدخل الرمز الذي يعرضه التطبيق، أو شغّل الأمر بلا رمز لتحصل على رمز تكتبه في التطبيق"
+    code: "الرمز المكوّن من 6 أرقام المعروض في تطبيق Claude Code Notifier"
+    name: "اسم هذا الكمبيوتر كما يظهر على هاتفك (الافتراضي: اسم المضيف)"
+    replace_mac_app: "أزل أيضًا إدخالات hooks الخاصة بتطبيق شريط القوائم على Mac، كي لا تُرسل الإشعارات مرتين"
+    no_wait: "اعرض رمز QR وارجع فورًا: يكتمل الربط من تلقاء نفسه عندما يتصل الهاتف"
+  setup:
+    about: "ثبّت hooks الخاصة بـ Claude Code وإشعارات سطح المكتب (يقوم pair وتشغيل ccn بلا أمر بهذا أولًا)"
+    replace_mac_app: "أزل أيضًا إدخالات hooks الخاصة بتطبيق شريط القوائم على Mac"
+  doctor:
+    about: "افحص hooks وبيانات الاعتماد والخادم وما تدعمه هذه الطرفية"
+  test:
+    about: "أرسل إشعارًا تجريبيًا إلى كل هاتف مرتبط"
+  devices:
+    about: "اعرض الهواتف المرتبطة، أو ألغِ ربط أحدها"
+    revoke: "ألغِ ربط هاتف بالاسم أو المعرّف"
+  config:
+    about: "اعرض أو غيّر إعدادات هذا الكمبيوتر (يمكن تعديلها من الهاتف أيضًا)"
+    show: "اطبع الإعدادات الفعلية"
+    set: "عيّن إعدادًا واحدًا، مثل `ccn config set hold_ceiling_seconds 300` أو `ccn config set quiet_hours 22:00-08:00`"
+  sync:
+    about: "اجلب أحدث الإعدادات من الخادم الآن"
+  unlock:
+    about: "اشترِ ترخيصًا لهذا الكمبيوتر في المتصفح: يفعّل كل هاتف مرتبط به"
+    lifetime: "ادفع مرة واحدة بدلًا من الدفع سنويًا (أو حوّل ترخيصًا سنويًا إلى مدى الحياة مع الاحتفاظ بالمفتاح)"
+  upgrade:
+    about: "حدّث ccn إلى أحدث إصدار (يُفحص ذلك أيضًا مرة يوميًا في الخلفية)"
+    check: "اكتفِ بالإبلاغ عن وجود إصدار أحدث: رمز الخروج 0 إن كان الإصدار الحالي هو الأحدث، و10 إن توفر إصدار أحدث"
+    quiet: "لا تطبع شيئًا إلا إذا حدث خطأ"
+  activate:
+    about: "استخدم مفتاح ترخيص على هذا الكمبيوتر (حتى 3 أجهزة كمبيوتر لكل ترخيص)"
+    key: "المفتاح الوارد في بريدك الإلكتروني، CCN-XXXX-XXXX-XXXX-XXXX"
+    replace: "أفرغ مكان كمبيوتر آخر على الترخيص، باسمه، لإفساح المجال لهذا الكمبيوتر"
+  deactivate:
+    about: "أفرغ مكان هذا الكمبيوتر على الترخيص ليُستخدم المفتاح في مكان آخر"
+  licence:
+    about: "اعرض ترخيص هذا الكمبيوتر وأجهزة الكمبيوتر التي تستخدمه"
+  uninstall:
+    about: "أزل hooks وبيانات الاعتماد والارتباطات والحالة المحلية"
+  forget:
+    about: "امسح هذا الكمبيوتر وارتباطاته من الخادم، ثم أزل التثبيت"
+    yes: "لا تطلب التأكيد"
+
+common:
+  your_phone: "هاتفك"
+  not_paired: "هذا الكمبيوتر غير مرتبط بعد. أدخل الرمز الظاهر في التطبيق في الأمر: `ccn pair <code>`"
+  store_keychain: "سلسلة المفاتيح"
+  store_file: "ملف"
+  date_format: "%d/%m/%Y"
+
+pair:
+  reregister: "أُزيل الربط القديم لهذا الكمبيوتر، لذا سيُسجَّل من جديد."
+  code_not_recognised: "لم يُتعرَّف على هذا الرمز. الرمز المكوّن من 6 أرقام موجود في تطبيق Claude Code Notifier ضمن أجهزة الكمبيوتر > إضافة كمبيوتر؛ وهو يتغير كل 24 ساعة، فانسخ السطر الذي يعرضه التطبيق الآن."
+  offer_qr: "اضغط Enter لعرض رمز QR هنا بدلًا من ذلك (وامسحه بهاتفك)، أو Ctrl+C."
+  options_without_terminal: "شغّل مجددًا `ccn pair <code>` بالرمز الذي يعرضه التطبيق الآن، أو اعرض رمز QR هنا وامسحه بهاتفك بالأمر: `ccn pair`"
+  scan: "  امسح هذا بكاميرا هاتفك لربطه. إن لم يكن التطبيق مثبتًا بعد، ينقلك\n  إلى App Store أو Google Play: ثبّته ثم امسح مرة أخرى."
+  or_type_code: "  أو اكتب هذا الرمز في تطبيق Claude Code Notifier:  %{code}"
+  enter_code: "  أدخل هذا الرمز في تطبيق Claude Code Notifier:  %{code}"
+  hooks_already_installed: "  hooks مثبتة، لذا تصلك إشعارات سطح المكتب على هذا الكمبيوتر بالفعل."
+  code_lasts: "  اربط وقتما تشاء: هذا الرمز صالح لمدة %{duration}."
+  completes_on_its_own: "  يكتمل الربط من تلقاء نفسه عندما يتصل الهاتف."
+  waiting: "  في انتظار هاتفك... (Ctrl+C آمن: يكتمل الربط من تلقاء نفسه عندما يتصل الهاتف)"
+  code_expired: "انتهت صلاحية الرمز قبل أن يستخدمه أي هاتف. شغّل الأمر مجددًا: `ccn pair`"
+  code_is_six_digits: "الرمز هو الأرقام الستة المعروضة في تطبيق Claude Code Notifier"
+  credentials_stored: "حُفظت بيانات الاعتماد في %{store}: %{path}"
+  test_sent: "أُرسل إشعار تجريبي إلى هاتفك."
+  test_failed: "تعذّر إرسال إشعار تجريبي حتى الآن: %{error}"
+  done: "تم. ابدأ `claude` كالمعتاد: سيصلك إشعار عندما ينتهي Claude أو يحتاجك،\nويمكنك الموافقة أو الرفض أو الإجابة من الهاتف. ولفحص كل شيء: `ccn doctor`"
+  paired_with: "تم الربط مع %{name} (%{platform})."
+  hours_one: "ساعة واحدة"
+  hours_other: "%{count} ساعة"
+  minutes_one: "دقيقة واحدة"
+  minutes_other: "%{count} دقيقة"
+  pitch: "سيعرض هاتفك اشتراكًا داخل التطبيق. ويمكنك أيضًا تفعيل كل شيء من هنا، خارج متاجر التطبيقات:"
+  pitch_annual: "  ccn unlock             %{price} سنويًا"
+  pitch_lifetime: "  ccn unlock --lifetime  %{price} مرة واحدة"
+  pitch_covers: "يغطي %{computers} أجهزة كمبيوتر وكل هاتف مرتبط بها. ضمان استرداد المال خلال %{days} يومًا."
+  welcome_no_terminal: "إشعار تجريبي في طريقه إلى هاتفك: جرّب الرد عليه من هناك."
+  welcome: "إشعار تجريبي في طريقه إلى هاتفك. جرّب الرد عليه من هناك..."
+  welcome_skip: "(اضغط Enter للتخطي)"
+  welcome_answered: "✓ أجاب هاتفك \"%{answer}\". هكذا ستجيب Claude."
+  welcome_no_answer: "لا إجابة بعد. يبقى الإشعار على هاتفك لمدة ساعة."
+
+status:
+  set_up: "ccn %{version} جاهز على هذا الكمبيوتر باسم \"%{name}\"."
+  licence: "الترخيص: %{line}"
+  hint_doctor: "  ccn doctor     فحص hooks وبيانات الاعتماد والخادم"
+  hint_test: "  ccn test       إرسال إشعار تجريبي إلى هاتفك"
+  hint_pair: "  ccn pair       ربط هاتف آخر"
+  hint_help: "  ccn --help     كل ما عدا ذلك"
+
+setup:
+  installed_self: "ثُبّت ccn في %{path}."
+  hooks_installed: "ثُبّتت hooks في %{path} (باستخدام %{exe})."
+  mac_app_note: "ملاحظة: hooks الخاصة بتطبيق Claude Code Notifier على Mac مثبتة أيضًا، لذا سيُرسل كل حدث\nمرتين. أزلها بالأمر `ccn setup --replace-mac-app`، أو أغلق تطبيق Mac."
+  mac_app_removed: "أُزيلت إدخالات hooks الخاصة بتطبيق Mac؛ ومن الآن يتولى ccn الإشعارات."
+
+sync:
+  not_synced: "لم تُزامَن الإعدادات بعد: %{error}"
+  synced: "تمت مزامنة الإعدادات."
+
+doctor:
+  header: "ccn %{version} على %{platform}"
+  config: "الإعدادات: %{path}"
+  credentials_present: "بيانات الاعتماد: موجودة (%{store})"
+  credentials_missing: "بيانات الاعتماد: مفقودة: شغّل `ccn pair <code>`"
+  server_reachable: "الخادم: متاح على %{url}"
+  server_error: "الخادم: %{error}"
+  registered: "مسجَّل باسم \"%{name}\" (%{kind} %{platform})، الإمكانات: %{capabilities}"
+  not_paired_any_more: "الربط: لم يعد مرتبطًا: شغّل `ccn pair`"
+  registration_error: "التسجيل: %{error}"
+  licence: "الترخيص: %{line}"
+  phones_none: "الهواتف: لا يوجد هاتف مرتبط بعد، لذا تبقى الإشعارات على سطح المكتب هذا (شغّل `ccn pair`)"
+  phones: "الهواتف: %{names}"
+  phones_error: "الهواتف: %{error}"
+  hooks_all: "hooks: مثبتة كلها (%{count}) في %{path}"
+  hooks_missing: "hooks: مفقودة %{names} (شغّل `ccn setup`)"
+  hooks_error: "hooks: %{error}"
+  hooks_stale: "hooks تشير إلى ملف ccn مختلف؛ لتحديثها شغّل `ccn setup`"
+  mac_app_hooks: "hooks الخاصة بتطبيق Mac مثبتة أيضًا (شغّل `ccn setup --replace-mac-app`)"
+  presence: "الحضور: خامل منذ %{idle} ث، الحد %{threshold} ث"
+  presence_none: "الحضور: لا يمكن رصده هنا، لذا ينتظر كل طلب الهاتف"
+  replies: "الردود: الموافقات وإجابات الأسئلة من الهاتف تعمل في أي طرفية؛ النص الحر إلى جلسة خاملة %{free_text}"
+  replies_tmux: "يعمل (tmux)"
+  replies_no_tmux: "يحتاج tmux"
+  desktop: "إشعارات سطح المكتب: %{line}"
+  log: "السجل: %{path}"
+
+test:
+  none_paired: "لا توجد هواتف مرتبطة. شغّل `ccn pair <code>`."
+  sent: "أُرسل إشعار تجريبي إلى %{name} (%{platform})."
+  failed: "%{name}: %{error}"
+
+devices:
+  none: "لا توجد هواتف مرتبطة. أدخل الرمز الظاهر في التطبيق في الأمر: `ccn pair <code>`"
+  # %{name} is padded to 24 columns and %{platform} to 8 before they are filled in
+  row: "%{name} %{platform} مرتبط منذ %{since}%{off}"
+  notifications_off: "  (الإشعارات متوقفة)"
+  revoked: "أُلغي ربط %{name}."
+  no_such_phone: "لا يوجد هاتف مرتبط باسم '%{device}'"
+
+config:
+  local_only: "(محلي فقط)"
+  last_changed: "(آخر تغيير %{when}؛ يمكن تعديله من الهاتف أيضًا)"
+  credentials_moved: "بيانات الاعتماد الآن في %{store}."
+  credential_store_expects: "credential_store يقبل keychain أو file"
+  auto_update_expects: "auto_update يقبل on أو off"
+
+settings:
+  expects_on_off: "%{key} يقبل on أو off"
+  expects_seconds: "%{key} يقبل عددًا من الثواني"
+  seconds_range: "%{key} يجب أن يكون بين %{min} و%{max} ثانية"
+  quiet_hours_format: "quiet_hours يقبل HH:MM-HH:MM أو off"
+  quiet_hours_example: "quiet_hours يقبل HH:MM-HH:MM، مثل 22:00-08:00"
+  unknown: "إعداد غير معروف '%{key}'. الإعدادات المتاحة: notify_on_done, notify_on_permission, notify_on_question, sound, quiet_when_present, quiet_hours, hold_ceiling_seconds, presence_threshold_seconds, stop_hold_seconds, reminder_interval_seconds"
+
+forget:
+  needs_yes: "ccn forget يحتاج إلى تأكيد منك: شغّله في طرفية، أو أضف --yes"
+  warning: "هذا يمسح هذا الكمبيوتر وارتباطاته من خادم Claude Code Notifier، ثم يزيل ccn من Claude Code\nويحذف بيانات اعتماده وملفاته هنا، كما يفعل `ccn uninstall`.\nستلاحظ الهواتف المرتبطة بهذا الكمبيوتر اختفاءه.\nالترخيص المشترى من الموقع لا يُلغى: افعل ذلك من claudecodenotifier.com/licence\nعبر \"مسح ترخيصي\"."
+  # The word the user must type; `yes` is always accepted as well
+  yes_word: "نعم"
+  prompt: "\nاكتب %{yes} للمتابعة: "
+  nothing_erased: "لم يُمسح شيء."
+  erased: "مُسح هذا الكمبيوتر وارتباطاته من الخادم."
+  already_forgotten: "كان الخادم قد نسي هذا الكمبيوتر بالفعل."
+  nothing_removed: "%{error}. لم يُزَل شيء من هذا الكمبيوتر، فيمكنك إعادة تشغيل `ccn forget`"
+  not_registered: "هذا الكمبيوتر غير مسجَّل لدى الخادم، فلا شيء يُمسح هناك."
+
+uninstall:
+  hooks_removed: "أُزيلت hooks الخاصة بـ ccn من %{path}."
+  slot_freed: "أُفرغ مكان هذا الكمبيوتر على الترخيص."
+  unpaired_all: "أُلغي ربط كل الهواتف."
+  removed_dir: "أُزيل %{path}."
+
+local:
+  finished_title: "انتهى Claude"
+  finished_body: "انتهى Claude وهو ينتظرك."
+  permission_title: "Claude يحتاج إلى إذن"
+  question_title: "لدى Claude سؤال"
+  first_nudge: "على هاتفك أيضًا: ccn pair"
+  milestone_nudge: "10 إشعارات حتى الآن. استقبلها على هاتفك، مع الموافقة من شاشة القفل: ccn pair"
+  pair_message: "Claude Code Notifier: تصلك إشعارات سطح المكتب. لتصلك على هاتفك أيضًا وتوافق أو تجيب من هناك، شغّل في طرفية: `ccn pair`"
+
+hook:
+  licence_message: "Claude Code Notifier: إشعارات الهاتف غير مفعّلة لهذا الكمبيوتر. لتفعيلها: ccn unlock"
+  unpaired_message: "Claude Code Notifier: هذا الكمبيوتر لم يعد مرتبطًا، فلن تصل الإشعارات إلى هاتفك. لإعادة الربط شغّل في طرفية: `ccn pair`"
+  unpaired_notification: "هذا الكمبيوتر لم يعد مرتبطًا. لإعادة الربط شغّل في طرفية: `ccn pair`"
+  paired_message: "Claude Code Notifier: تم الربط مع %{phone}. تصل الإشعارات الآن إلى هاتفك."
+  # The server writes title, body and command in the user's language; this only joins them
+  nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
+  needs_attention: "يحتاج إلى انتباهك"
+
+licence:
+  already_licensed: "هذا الكمبيوتر مرخّص بالفعل (%{licence})."
+  switch_to_lifetime: "للتحويل إلى ترخيص مدى الحياة مع الاحتفاظ بالمفتاح نفسه: ccn unlock --lifetime"
+  checkout_open: "  صفحة الدفع مفتوحة في متصفحك. للدفع من هاتفك بدلًا من ذلك، امسح هذا:"
+  checkout_link: "  افتح هذا الرابط للدفع، أو امسحه بهاتفك:"
+  waiting_payment: "  في انتظار الدفع... (Ctrl+C للإيقاف؛ يُرسل المفتاح إلى بريدك في كل الأحوال)"
+  upgraded: "✓ تم التحويل إلى ترخيص مدى الحياة. المفتاح نفسه وأجهزة الكمبيوتر نفسها؛ وأُلغي التجديد السنوي."
+  licensed: "✓ هذا الكمبيوتر مرخّص (%{licence})."
+  key: "  المفتاح: %{key} (أُرسل بالبريد أيضًا). استخدمه على جهازَي كمبيوتر إضافيَّين: ccn activate %{key}"
+  phones_unlocked: "  كل هاتف مرتبط بهذا الكمبيوتر مفعّل."
+  activate_with_key: "  لاستخدام المفتاح المُرسل بالبريد على هذا الكمبيوتر، شغّل: `ccn activate <key>`"
+  no_payment: "لم يصل الدفع بعد 15 دقيقة. إن كنت قد دفعت، فالمفتاح في بريدك: ccn activate <key>"
+  replace_stale: "لم يُشاهَد \"%{name}\" منذ أكثر من أسبوع. هل هو هذا الكمبيوتر؟ أتريد استبداله؟"
+  yes_no: " [Y/n] "
+  # An answer starting with this letter (or n) means no
+  no_initial: "ل"
+  slots_full: "هذا الترخيص مستخدم بالفعل على %{count} أجهزة كمبيوتر:"
+  free_one: "أفرغ مكانًا بتشغيل `ccn deactivate` على ذلك الكمبيوتر، أو استبدله من هنا:"
+  replace_example: "  ccn activate %{key} --replace \"%{name}\""
+  old_laptop: "Old laptop"
+  no_free_slot: "لا يوجد مكان شاغر لكمبيوتر"
+  computers_on_licence: "أجهزة الكمبيوتر على هذا الترخيص:"
+  activated: "✓ مرخّص (%{licence}). المستخدم: %{count} من 3 أجهزة كمبيوتر."
+  pair_to_unlock: "  اربط هاتفًا بالأمر `ccn pair` وسيُفعَّل فورًا."
+  none: "لا ترخيص لهذا الكمبيوتر."
+  freed: "أُفرغ المكان. يستخدم هذا الترخيص الآن %{count} من 3 أجهزة كمبيوتر."
+  none_buy: "لا ترخيص على هذا الكمبيوتر. لشراء واحد: ccn unlock"
+  none_short: "لا ترخيص على هذا الكمبيوتر."
+  buy_options: "  للشراء:             ccn unlock (سنوي) أو ccn unlock --lifetime"
+  have_key: "  لديك مفتاح بالفعل:  ccn activate <key>"
+  show_licence: "الترخيص:         %{licence}"
+  show_key: "المفتاح:         CCN-…-%{last4}"
+  show_unlocks: "التفعيل:         %{value}"
+  unlocks_yes: "نعم، كل هاتف مرتبط بهذا الكمبيوتر"
+  unlocks_no: "لا"
+  show_computers: "أجهزة الكمبيوتر: %{count} من 3"
+  switch_lifetime_keep_key: "للتحويل إلى مدى الحياة مع الاحتفاظ بالمفتاح: ccn unlock --lifetime"
+  status_licensed: "%{licence}، %{count} من 3 أجهزة كمبيوتر"
+  status_unlicensed: "%{licence}: ccn unlock"
+  status_none: "لا يوجد: ccn unlock"
+  describe_refunded: "مستردّ"
+  describe_lifetime: "مدى الحياة"
+  describe_renews: "سنوي، يتجدد في %{date}"
+  describe_past_due: "سنوي، تجري إعادة محاولة الدفع"
+  describe_ends: "سنوي، ينتهي في %{date}"
+  describe_ended: "سنوي، انتهى في %{date}"
+  describe_other: "%{plan}، %{status}"
+  unnamed_computer: "كمبيوتر بلا اسم"
+  last_seen: "آخر ظهور %{date}"
+  not_seen_recently: "لم يُشاهَد مؤخرًا"
+  this_computer: "  (هذا الكمبيوتر)"
+  # %{name} is padded to 28 columns before it is filled in
+  computer_row: "  %{name} %{seen}%{current}"
+
+update:
+  latest: "ccn %{version} هو الأحدث."
+  available_check: "ccn %{version} متاح (لديك %{current})."
+  update_with: "  للتحديث: %{command}"
+  available_run: "ccn %{version} متاح: %{command}"
+  nothing_to_update: "لا شيء للتحديث: %{path} غير مثبت%{npx}"
+  npx_note: " (npx يشغّل أحدث ccn في كل مرة)"
+  no_release_build: "لا يوجد إصدار لـ %{os}-%{arch}"
+  no_build_named: "ccn %{version} لا يحتوي على بناء باسم %{asset}"
+  no_checksum: "SHA256SUMS لا يحتوي على إدخال لـ %{asset}"
+  checksum_mismatch: "المجموع الاختباري لـ %{asset} غير متطابق: لم يتغير شيء"
+  archive_empty: "الأرشيف لا يحتوي على ccn"
+  zip_empty: "ملف zip لا يحتوي على ccn.exe"
+  did_not_run: "لم يعمل ccn الذي نُزّل، لذا أُبقي على الإصدار المثبت"
+  updated: "تم تحديث ccn %{from} → %{to}."
+  available_message: "Claude Code Notifier: ccn %{version} متاح: %{command}"
+
+notify:
+  registered_windows: "سُجّل \"Claude Code Notifier\" لإشعارات Windows."
+  icon_installed: "ثُبّتت أيقونة الإشعارات في %{path}."
+  doctor_applescript: "AppleScript (هذا البناء بلا تطبيق إشعارات)"
+  doctor_allowed: "مسموح بها لـ \"%{app}\""
+  doctor_denied: "متوقفة: إعدادات النظام > الإشعارات > %{app}"
+  doctor_not_allowed: "غير مسموح بها بعد: شغّل `ccn setup`"
+  mac_denied: "إشعارات سطح المكتب متوقفة لـ \"%{app}\". فعّلها من إعدادات النظام > الإشعارات."
+  mac_asking: "يُطلب من macOS السماح بالإشعارات من \"%{app}\"..."
+  mac_allowed: "إشعارات سطح المكتب مسموح بها لـ \"%{app}\"."
+  mac_not_allowed: "إشعارات سطح المكتب غير مسموح بها. فعّلها من إعدادات النظام > الإشعارات > %{app}."
+
+api:
+  rejected: "هذا الكمبيوتر لم يعد مرتبطًا (الخادم لم يعد يعرفه). لإعادة الربط شغّل `ccn pair`"
+  server_returned: "أعاد الخادم %{status}"
+  # What was being done when the server said no; the server's own message follows a colon
+  registering: "تسجيل هذا الكمبيوتر"
+  pairing: "الربط"
+  requesting_code: "طلب رمز ربط"
+  reading_record: "قراءة سجل هذا الكمبيوتر"
+  erasing: "مسح هذا الكمبيوتر"
+  listing_phones: "عرض الهواتف المرتبطة"
+  revoking: "إلغاء الربط"
+  health: "صحة الخادم"
+  reading_settings: "قراءة الإعدادات"
+  saving_settings: "حفظ الإعدادات"
+  sending_event: "إرسال الحدث"
+  waiting_response: "انتظار الاستجابة: %{error}"
