@@ -1,0 +1,297 @@
+# Français. Traduit locales/en.yml ; voir locales/README.md. Registre : tu. Vocabulaire de l'app
+# Claude Code Notifier : jumeler (pair), connecter (connect), licence, débloquer, téléphone, ordinateur.
+_version: 1
+
+cli:
+  about: "Claude Code Notifier : reçois une notification sur ton téléphone quand Claude Code a besoin de toi, et réponds depuis là"
+  pair:
+    about: "Jumeler cet ordinateur avec ton téléphone. Donne le code affiché par l'app, ou lance sans code pour en obtenir un à saisir dans l'app"
+    code: "Le code à 6 chiffres affiché dans l'app Claude Code Notifier"
+    name: "Le nom de cet ordinateur sur ton téléphone (par défaut : le nom d'hôte)"
+    replace_mac_app: "Retirer aussi les hooks de l'app de la barre des menus du Mac, pour ne pas envoyer les notifications en double"
+    no_wait: "Afficher le QR code et rendre la main tout de suite : le jumelage se termine tout seul quand le téléphone se connecte"
+  setup:
+    about: "Installer les hooks Claude Code et les notifications de bureau (pair et ccn sans argument le font d'abord)"
+    replace_mac_app: "Retirer aussi les hooks de l'app de la barre des menus du Mac"
+  doctor:
+    about: "Vérifier les hooks, les identifiants, le serveur et ce que ce terminal sait faire"
+  test:
+    about: "Envoyer une notification de test à chaque téléphone jumelé"
+  devices:
+    about: "Lister les téléphones jumelés, ou en révoquer un"
+    revoke: "Révoquer un téléphone jumelé par son nom ou son id"
+  config:
+    about: "Afficher ou changer les réglages de cet ordinateur (modifiables aussi depuis le téléphone)"
+    show: "Afficher les réglages en vigueur"
+    set: "Changer un réglage, p. ex. `ccn config set hold_ceiling_seconds 300` ou `ccn config set quiet_hours 22:00-08:00`"
+  sync:
+    about: "Récupérer maintenant les derniers réglages depuis le serveur"
+  unlock:
+    about: "Acheter une licence pour cet ordinateur dans le navigateur : débloque tous les téléphones qui lui sont jumelés"
+    lifetime: "Payer une seule fois au lieu de chaque année (ou passer une licence annuelle à vie, en gardant la clé)"
+  upgrade:
+    about: "Mettre ccn à jour vers la dernière version (vérifié aussi une fois par jour en arrière-plan)"
+    check: "Dire seulement s'il existe une version plus récente : code 0 si à jour, 10 s'il y en a une"
+    quiet: "N'afficher rien, sauf si quelque chose a mal tourné"
+  activate:
+    about: "Utiliser une clé de licence sur cet ordinateur (jusqu'à 3 ordinateurs par licence)"
+    key: "La clé reçue par e-mail, CCN-XXXX-XXXX-XXXX-XXXX"
+    replace: "Libérer la place d'un autre ordinateur sur la licence, par son nom, pour faire de la place à celui-ci"
+  deactivate:
+    about: "Libérer la place de cet ordinateur sur la licence pour utiliser la clé ailleurs"
+  licence:
+    about: "Afficher la licence de cet ordinateur et les ordinateurs qui l'utilisent"
+  uninstall:
+    about: "Retirer les hooks, les identifiants, les jumelages et l'état local"
+  forget:
+    about: "Effacer cet ordinateur et ses jumelages du serveur, puis désinstaller"
+    yes: "Ne pas demander de confirmation"
+
+common:
+  your_phone: "ton téléphone"
+  not_paired: "cet ordinateur n'est pas encore jumelé. Lance `ccn pair <code>` avec le code de l'app."
+  store_keychain: "trousseau"
+  store_file: "fichier"
+  date_format: "%d/%m/%Y"
+
+pair:
+  reregister: "L'ancien jumelage de cet ordinateur a été supprimé, il va donc être enregistré à nouveau."
+  code_not_recognised: "Ce code n'a pas été reconnu. Le code à 6 chiffres est dans l'app Claude Code Notifier, sous Ordinateurs > Ajouter un ordinateur ; il change toutes les 24 heures, alors copie la ligne que l'app affiche en ce moment."
+  offer_qr: "Appuie sur Entrée pour afficher plutôt un QR code ici (scanne-le avec ton téléphone), ou Ctrl+C."
+  options_without_terminal: "Relance `ccn pair <code>` avec le code que l'app affiche maintenant, ou lance `ccn pair` pour afficher un QR code ici et le scanner avec ton téléphone."
+  scan: "  Scanne ceci avec l'appareil photo de ton téléphone pour le connecter. Sans l'app, cela\n  t'emmène sur l'App Store ou Google Play : installe-la, puis scanne à nouveau."
+  or_type_code: "  Ou saisis ce code dans l'app Claude Code Notifier :  %{code}"
+  enter_code: "  Saisis ce code dans l'app Claude Code Notifier :  %{code}"
+  hooks_already_installed: "  Les hooks sont installés, tu reçois donc déjà les notifications de bureau sur cet ordinateur."
+  code_lasts: "  Jumelle quand tu veux : ce code reste valable %{duration}."
+  completes_on_its_own: "  Le jumelage se termine tout seul quand le téléphone se connecte."
+  waiting: "  En attente de ton téléphone... (Ctrl+C sans risque : le jumelage se termine tout seul quand le téléphone se connecte)"
+  code_expired: "le code a expiré avant qu'un téléphone ne l'utilise. Relance `ccn pair`."
+  code_is_six_digits: "le code, ce sont les 6 chiffres affichés dans l'app Claude Code Notifier"
+  credentials_stored: "Identifiants enregistrés dans le %{store} (%{path})."
+  test_sent: "Notification de test envoyée à ton téléphone."
+  test_failed: "Impossible d'envoyer une notification de test pour l'instant : %{error}"
+  done: "C'est fait. Lance `claude` comme d'habitude : tu recevras une notification quand Claude termine\nou a besoin de toi, et tu pourras autoriser, refuser ou répondre depuis le téléphone.\n`ccn doctor` vérifie tout."
+  paired_with: "Jumelé avec %{name} (%{platform})."
+  hours_one: "1 heure"
+  hours_other: "%{count} heures"
+  minutes_one: "1 minute"
+  minutes_other: "%{count} minutes"
+  pitch: "Ton téléphone te proposera un abonnement dans l'app. Tu peux aussi tout débloquer d'ici, sans passer par les stores :"
+  pitch_annual: "  ccn unlock             %{price} par an"
+  pitch_lifetime: "  ccn unlock --lifetime  %{price} une seule fois"
+  pitch_covers: "Couvre %{computers} ordinateurs et tous les téléphones qui leur sont jumelés. Satisfait ou remboursé %{days} jours."
+  welcome_no_terminal: "Une notification de test est en route vers ton téléphone : essaie d'y répondre depuis là."
+  welcome: "Une notification de test est en route vers ton téléphone. Essaie d'y répondre depuis là..."
+  welcome_skip: "(Entrée pour passer)"
+  welcome_answered: "✓ Ton téléphone a répondu \"%{answer}\". C'est ainsi que tu répondras à Claude."
+  welcome_no_answer: "Pas encore de réponse. La notification reste une heure sur ton téléphone."
+
+status:
+  set_up: "ccn %{version} est configuré sur cet ordinateur sous le nom \"%{name}\"."
+  licence: "Licence : %{line}"
+  hint_doctor: "  ccn doctor     vérifier les hooks, les identifiants et le serveur"
+  hint_test: "  ccn test       envoyer une notification de test à ton téléphone"
+  hint_pair: "  ccn pair       jumeler un autre téléphone"
+  hint_help: "  ccn --help     tout le reste"
+
+setup:
+  installed_self: "ccn installé dans %{path}."
+  hooks_installed: "Hooks installés dans %{path} (avec %{exe})."
+  mac_app_note: "Remarque : les hooks de l'app Mac Claude Code Notifier sont aussi installés, chaque événement\nserait donc envoyé deux fois. Lance `ccn setup --replace-mac-app` pour les retirer,\nou quitte l'app Mac."
+  mac_app_removed: "Hooks de l'app Mac retirés ; désormais c'est ccn qui gère les notifications."
+
+sync:
+  not_synced: "Réglages pas encore synchronisés : %{error}"
+  synced: "Réglages synchronisés."
+
+doctor:
+  header: "ccn %{version} sur %{platform}"
+  config: "config : %{path}"
+  credentials_present: "identifiants : présents (%{store})"
+  credentials_missing: "identifiants : absents : lance `ccn pair <code>`"
+  server_reachable: "serveur : %{url} joignable"
+  server_error: "serveur : %{error}"
+  registered: "enregistré sous \"%{name}\" (%{kind} %{platform}), capacités : %{capabilities}"
+  not_paired_any_more: "jumelage : plus jumelé : lance `ccn pair`"
+  registration_error: "enregistrement : %{error}"
+  licence: "licence : %{line}"
+  phones_none: "téléphones : aucun jumelé pour l'instant, les notifications restent donc sur ce bureau (lance `ccn pair`)"
+  phones: "téléphones : %{names}"
+  phones_error: "téléphones : %{error}"
+  hooks_all: "hooks : les %{count} sont installés dans %{path}"
+  hooks_missing: "hooks : il manque %{names} (lance `ccn setup`)"
+  hooks_error: "hooks : %{error}"
+  hooks_stale: "les hooks pointent vers un autre binaire ccn ; lance `ccn setup` pour les mettre à jour"
+  mac_app_hooks: "les hooks de l'app Mac sont aussi installés (lance `ccn setup --replace-mac-app`)"
+  presence: "présence : inactif depuis %{idle}s, seuil %{threshold}s"
+  presence_none: "présence : indétectable ici, chaque demande attend donc le téléphone"
+  replies: "réponses : les autorisations et les réponses aux questions depuis le téléphone marchent dans tout terminal ; le texte libre vers une session inactive %{free_text}"
+  replies_tmux: "marche (tmux)"
+  replies_no_tmux: "demande tmux"
+  desktop: "notifications de bureau : %{line}"
+  log: "journal : %{path}"
+
+test:
+  none_paired: "aucun téléphone n'est jumelé. Lance `ccn pair <code>`."
+  sent: "Notification de test envoyée à %{name} (%{platform})."
+  failed: "%{name} : %{error}"
+
+devices:
+  none: "Aucun téléphone jumelé. Lance `ccn pair <code>` avec le code de l'app."
+  # %{name} est complété à 24 colonnes et %{platform} à 8 avant d'être insérés
+  row: "%{name} %{platform} jumelé %{since}%{off}"
+  notifications_off: "  (notifications désactivées)"
+  revoked: "%{name} révoqué."
+  no_such_phone: "aucun téléphone jumelé nommé '%{device}'"
+
+config:
+  local_only: "(local seulement)"
+  last_changed: "(dernier changement %{when} ; modifiable aussi depuis le téléphone)"
+  credentials_moved: "Les identifiants sont maintenant dans le %{store}."
+  credential_store_expects: "credential_store attend keychain ou file"
+  auto_update_expects: "auto_update attend on ou off"
+
+settings:
+  expects_on_off: "%{key} attend on ou off"
+  expects_seconds: "%{key} attend un nombre de secondes"
+  seconds_range: "%{key} doit être entre %{min} et %{max} secondes"
+  quiet_hours_format: "quiet_hours attend HH:MM-HH:MM, ou off"
+  quiet_hours_example: "quiet_hours attend HH:MM-HH:MM, p. ex. 22:00-08:00"
+  unknown: "réglage inconnu '%{key}'. Réglages : notify_on_done, notify_on_permission, notify_on_question, sound, quiet_when_present, quiet_hours, hold_ceiling_seconds, presence_threshold_seconds, stop_hold_seconds, reminder_interval_seconds"
+
+forget:
+  needs_yes: "ccn forget a besoin d'un oui de ta part : lance-le dans un terminal, ou ajoute --yes"
+  warning: "Ceci efface cet ordinateur et ses jumelages du serveur Claude Code Notifier, puis retire ccn\nde Claude Code et supprime ses identifiants et ses fichiers ici, comme le fait `ccn uninstall`.\nLes téléphones jumelés avec cet ordinateur le verront disparaître.\nUne licence achetée sur le site n'est pas annulée : fais-le sur claudecodenotifier.com/licence\navec \"Erase my licence\"."
+  # Le mot que l'utilisateur doit taper ; `yes` est toujours accepté aussi
+  yes_word: "oui"
+  prompt: "\nTape %{yes} pour continuer : "
+  nothing_erased: "Rien n'a été effacé."
+  erased: "Cet ordinateur et ses jumelages ont été effacés du serveur."
+  already_forgotten: "Le serveur avait déjà oublié cet ordinateur."
+  nothing_removed: "%{error}. Rien n'a été retiré de cet ordinateur, tu peux donc relancer `ccn forget`"
+  not_registered: "Cet ordinateur n'est pas enregistré auprès du serveur, il n'y a donc rien à y effacer."
+
+uninstall:
+  hooks_removed: "Hooks de ccn retirés de %{path}."
+  slot_freed: "Place de cet ordinateur sur la licence libérée."
+  unpaired_all: "Tous les téléphones ont été déjumelés."
+  removed_dir: "%{path} supprimé."
+
+local:
+  finished_title: "Claude a terminé"
+  finished_body: "Claude a terminé et t'attend."
+  permission_title: "Claude demande une autorisation"
+  question_title: "Claude a une question"
+  first_nudge: "Sur ton téléphone : ccn pair"
+  milestone_nudge: "Déjà 10 notifications. Reçois-les sur ton téléphone, avec les autorisations depuis l'écran verrouillé : lance ccn pair"
+  pair_message: "Claude Code Notifier : tu reçois des notifications de bureau. Pour les recevoir aussi sur ton téléphone, et autoriser ou répondre depuis là, lance `ccn pair` dans un terminal."
+
+hook:
+  licence_message: "Claude Code Notifier : les notifications sur téléphone ne sont pas débloquées pour cet ordinateur. Pour les débloquer : ccn unlock"
+  unpaired_message: "Claude Code Notifier : cet ordinateur n'est plus jumelé, ton téléphone ne recevra donc pas de notifications. Lance `ccn pair` dans un terminal pour le reconnecter."
+  unpaired_notification: "Cet ordinateur n'est plus jumelé. Lance `ccn pair` dans un terminal pour le reconnecter."
+  paired_message: "Claude Code Notifier : jumelé avec %{phone}. Les notifications vont maintenant sur ton téléphone."
+  # Le serveur écrit le titre, le corps et la commande dans la langue de l'utilisateur ; ceci ne fait que les assembler
+  nudge_message: "Claude Code Notifier : %{title} %{body} %{command}"
+  needs_attention: "Demande ton attention"
+
+licence:
+  already_licensed: "Cet ordinateur a déjà une licence (%{licence})."
+  switch_to_lifetime: "Pour passer à une licence à vie, en gardant la même clé : ccn unlock --lifetime"
+  checkout_open: "  Le paiement est ouvert dans ton navigateur. Pour payer plutôt sur ton téléphone, scanne ceci :"
+  checkout_link: "  Ouvre ce lien pour payer, ou scanne-le avec ton téléphone :"
+  waiting_payment: "  En attente du paiement... (Ctrl+C pour arrêter ; la clé t'est envoyée par e-mail dans tous les cas)"
+  upgraded: "✓ Passé à une licence à vie. Même clé, mêmes ordinateurs ; le renouvellement annuel est annulé."
+  licensed: "✓ Cet ordinateur a une licence (%{licence})."
+  key: "  Clé : %{key} (envoyée aussi par e-mail). Utilise-la sur jusqu'à 2 autres ordinateurs : ccn activate %{key}"
+  phones_unlocked: "  Tous les téléphones jumelés avec cet ordinateur sont débloqués."
+  activate_with_key: "  Lance `ccn activate <clé>` avec la clé reçue par e-mail pour l'utiliser sur cet ordinateur."
+  no_payment: "Toujours pas de paiement après 15 minutes. Si tu as payé, la clé est dans ta boîte mail : ccn activate <clé>"
+  replace_stale: "\"%{name}\" n'a pas été vu depuis plus d'une semaine. Est-ce cet ordinateur ? Le remplacer ?"
+  yes_no: " [O/n] "
+  # Une réponse qui commence par cette lettre (ou n) veut dire non
+  no_initial: "n"
+  slots_full: "Cette licence est déjà sur %{count} ordinateurs :"
+  free_one: "Libère-en un avec `ccn deactivate` sur cet ordinateur-là, ou remplace-le d'ici :"
+  replace_example: "  ccn activate %{key} --replace \"%{name}\""
+  old_laptop: "Vieux portable"
+  no_free_slot: "aucune place libre pour un ordinateur"
+  computers_on_licence: "Ordinateurs sur cette licence :"
+  activated: "✓ Licence activée (%{licence}). %{count} ordinateurs sur 3 utilisés."
+  pair_to_unlock: "  Jumelle un téléphone avec `ccn pair` et il est débloqué aussitôt."
+  none: "Cet ordinateur n'a pas de licence."
+  freed: "Libéré. Cette licence a maintenant %{count} ordinateurs sur 3 utilisés."
+  none_buy: "Pas de licence sur cet ordinateur. Pour en acheter une : ccn unlock"
+  none_short: "Pas de licence sur cet ordinateur."
+  buy_options: "  En acheter une :     ccn unlock (annuelle) ou ccn unlock --lifetime"
+  have_key: "  Tu as déjà une clé : ccn activate <clé>"
+  show_licence: "Licence :     %{licence}"
+  show_key: "Clé :         CCN-…-%{last4}"
+  show_unlocks: "Débloque :    %{value}"
+  unlocks_yes: "oui, tous les téléphones jumelés avec cet ordinateur"
+  unlocks_no: "non"
+  show_computers: "Ordinateurs : %{count} sur 3"
+  switch_lifetime_keep_key: "Passer à vie, en gardant la clé : ccn unlock --lifetime"
+  status_licensed: "%{licence}, %{count} ordinateurs sur 3"
+  status_unlicensed: "%{licence} : ccn unlock"
+  status_none: "aucune : ccn unlock"
+  describe_refunded: "remboursée"
+  describe_lifetime: "à vie"
+  describe_renews: "annuelle, renouvelée le %{date}"
+  describe_past_due: "annuelle, nouvelle tentative de paiement"
+  describe_ends: "annuelle, prend fin le %{date}"
+  describe_ended: "annuelle, terminée le %{date}"
+  describe_other: "%{plan}, %{status}"
+  unnamed_computer: "ordinateur sans nom"
+  last_seen: "vu le %{date}"
+  not_seen_recently: "pas vu récemment"
+  this_computer: "  (cet ordinateur)"
+  # %{name} est complété à 28 colonnes avant d'être inséré
+  computer_row: "  %{name} %{seen}%{current}"
+
+update:
+  latest: "ccn %{version} est la dernière version."
+  available_check: "ccn %{version} est disponible (tu as %{current})."
+  update_with: "  Mettre à jour : %{command}"
+  available_run: "ccn %{version} est disponible : %{command}"
+  nothing_to_update: "rien à mettre à jour : %{path} n'est pas installé%{npx}"
+  npx_note: " (npx lance à chaque fois le dernier ccn)"
+  no_release_build: "pas de build publié pour %{os}-%{arch}"
+  no_build_named: "ccn %{version} n'a pas de build nommé %{asset}"
+  no_checksum: "SHA256SUMS n'a pas d'entrée pour %{asset}"
+  checksum_mismatch: "la somme de contrôle de %{asset} ne correspond pas : rien n'a été changé"
+  archive_empty: "l'archive ne contient pas de ccn"
+  zip_empty: "le zip ne contient pas de ccn.exe"
+  did_not_run: "le ccn téléchargé ne s'est pas lancé, celui installé a donc été conservé"
+  updated: "ccn mis à jour %{from} → %{to}."
+  available_message: "Claude Code Notifier : ccn %{version} est disponible : %{command}"
+
+notify:
+  registered_windows: "\"Claude Code Notifier\" enregistré pour les notifications Windows."
+  icon_installed: "Icône de notification installée dans %{path}."
+  doctor_applescript: "AppleScript (ce build n'a pas d'app de notification)"
+  doctor_allowed: "autorisées pour \"%{app}\""
+  doctor_denied: "désactivées : Réglages Système > Notifications > %{app}"
+  doctor_not_allowed: "pas encore autorisées : lance `ccn setup`"
+  mac_denied: "Les notifications de bureau sont désactivées pour \"%{app}\". Active-les dans Réglages Système > Notifications."
+  mac_asking: "Demande à macOS d'autoriser les notifications de \"%{app}\"..."
+  mac_allowed: "Les notifications de bureau sont autorisées pour \"%{app}\"."
+  mac_not_allowed: "Les notifications de bureau ne sont pas autorisées. Active-les dans Réglages Système > Notifications > %{app}."
+
+api:
+  rejected: "cet ordinateur n'est plus jumelé (le serveur ne le reconnaît plus). Lance `ccn pair` pour le reconnecter"
+  server_returned: "le serveur a répondu %{status}"
+  # Ce qui était en cours quand le serveur a refusé ; le message du serveur suit, après deux-points
+  registering: "enregistrement de cet ordinateur"
+  pairing: "jumelage"
+  requesting_code: "demande d'un code de jumelage"
+  reading_record: "lecture de la fiche de cet ordinateur"
+  erasing: "effacement de cet ordinateur"
+  listing_phones: "liste des téléphones jumelés"
+  revoking: "révocation du jumelage"
+  health: "état du serveur"
+  reading_settings: "lecture des réglages"
+  saving_settings: "enregistrement des réglages"
+  sending_event: "envoi de l'événement"
+  waiting_response: "attente d'une réponse : %{error}"
