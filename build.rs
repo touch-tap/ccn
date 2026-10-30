@@ -7,6 +7,9 @@ use std::path::{Path, PathBuf};
 
 fn main() {
     println!("cargo:rerun-if-env-changed=CCN_NOTIFIER_APP");
+    // rust_i18n compiles locales/ into the binary from main.rs; without this, a new or edited
+    // translation file is not picked up until something else makes main.rs rebuild
+    println!("cargo:rerun-if-changed=locales");
     let mut out = String::from("pub const FILES: &[(&str, &[u8], bool)] = &[\n");
 
     let app = std::env::var("CCN_NOTIFIER_APP")

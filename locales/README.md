@@ -24,6 +24,8 @@ same order, so a diff against English is readable. Comments (`# ...`) are notes 
 drop them as you like. Every value is double-quoted. Inside the quotes, `\"` is a quote and `\n`
 is a line break; leading spaces (`"  ccn unlock ..."`) are deliberate indentation and must stay.
 
+A new or edited file is picked up by the next `cargo build` (build.rs watches this folder).
+
 `cargo test` checks a translation: it must have exactly the keys `en.yml` has, no more and no
 fewer, every value non-empty, and the same `%{placeholders}` in each value as English. Run it
 (or ask someone to) before handing a file in.
