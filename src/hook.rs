@@ -83,9 +83,15 @@ fn run_inner() -> Result<Option<Value>> {
     let mut cfg = Config::load();
     let mut state = SessionState::load(&session_id);
     state.touch(&input);
+    // Once a day, start a detached look for a newer ccn; the hook itself never waits on it
+    let update_message = if event == "SessionStart" {
+        crate::update::daily_check(&mut cfg)
+    } else {
+        None
+    };
     if !cfg.is_paired() {
         // No credentials: desktop notifications only, and no network at all
-        return Ok(local::run(&mut cfg, &event, &input, &mut state));
+        return Ok(local::run(&mut cfg, &event, &input, &mut state).or(update_message));
     }
     let api = Api::new(&cfg);
 
@@ -95,7 +101,7 @@ fn run_inner() -> Result<Option<Value>> {
         let recheck =
             event == "SessionStart" && config::now() - flag.checked_at > Unpaired::RECHECK_AFTER;
         if !(recheck && still_accepted(&api, &mut flag)) {
-            return Ok(unpaired(&cfg, &event, &mut state, flag));
+            return Ok(unpaired(&cfg, &event, &mut state, flag).or(update_message));
         }
         log("the server accepts this computer again");
     }
@@ -109,7 +115,7 @@ fn run_inner() -> Result<Option<Value>> {
     };
     if cfg.local_mode() {
         let message = local::run(&mut cfg, &event, &input, &mut state);
-        return Ok(announce.or(message));
+        return Ok(announce.or(message).or(update_message));
     }
 
     let mut ctx = Ctx {
@@ -123,11 +129,11 @@ fn run_inner() -> Result<Option<Value>> {
         log(&format!(
             "{event}: the server rejected this computer's credentials; run `ccn pair`"
         ));
-        return Ok(unpaired(&ctx.cfg, &event, &mut ctx.state, Unpaired::new()));
+        return Ok(unpaired(&ctx.cfg, &event, &mut ctx.state, Unpaired::new()).or(update_message));
     }
     match announce {
         Some(message) => Ok(Some(message)),
-        None => result,
+        None => result.map(|message| message.or(update_message)),
     }
 }
 

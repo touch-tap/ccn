@@ -265,9 +265,7 @@ fn auto_update_enabled(cfg: &Config) -> bool {
 
 /// Once a day, starts `ccn upgrade --quiet --background` detached from the hook, and once a week
 /// returns a `systemMessage` for a newer version that a package manager has to install. Returns
-/// within ~100 ms: it never waits for the network. See the module notes for the wiring.
-// Called from hook.rs once that wiring lands; until then nothing in the binary reaches it
-#[allow(dead_code)]
+/// within ~100 ms: it never waits for the network. Called from the SessionStart hook.
 pub fn daily_check(cfg: &mut Config) -> Option<Value> {
     if !auto_update_enabled(cfg) {
         return None;
