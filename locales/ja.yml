@@ -1,0 +1,298 @@
+# 日本語。locales/en.yml を翻訳したもの。キーは変えず、値だけ訳す。%{name} は実行時に埋められる
+# プレースホルダーなので、英語と同じものをそのまま残す。訳し方の決まりは locales/README.md を参照。
+_version: 1
+
+cli:
+  about: "Claude Code Notifier: Claude Code があなたを必要とするときスマートフォンにプッシュ通知を届け、その場で返答できます"
+  pair:
+    about: "このコンピュータをスマートフォンとペアリングします。アプリに表示されたコードを渡すか、コードなしで実行してアプリに入力するコードを取得します"
+    code: "Claude Code Notifier アプリに表示される6桁のコード"
+    name: "スマートフォン上でのこのコンピュータの名前（デフォルト: ホスト名）"
+    replace_mac_app: "Mac メニューバーアプリのフック設定も削除し、通知が二重に送られないようにします"
+    no_wait: "QR コードを表示してすぐ戻ります。スマートフォンが接続するとペアリングは自動で完了します"
+  setup:
+    about: "Claude Code のフックとデスクトップ通知をインストールします（pair と引数なしの ccn は最初にこれを行います）"
+    replace_mac_app: "Mac メニューバーアプリのフック設定も削除します"
+  doctor:
+    about: "フック、認証情報、サーバー、このターミナルの対応状況を確認します"
+  test:
+    about: "ペアリング済みのすべてのスマートフォンにテスト通知を送ります"
+  devices:
+    about: "ペアリング済みのスマートフォンを一覧表示、または解除します"
+    revoke: "名前または ID を指定してスマートフォンのペアリングを解除します"
+  config:
+    about: "このコンピュータの設定を表示または変更します（スマートフォンからも編集できます）"
+    show: "有効な設定を表示します"
+    set: "設定を1つ変更します。例: `ccn config set hold_ceiling_seconds 300` や `ccn config set quiet_hours 22:00-08:00`"
+  sync:
+    about: "サーバーから最新の設定を今すぐ取得します"
+  unlock:
+    about: "ブラウザでこのコンピュータのライセンスを購入します。ペアリングしたすべてのスマートフォンがロック解除されます"
+    lifetime: "年額ではなく一回払いにします（年間ライセンスを買い切りに切り替える場合もキーはそのまま）"
+  upgrade:
+    about: "ccn を最新リリースに更新します（1日1回バックグラウンドでも確認します）"
+    check: "新しいリリースがあるかだけを報告します。最新なら終了コード 0、更新があれば 10"
+    quiet: "問題が起きたとき以外は何も表示しません"
+  activate:
+    about: "このコンピュータでライセンスキーを使います（1つのライセンスで最大3台）"
+    key: "メールで届いたキー（CCN-XXXX-XXXX-XXXX-XXXX）"
+    replace: "ライセンス上の別のコンピュータを名前で指定して枠を空け、このコンピュータ用にします"
+  deactivate:
+    about: "このコンピュータのライセンス枠を空け、キーを別の場所で使えるようにします"
+  licence:
+    about: "このコンピュータのライセンスと、それを使っているコンピュータを表示します"
+  uninstall:
+    about: "フック、認証情報、ペアリング、ローカルの状態を削除します"
+  forget:
+    about: "このコンピュータとそのペアリングをサーバーから消去し、アンインストールします"
+    yes: "確認せずに実行します"
+
+common:
+  your_phone: "スマートフォン"
+  not_paired: "このコンピュータはまだペアリングされていません。アプリに表示されたコードで `ccn pair <code>` を実行してください。"
+  store_keychain: "キーチェーン"
+  store_file: "ファイル"
+  # 文中の日付に使う chrono の strftime 書式。chrono は英語の月名しか知らないので数字だけの形にする。
+  date_format: "%Y/%m/%d"
+
+pair:
+  reregister: "このコンピュータの以前のペアリングは削除されているため、改めて登録します。"
+  code_not_recognised: "そのコードは認識されませんでした。6桁のコードは Claude Code Notifier アプリの「コンピュータ > コンピュータを追加」にあります。24時間ごとに変わるので、アプリに今表示されている行をコピーしてください。"
+  offer_qr: "代わりにここに QR コードを表示するには Enter を押してください（スマートフォンで読み取ります）。やめるには Ctrl+C。"
+  options_without_terminal: "アプリに今表示されているコードで `ccn pair <code>` をもう一度実行するか、`ccn pair` を実行してここに QR コードを表示し、スマートフォンで読み取ってください。"
+  scan: "  スマートフォンのカメラでこれを読み取ると接続できます。アプリがまだない場合は\n  App Store か Google Play が開きます。インストールしてから、もう一度読み取ってください。"
+  or_type_code: "  または Claude Code Notifier アプリにこのコードを入力:  %{code}"
+  enter_code: "  Claude Code Notifier アプリにこのコードを入力:  %{code}"
+  hooks_already_installed: "  フックはインストール済みなので、このコンピュータではすでにデスクトップ通知が届きます。"
+  code_lasts: "  ペアリングはいつでも構いません。このコードは %{duration} 有効です。"
+  completes_on_its_own: "  スマートフォンが接続すると、ペアリングは自動で完了します。"
+  waiting: "  スマートフォンを待っています...（Ctrl+C を押しても大丈夫です。スマートフォンが接続すればペアリングは自動で完了します）"
+  code_expired: "スマートフォンが使う前にコードの期限が切れました。`ccn pair` をもう一度実行してください。"
+  code_is_six_digits: "コードは Claude Code Notifier アプリに表示される6桁の数字です"
+  credentials_stored: "認証情報を%{store}に保存しました（%{path}）。"
+  test_sent: "スマートフォンにテスト通知を送りました。"
+  test_failed: "テスト通知をまだ送れません: %{error}"
+  done: "完了です。いつも通り `claude` を起動してください。Claude が終了したり、あなたを必要としたときに\nプッシュ通知が届き、スマートフォンから承認・拒否・返答ができます。`ccn doctor` で全体を確認できます。"
+  paired_with: "%{name}（%{platform}）とペアリングしました。"
+  hours_one: "1時間"
+  hours_other: "%{count}時間"
+  minutes_one: "1分"
+  minutes_other: "%{count}分"
+  pitch: "スマートフォンのアプリにサブスクリプションの案内が表示されます。アプリストアを通さず、ここからすべてをロック解除することもできます:"
+  pitch_annual: "  ccn unlock             年額 %{price}"
+  pitch_lifetime: "  ccn unlock --lifetime  %{price} の一回払い"
+  pitch_covers: "コンピュータ %{computers} 台と、それらにペアリングしたすべてのスマートフォンが対象です。%{days} 日間の返金保証。"
+  welcome_no_terminal: "テスト通知をスマートフォンに送りました。そこから返答してみてください。"
+  welcome: "テスト通知をスマートフォンに送りました。そこから返答してみてください..."
+  welcome_skip: "（Enter でスキップ）"
+  welcome_answered: "✓ スマートフォンから「%{answer}」と返答がありました。Claude にもこのように返答します。"
+  welcome_no_answer: "まだ返答がありません。通知はスマートフォンに1時間残ります。"
+
+status:
+  set_up: "ccn %{version} はこのコンピュータに「%{name}」として設定されています。"
+  licence: "ライセンス: %{line}"
+  hint_doctor: "  ccn doctor     フック、認証情報、サーバーを確認"
+  hint_test: "  ccn test       スマートフォンにテスト通知を送る"
+  hint_pair: "  ccn pair       別のスマートフォンをペアリング"
+  hint_help: "  ccn --help     その他すべて"
+
+setup:
+  installed_self: "ccn を %{path} にインストールしました。"
+  hooks_installed: "フックを %{path} にインストールしました（%{exe} を使用）。"
+  mac_app_note: "注意: Claude Code Notifier Mac アプリのフックもインストールされているため、各イベントが二重に\n送られます。`ccn setup --replace-mac-app` で削除するか、Mac アプリを終了してください。"
+  mac_app_removed: "Mac アプリのフック設定を削除しました。今後は ccn が通知を扱います。"
+
+sync:
+  not_synced: "設定はまだ同期されていません: %{error}"
+  synced: "設定を同期しました。"
+
+doctor:
+  header: "ccn %{version}（%{platform}）"
+  config: "設定ファイル: %{path}"
+  credentials_present: "認証情報: あり（%{store}）"
+  credentials_missing: "認証情報: なし。`ccn pair <code>` を実行してください"
+  server_reachable: "サーバー: %{url} に接続できます"
+  server_error: "サーバー: %{error}"
+  registered: "「%{name}」として登録済み（%{kind} %{platform}）、機能: %{capabilities}"
+  not_paired_any_more: "ペアリング: 解除されています。`ccn pair` を実行してください"
+  registration_error: "登録: %{error}"
+  licence: "ライセンス: %{line}"
+  phones_none: "スマートフォン: まだペアリングされていないため、通知はこのデスクトップに残ります（`ccn pair` を実行）"
+  phones: "スマートフォン: %{names}"
+  phones_error: "スマートフォン: %{error}"
+  hooks_all: "フック: %{count} 件すべて %{path} にインストール済み"
+  hooks_missing: "フック: %{names} がありません（`ccn setup` を実行）"
+  hooks_error: "フック: %{error}"
+  hooks_stale: "フックが別の ccn バイナリを指しています。`ccn setup` で更新してください"
+  mac_app_hooks: "Mac アプリのフックもインストールされています（`ccn setup --replace-mac-app` を実行）"
+  presence: "在席検出: 現在 %{idle} 秒間操作なし、しきい値 %{threshold} 秒"
+  presence_none: "在席検出: この環境では検出できないため、すべてのリクエストがスマートフォンを待ちます"
+  replies: "返答: スマートフォンからの承認と質問への回答はどのターミナルでも動作します。待機中のセッションへの自由入力: %{free_text}"
+  replies_tmux: "tmux で動作します"
+  replies_no_tmux: "tmux が必要です"
+  desktop: "デスクトップ通知: %{line}"
+  log: "ログ: %{path}"
+
+test:
+  none_paired: "ペアリング済みのスマートフォンがありません。`ccn pair <code>` を実行してください。"
+  sent: "%{name}（%{platform}）にテスト通知を送りました。"
+  failed: "%{name}: %{error}"
+
+devices:
+  none: "ペアリング済みのスマートフォンがありません。アプリに表示されたコードで `ccn pair <code>` を実行してください。"
+  # %{name} は 24 桁、%{platform} は 8 桁に揃えてから埋められる
+  row: "%{name} %{platform} %{since} にペアリング%{off}"
+  notifications_off: "  （通知オフ）"
+  revoked: "%{name} のペアリングを解除しました。"
+  no_such_phone: "'%{device}' という名前のペアリング済みスマートフォンはありません"
+
+config:
+  local_only: "（ローカルのみ）"
+  last_changed: "（最終変更 %{when}。スマートフォンからも編集できます）"
+  credentials_moved: "認証情報は%{store}に移動しました。"
+  credential_store_expects: "credential_store には keychain か file を指定してください"
+  auto_update_expects: "auto_update には on か off を指定してください"
+
+settings:
+  expects_on_off: "%{key} には on か off を指定してください"
+  expects_seconds: "%{key} には秒数を指定してください"
+  seconds_range: "%{key} は %{min} 秒から %{max} 秒の間で指定してください"
+  quiet_hours_format: "quiet_hours には HH:MM-HH:MM か off を指定してください"
+  quiet_hours_example: "quiet_hours には HH:MM-HH:MM を指定してください（例: 22:00-08:00）"
+  unknown: "'%{key}' という設定はありません。設定項目: notify_on_done, notify_on_permission, notify_on_question, sound, quiet_when_present, quiet_hours, hold_ceiling_seconds, presence_threshold_seconds, stop_hold_seconds, reminder_interval_seconds"
+
+forget:
+  needs_yes: "ccn forget には確認が必要です。ターミナルで実行するか、--yes を付けてください"
+  warning: "この操作は、このコンピュータとそのペアリングを Claude Code Notifier のサーバーから消去し、\n`ccn uninstall` と同じように Claude Code から ccn を取り除き、ここにある認証情報とファイルを削除します。\nこのコンピュータとペアリングしていたスマートフォンからは、このコンピュータが消えます。\nウェブサイトで購入したライセンスは解約されません。claudecodenotifier.com/licence の\n「Erase my licence」から行ってください。"
+  # ユーザーが入力する確認の言葉。`yes` も常に受け付けられる
+  yes_word: "はい"
+  prompt: "\n続けるには %{yes} と入力してください: "
+  nothing_erased: "何も消去されませんでした。"
+  erased: "このコンピュータとそのペアリングをサーバーから消去しました。"
+  already_forgotten: "サーバーはすでにこのコンピュータを忘れていました。"
+  nothing_removed: "%{error}。このコンピュータからは何も削除されていないので、`ccn forget` をもう一度実行できます"
+  not_registered: "このコンピュータはサーバーに登録されていないため、サーバー側で消去するものはありません。"
+
+uninstall:
+  hooks_removed: "%{path} から ccn のフックを削除しました。"
+  slot_freed: "このコンピュータのライセンス枠を空けました。"
+  unpaired_all: "すべてのスマートフォンのペアリングを解除しました。"
+  removed_dir: "%{path} を削除しました。"
+
+local:
+  finished_title: "Claude が終了しました"
+  finished_body: "Claude が終了し、あなたを待っています。"
+  permission_title: "Claude が許可を求めています"
+  question_title: "Claude からの質問があります"
+  first_nudge: "スマートフォンでも受け取る: ccn pair"
+  milestone_nudge: "これで10件目の通知です。スマートフォンでも受け取り、ロック画面から承認するには ccn pair を実行してください"
+  pair_message: "Claude Code Notifier: デスクトップ通知が届いています。スマートフォンでも受け取り、そこから承認や返答をするには、ターミナルで `ccn pair` を実行してください。"
+
+hook:
+  licence_message: "Claude Code Notifier: このコンピュータではスマートフォン通知がロック解除されていません。ロック解除するには: ccn unlock"
+  unpaired_message: "Claude Code Notifier: このコンピュータのペアリングが解除されているため、スマートフォンに通知が届きません。再接続するにはターミナルで `ccn pair` を実行してください。"
+  unpaired_notification: "このコンピュータのペアリングが解除されています。再接続するにはターミナルで `ccn pair` を実行してください。"
+  paired_message: "Claude Code Notifier: %{phone} とペアリングしました。通知はこれからスマートフォンに届きます。"
+  # タイトル、本文、コマンドはサーバーがユーザーの言語で書く。ここではつなげるだけ
+  nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
+  needs_attention: "確認が必要です"
+
+licence:
+  already_licensed: "このコンピュータにはすでにライセンスがあります（%{licence}）。"
+  switch_to_lifetime: "同じキーのまま買い切りライセンスに切り替えるには: ccn unlock --lifetime"
+  checkout_open: "  ブラウザで決済ページを開きました。代わりにスマートフォンで支払うには、これを読み取ってください:"
+  checkout_link: "  このリンクを開いて支払うか、スマートフォンで読み取ってください:"
+  waiting_payment: "  支払いを待っています...（Ctrl+C で中止できます。どちらの場合もキーはメールで届きます）"
+  upgraded: "✓ 買い切りライセンスに切り替えました。キーもコンピュータもそのままで、年間更新は解約されました。"
+  licensed: "✓ このコンピュータにライセンスが適用されました（%{licence}）。"
+  key: "  キー: %{key}（メールでも送付）。あと2台まで使えます: ccn activate %{key}"
+  phones_unlocked: "  このコンピュータにペアリングしたすべてのスマートフォンがロック解除されました。"
+  activate_with_key: "  メールで届いたキーで `ccn activate <key>` を実行すると、このコンピュータで使えます。"
+  no_payment: "15分経っても支払いが確認できません。支払い済みの場合、キーはメールに届いています: ccn activate <key>"
+  replace_stale: "「%{name}」は1週間以上確認されていません。これはこのコンピュータですか？置き換えますか？"
+  yes_no: " [Y/n] "
+  # この文字（または n）で始まる答えは「いいえ」
+  no_initial: "い"
+  slots_full: "このライセンスはすでに %{count} 台のコンピュータで使われています:"
+  free_one: "そのコンピュータで `ccn deactivate` を実行して枠を空けるか、ここから置き換えてください:"
+  replace_example: "  ccn activate %{key} --replace \"%{name}\""
+  old_laptop: "古いノートPC"
+  no_free_slot: "空いているコンピュータ枠がありません"
+  computers_on_licence: "このライセンスのコンピュータ:"
+  activated: "✓ ライセンスを適用しました（%{licence}）。3台中 %{count} 台を使用中です。"
+  pair_to_unlock: "  `ccn pair` でスマートフォンをペアリングすると、すぐにロック解除されます。"
+  none: "このコンピュータにはライセンスがありません。"
+  freed: "枠を空けました。このライセンスは現在 3台中 %{count} 台を使用中です。"
+  none_buy: "このコンピュータにライセンスがありません。購入するには: ccn unlock"
+  none_short: "このコンピュータにライセンスがありません。"
+  buy_options: "  購入する:           ccn unlock（年間）または ccn unlock --lifetime"
+  have_key: "  キーをお持ちの場合: ccn activate <key>"
+  show_licence: "ライセンス:   %{licence}"
+  show_key: "キー:         CCN-…-%{last4}"
+  show_unlocks: "ロック解除:   %{value}"
+  unlocks_yes: "はい。このコンピュータにペアリングしたすべてのスマートフォン"
+  unlocks_no: "いいえ"
+  show_computers: "コンピュータ: 3台中 %{count} 台"
+  switch_lifetime_keep_key: "キーはそのまま買い切りに切り替える: ccn unlock --lifetime"
+  status_licensed: "%{licence}、コンピュータ 3台中 %{count} 台"
+  status_unlicensed: "%{licence}: ccn unlock"
+  status_none: "なし: ccn unlock"
+  describe_refunded: "返金済み"
+  describe_lifetime: "買い切り"
+  describe_renews: "年間、%{date} に更新"
+  describe_past_due: "年間、支払いを再試行中"
+  describe_ends: "年間、%{date} に終了"
+  describe_ended: "年間、%{date} に終了済み"
+  describe_other: "%{plan}、%{status}"
+  unnamed_computer: "名前のないコンピュータ"
+  last_seen: "最終確認 %{date}"
+  not_seen_recently: "最近確認されていません"
+  this_computer: "  （このコンピュータ）"
+  # %{name} は 28 桁に揃えてから埋められる
+  computer_row: "  %{name} %{seen}%{current}"
+
+update:
+  latest: "ccn %{version} は最新です。"
+  available_check: "ccn %{version} が利用できます（現在は %{current}）。"
+  update_with: "  更新: %{command}"
+  available_run: "ccn %{version} が利用できます: %{command}"
+  nothing_to_update: "更新するものがありません: %{path} はインストールされていません%{npx}"
+  npx_note: "（npx は毎回最新の ccn を実行します）"
+  no_release_build: "%{os}-%{arch} 向けのリリースビルドがありません"
+  no_build_named: "ccn %{version} に %{asset} というビルドはありません"
+  no_checksum: "SHA256SUMS に %{asset} の項目がありません"
+  checksum_mismatch: "%{asset} のチェックサムが一致しません。何も変更していません"
+  archive_empty: "アーカイブに ccn が入っていません"
+  zip_empty: "zip に ccn.exe が入っていません"
+  did_not_run: "ダウンロードした ccn が起動しなかったため、インストール済みのものを残しました"
+  updated: "ccn を %{from} → %{to} に更新しました。"
+  available_message: "Claude Code Notifier: ccn %{version} が利用できます: %{command}"
+
+notify:
+  registered_windows: "Windows の通知に「Claude Code Notifier」を登録しました。"
+  icon_installed: "通知アイコンを %{path} にインストールしました。"
+  doctor_applescript: "AppleScript（このビルドには通知アプリがありません）"
+  doctor_allowed: "「%{app}」に許可されています"
+  doctor_denied: "オフになっています: システム設定 > 通知 > %{app}"
+  doctor_not_allowed: "まだ許可されていません。`ccn setup` を実行してください"
+  mac_denied: "「%{app}」のデスクトップ通知はオフになっています。システム設定 > 通知 でオンにしてください。"
+  mac_asking: "「%{app}」からの通知を許可するよう macOS に求めています..."
+  mac_allowed: "「%{app}」のデスクトップ通知が許可されました。"
+  mac_not_allowed: "デスクトップ通知が許可されていません。システム設定 > 通知 > %{app} でオンにしてください。"
+
+api:
+  rejected: "このコンピュータのペアリングは解除されています（サーバーが認識しません）。再接続するには `ccn pair` を実行してください"
+  server_returned: "サーバーが %{status} を返しました"
+  # サーバーが拒否したときに行っていた操作。サーバー自身のメッセージがコロンの後に続く
+  registering: "このコンピュータの登録"
+  pairing: "ペアリング"
+  requesting_code: "ペアリングコードの取得"
+  reading_record: "このコンピュータの記録の読み取り"
+  erasing: "このコンピュータの消去"
+  listing_phones: "ペアリング済みスマートフォンの一覧取得"
+  revoking: "ペアリングの解除"
+  health: "サーバーの状態確認"
+  reading_settings: "設定の読み取り"
+  saving_settings: "設定の保存"
+  sending_event: "イベントの送信"
+  waiting_response: "応答の待機: %{error}"
