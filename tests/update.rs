@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::TcpListener;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::sync::{Arc, Mutex};
 
@@ -89,7 +89,7 @@ impl Drop for Sandbox {
 }
 
 /// A release: the archive holding the script, and the SHA256SUMS line for it.
-fn release(dir: &PathBuf, correct_checksum: bool) -> (Vec<u8>, String) {
+fn release(dir: &Path, correct_checksum: bool) -> (Vec<u8>, String) {
     let stage = dir.join("stage");
     std::fs::create_dir_all(&stage).unwrap();
     std::fs::write(stage.join("ccn"), SCRIPT).unwrap();
@@ -164,7 +164,7 @@ fn serve(build: impl FnOnce(&str) -> Routes) -> (String, Arc<Mutex<Vec<String>>>
 
 /// A server whose latest release is `version`, with the archive and checksums under `/dl`.
 fn release_server(
-    dir: &PathBuf,
+    dir: &Path,
     version: &str,
     correct_checksum: bool,
 ) -> (String, Arc<Mutex<Vec<String>>>) {
