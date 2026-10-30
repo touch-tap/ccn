@@ -73,7 +73,10 @@ pub fn event(name: &str, properties: &[(&str, &str)]) {
         .http_status_as_error(false)
         .build()
         .new_agent();
-    let _ = agent.post(&url).send_json(body);
+    let _ = agent
+        .post(&url)
+        .header("Accept-Language", &config::locale())
+        .send_json(body);
 }
 
 /// A short reason for a failed pairing, from the server's message or the transport error.

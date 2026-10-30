@@ -155,6 +155,7 @@ impl Api {
         let url = format!("{}{}", self.base, path);
         let agent = Self::agent(timeout);
         let bearer = self.token.as_ref().map(|t| format!("Bearer {t}"));
+        let language = config::locale();
 
         let mut response = match method {
             "GET" | "DELETE" => {
@@ -162,7 +163,8 @@ impl Api {
                     agent.get(&url)
                 } else {
                     agent.delete(&url)
-                };
+                }
+                .header("Accept-Language", &language);
                 if let Some(b) = &bearer {
                     req = req.header("Authorization", b);
                 }
@@ -176,7 +178,8 @@ impl Api {
                     agent.post(&url)
                 } else {
                     agent.put(&url)
-                };
+                }
+                .header("Accept-Language", &language);
                 if let Some(b) = &bearer {
                     req = req.header("Authorization", b);
                 }
@@ -398,9 +401,39 @@ pub struct LicenceStatus {
     pub licence: Option<Licence>,
     #[serde(default)]
     pub computers: Vec<LicenceComputer>,
-    /// Show the once-a-day upgrade line in Claude Code (the server decides; off until launch)
+    /// Show the upgrade line in Claude Code (the server decides; off until launch)
     #[serde(default)]
     pub nudge: bool,
+    /// What a web licence costs, for the pitch after pairing. None when the server has no offer
+    /// for this computer (or is an older server).
+    #[serde(default)]
+    pub offer: Option<Offer>,
+    /// The server-authored nudge for `nudge: true`, with its A/B id. None from an older server.
+    #[serde(default)]
+    pub nudge_message: Option<NudgeMessage>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Offer {
+    pub annual_price: String,
+    pub lifetime_price: String,
+    pub money_back_days: u32,
+    pub computers: u32,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct NudgeMessage {
+    pub id: String,
+    /// none | trial | lapsed
+    pub kind: String,
+    /// a | b
+    pub variant: String,
+    pub title: String,
+    pub body: String,
+    /// What to run, e.g. `ccn unlock --lifetime`
+    pub command: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -536,6 +569,25 @@ pub fn licence_error(err: &anyhow::Error) -> Option<&LicenceError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn licence_status_reads_the_offer_and_nudge_message_when_present() {
+        let old: LicenceStatus = serde_json::from_str(
+            r#"{"licensed":false,"licence":null,"computers":[],"nudge":true}"#,
+        )
+        .unwrap();
+        assert!(old.nudge && old.offer.is_none() && old.nudge_message.is_none());
+        let new: LicenceStatus = serde_json::from_str(
+            r#"{"licensed":false,"licence":null,"computers":[],"nudge":true,
+                "offer":{"annualPrice":"$39.99","lifetimePrice":"$49.99","moneyBackDays":14,"computers":3},
+                "nudgeMessage":{"id":"none-lifetime-a","kind":"none","variant":"a","title":"T","body":"B","command":"ccn unlock --lifetime"}}"#,
+        )
+        .unwrap();
+        let offer = new.offer.unwrap();
+        assert_eq!(offer.annual_price, "$39.99");
+        assert_eq!(offer.computers, 3);
+        assert_eq!(new.nudge_message.unwrap().id, "none-lifetime-a");
+    }
 
     #[test]
     fn rejection_is_recognised_through_context() {

@@ -276,6 +276,23 @@ pub struct Config {
     pub registered_at: Option<i64>,
     /// When a SessionStart hook last asked the server about this computer's licence (once a day)
     pub licence_checked_at: Option<i64>,
+    /// When the licence nudge was last shown in Claude Code (its cadence is in hook.rs)
+    pub licence_nudge_last_at: Option<i64>,
+    /// How many phones are paired, as of the last `pairings` call that succeeded. None until the
+    /// server has been asked; Some(0) is local mode (desktop notifications only).
+    pub phones: Option<u32>,
+    /// When the first phone paired with this computer
+    pub paired_at: Option<i64>,
+    /// Claude Code has shown "paired with <phone>" once
+    pub paired_message_shown: bool,
+    /// Desktop notifications shown while no phone was paired
+    pub local_notifications: u64,
+    /// When the "run ccn pair" message was last shown in Claude Code
+    pub pair_nudge_last_at: Option<i64>,
+    /// The 10th local notification has asked for the message at the next SessionStart or prompt
+    pub pair_nudge_due: bool,
+    /// Whether to suggest pairing at all (`ccn config set pair_nudges off`; default on)
+    pub pair_nudges: bool,
 }
 
 impl Default for Config {
@@ -293,6 +310,14 @@ impl Default for Config {
             settings_fetched_at: None,
             registered_at: None,
             licence_checked_at: None,
+            licence_nudge_last_at: None,
+            phones: None,
+            paired_at: None,
+            paired_message_shown: false,
+            local_notifications: 0,
+            pair_nudge_last_at: None,
+            pair_nudge_due: false,
+            pair_nudges: true,
         }
     }
 }
@@ -338,8 +363,25 @@ impl Config {
             .map(|c| c.server_url)
     }
 
+    /// This computer has credentials: it is registered with the server (not necessarily with a
+    /// phone paired; see `local_mode`).
     pub fn is_paired(&self) -> bool {
         self.client_id.is_some() && load_token(self).is_some()
+    }
+
+    /// No phone gets this computer's notifications: either it has no credentials, or the server
+    /// said it has none paired. Hooks then show desktop notifications and stay off the network.
+    /// Credentials with an unknown count (None) count as paired until a SessionStart asks.
+    pub fn local_mode(&self) -> bool {
+        !self.is_paired() || self.phones == Some(0)
+    }
+
+    /// Records the paired-phone count from a successful `pairings` call.
+    pub fn record_phones(&mut self, count: usize) {
+        self.phones = Some(count as u32);
+        if count > 0 && self.paired_at.is_none() {
+            self.paired_at = Some(now());
+        }
     }
 
     pub fn machine_name(&self) -> String {
@@ -520,4 +562,77 @@ fn restrict_permissions(_path: &std::path::Path) {}
 
 pub fn now() -> i64 {
     chrono::Utc::now().timestamp()
+}
+
+// ============================================
+// Language
+// ============================================
+
+/// The languages the server and the phone apps speak, as sent in Accept-Language.
+pub const LOCALES: &[&str] = &[
+    "en", "ar", "de", "es", "fr", "he", "it", "ja", "ko", "nl", "pl", "pt-BR", "ru", "tr", "vi",
+    "zh-Hans", "zh-Hant",
+];
+
+/// The language to ask the server for: `CCN_LANG`, else the OS locale, mapped onto `LOCALES`.
+pub fn locale() -> String {
+    let raw = std::env::var("CCN_LANG")
+        .ok()
+        .filter(|v| !v.trim().is_empty())
+        .or_else(sys_locale::get_locale)
+        .unwrap_or_default();
+    normalise_locale(&raw).to_string()
+}
+
+/// Maps a BCP 47 or POSIX locale tag onto one of `LOCALES`; anything unknown is "en".
+pub fn normalise_locale(raw: &str) -> &'static str {
+    // en_GB.UTF-8 → en-GB; drop the encoding and modifier
+    let tag = raw.split(['.', '@']).next().unwrap_or("").replace('_', "-");
+    let mut parts = tag.split('-').filter(|p| !p.is_empty());
+    let language = parts.next().unwrap_or("").to_ascii_lowercase();
+    let rest: Vec<String> = parts.map(|p| p.to_ascii_lowercase()).collect();
+    match language.as_str() {
+        "zh" => {
+            let traditional = rest
+                .iter()
+                .any(|p| matches!(p.as_str(), "hant" | "tw" | "hk" | "mo"));
+            if traditional { "zh-Hant" } else { "zh-Hans" }
+        }
+        "pt" => "pt-BR",
+        "iw" | "he" => "he",
+        other => LOCALES
+            .iter()
+            .find(|l| l.eq_ignore_ascii_case(other))
+            .copied()
+            .unwrap_or("en"),
+    }
+}
+
+#[cfg(test)]
+mod locale_tests {
+    use super::normalise_locale;
+
+    #[test]
+    fn maps_os_locales_onto_the_supported_set() {
+        assert_eq!(normalise_locale("en_GB.UTF-8"), "en");
+        assert_eq!(normalise_locale("en-US"), "en");
+        assert_eq!(normalise_locale("de-DE"), "de");
+        assert_eq!(normalise_locale("pt_PT"), "pt-BR");
+        assert_eq!(normalise_locale("pt"), "pt-BR");
+        assert_eq!(normalise_locale("zh-TW"), "zh-Hant");
+        assert_eq!(normalise_locale("zh-Hant-HK"), "zh-Hant");
+        assert_eq!(normalise_locale("zh_HK"), "zh-Hant");
+        assert_eq!(normalise_locale("zh-MO"), "zh-Hant");
+        assert_eq!(normalise_locale("zh-CN"), "zh-Hans");
+        assert_eq!(normalise_locale("zh"), "zh-Hans");
+        assert_eq!(normalise_locale("zh-Hans-SG"), "zh-Hans");
+        assert_eq!(normalise_locale("iw_IL"), "he");
+        assert_eq!(normalise_locale("he"), "he");
+        assert_eq!(normalise_locale("ja_JP@calendar=japanese"), "ja");
+        assert_eq!(normalise_locale("KO"), "ko");
+        assert_eq!(normalise_locale("C"), "en");
+        assert_eq!(normalise_locale("POSIX"), "en");
+        assert_eq!(normalise_locale(""), "en");
+        assert_eq!(normalise_locale("xx-YY"), "en");
+    }
 }

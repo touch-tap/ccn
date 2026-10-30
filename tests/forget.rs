@@ -43,6 +43,7 @@ impl Sandbox {
             .env("CCN_CREDENTIAL_STORE", "file")
             .env("CCN_NOTIFY", "off")
             .env("CCN_NO_ANALYTICS", "1")
+            .env("CCN_LANG", "pt_PT.UTF-8")
             .stdin(Stdio::null())
             .output()
             .unwrap()
@@ -95,6 +96,12 @@ fn erases_on_the_server_then_removes_everything_local() {
         request
             .to_ascii_lowercase()
             .contains("authorization: bearer test-token"),
+        "{request}"
+    );
+    assert!(
+        request
+            .to_ascii_lowercase()
+            .contains("accept-language: pt-br"),
         "{request}"
     );
     let stdout = text(&out.stdout);
