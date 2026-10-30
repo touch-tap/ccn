@@ -1,6 +1,7 @@
 //! A desktop notification, fired and forgotten. The phone is the product; this is a courtesy.
 //! Nothing here may block the hook for long, fail it, or write to stdout.
 
+use rust_i18n::t;
 #[cfg(not(windows))]
 use std::process::{Command, Stdio};
 
@@ -115,15 +116,12 @@ pub fn install() -> Option<String> {
             return None;
         }
         win::register(icon.as_ref().map(|(p, _)| p.as_path())).ok()?;
-        Some("Registered \"Claude Code Notifier\" for Windows notifications.".to_string())
+        Some(t!("notify.registered_windows").into_owned())
     }
     #[cfg(target_os = "linux")]
     {
         match write_icon()? {
-            (p, true) => Some(format!(
-                "Installed the notification icon at {}.",
-                p.display()
-            )),
+            (p, true) => Some(t!("notify.icon_installed", path = p.display()).into_owned()),
             (_, false) => None,
         }
     }
@@ -142,16 +140,16 @@ pub fn doctor_line() -> Option<(bool, String)> {
     #[cfg(target_os = "macos")]
     {
         Some(match mac::status().as_deref() {
-            None => (
+            None => (true, t!("notify.doctor_applescript").into_owned()),
+            Some("authorized") => (
                 true,
-                "AppleScript (this build has no notifier app)".to_string(),
+                t!("notify.doctor_allowed", app = APP_NAME).into_owned(),
             ),
-            Some("authorized") => (true, format!("allowed for \"{APP_NAME}\"")),
             Some("denied") => (
                 false,
-                format!("turned off: System Settings > Notifications > {APP_NAME}"),
+                t!("notify.doctor_denied", app = APP_NAME).into_owned(),
             ),
-            Some(_) => (false, "not allowed yet: run `ccn setup`".to_string()),
+            Some(_) => (false, t!("notify.doctor_not_allowed").into_owned()),
         })
     }
     #[cfg(not(target_os = "macos"))]
@@ -213,6 +211,7 @@ mod mac {
     //! folder, so notifications carry our name and icon instead of Script Editor's. It is rewritten
     //! whenever its Info.plist differs from the embedded one, which carries the version.
 
+    use rust_i18n::t;
     use std::path::PathBuf;
     use std::process::{Command, Stdio};
 
@@ -304,13 +303,11 @@ mod mac {
         match status()?.as_str() {
             "authorized" => return None,
             "denied" => {
-                return Some(format!(
-                    "Desktop notifications are turned off for \"{name}\". Turn them on in System Settings > Notifications."
-                ));
+                return Some(t!("notify.mac_denied", app = name).into_owned());
             }
             _ => {}
         }
-        println!("Asking macOS to allow notifications from \"{name}\"...");
+        println!("{}", t!("notify.mac_asking", app = name));
         let _ = Command::new("open")
             .args(["-W", "-g"])
             .arg(app_path())
@@ -320,10 +317,8 @@ mod mac {
             .stderr(Stdio::null())
             .status();
         Some(match status().as_deref() {
-            Some("authorized") => format!("Desktop notifications are allowed for \"{name}\"."),
-            _ => format!(
-                "Desktop notifications aren't allowed. Turn them on in System Settings > Notifications > {name}."
-            ),
+            Some("authorized") => t!("notify.mac_allowed", app = name).into_owned(),
+            _ => t!("notify.mac_not_allowed", app = name).into_owned(),
         })
     }
 }

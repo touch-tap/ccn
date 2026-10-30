@@ -172,6 +172,24 @@ uninstall:
   unpaired_all: "Unpaired every phone."
   removed_dir: "Removed %{path}."
 
+local:
+  finished_title: "Claude has finished"
+  finished_body: "Claude has finished and is waiting for you."
+  permission_title: "Claude needs permission"
+  question_title: "Claude has a question"
+  first_nudge: "Get these on your phone: ccn pair"
+  milestone_nudge: "10 notifications so far. Get them on your phone, with approvals from the lock screen: run ccn pair"
+  pair_message: "Claude Code Notifier: you get desktop notifications. To get them on your phone too, and approve or answer from there, run `ccn pair` in a terminal."
+
+hook:
+  licence_message: "Claude Code Notifier: phone notifications aren't unlocked for this computer. Unlock them: ccn unlock"
+  unpaired_message: "Claude Code Notifier: this computer isn't paired any more, so your phone won't get notifications. Run `ccn pair` in a terminal to reconnect."
+  unpaired_notification: "This computer isn't paired any more. Run `ccn pair` in a terminal to reconnect."
+  paired_message: "Claude Code Notifier: paired with %{phone}. Notifications now go to your phone."
+  # The server writes title, body and command in the user's language; this only joins them
+  nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
+  needs_attention: "Needs your attention"
+
 licence:
   already_licensed: "This computer is already licensed (%{licence})."
   switch_to_lifetime: "To switch to a lifetime licence, keeping the same key: ccn unlock --lifetime"
@@ -225,3 +243,15 @@ licence:
   this_computer: "  (this computer)"
   # %{name} is padded to 28 columns before it is filled in
   computer_row: "  %{name} %{seen}%{current}"
+
+notify:
+  registered_windows: "Registered \"Claude Code Notifier\" for Windows notifications."
+  icon_installed: "Installed the notification icon at %{path}."
+  doctor_applescript: "AppleScript (this build has no notifier app)"
+  doctor_allowed: "allowed for \"%{app}\""
+  doctor_denied: "turned off: System Settings > Notifications > %{app}"
+  doctor_not_allowed: "not allowed yet: run `ccn setup`"
+  mac_denied: "Desktop notifications are turned off for \"%{app}\". Turn them on in System Settings > Notifications."
+  mac_asking: "Asking macOS to allow notifications from \"%{app}\"..."
+  mac_allowed: "Desktop notifications are allowed for \"%{app}\"."
+  mac_not_allowed: "Desktop notifications aren't allowed. Turn them on in System Settings > Notifications > %{app}."

@@ -1,8 +1,9 @@
 //! Local mode: no phone is paired with this computer, so the hooks show desktop notifications,
 //! never touch the network and never hold Claude. A counter and a few nudges suggest pairing.
 //!
-//! The text here is what the user sees; keep each piece whole so it can be translated later.
+//! The text here is what the user sees; each piece is one key in locales/<lang>.yml.
 
+use rust_i18n::t;
 use serde_json::{Value, json};
 
 use crate::config::{self, Config};
@@ -16,17 +17,31 @@ const REPEAT_EVERY: i64 = 7 * DAY;
 /// The local notification whose arrival earns a nudge of its own
 pub const MILESTONE: u64 = 10;
 
-pub const FINISHED_TITLE: &str = "Claude has finished";
-pub const FINISHED_BODY: &str = "Claude has finished and is waiting for you.";
-pub const PERMISSION_TITLE: &str = "Claude needs permission";
-pub const QUESTION_TITLE: &str = "Claude has a question";
+pub fn finished_title() -> String {
+    t!("local.finished_title").into_owned()
+}
+pub fn finished_body() -> String {
+    t!("local.finished_body").into_owned()
+}
+pub fn permission_title() -> String {
+    t!("local.permission_title").into_owned()
+}
+pub fn question_title() -> String {
+    t!("local.question_title").into_owned()
+}
 
 /// Appended to the body of the very first local notification
-pub const FIRST_NUDGE_LINE: &str = "Get these on your phone: ccn pair";
+pub fn first_nudge_line() -> String {
+    t!("local.first_nudge").into_owned()
+}
 /// A notification of its own, after the 10th
-pub const MILESTONE_NUDGE: &str = "10 notifications so far. Get them on your phone, with approvals from the lock screen: run ccn pair";
+pub fn milestone_nudge() -> String {
+    t!("local.milestone_nudge").into_owned()
+}
 /// Shown in Claude Code after the 10th, then every week at SessionStart
-pub const PAIR_SYSTEM_MESSAGE: &str = "Claude Code Notifier: you get desktop notifications. To get them on your phone too, and approve or answer from there, run `ccn pair` in a terminal.";
+pub fn pair_system_message() -> String {
+    t!("local.pair_message").into_owned()
+}
 
 /// `ccn config set pair_nudges off`, or `CCN_NO_NUDGE=1`, keeps every suggestion to pair quiet.
 pub fn nudges_enabled(cfg: &Config) -> bool {
@@ -43,9 +58,9 @@ pub fn no_nudge_env() -> bool {
 #[derive(Debug, PartialEq)]
 pub enum Milestone {
     None,
-    /// Append `FIRST_NUDGE_LINE` to the body
+    /// Append `first_nudge_line` to the body
     First,
-    /// Show `MILESTONE_NUDGE` as well, and ask Claude Code to show `PAIR_SYSTEM_MESSAGE`
+    /// Show `milestone_nudge` as well, and ask Claude Code to show `pair_system_message`
     Tenth,
 }
 
@@ -57,7 +72,7 @@ pub fn milestone(count: u64) -> Milestone {
     }
 }
 
-/// Whether `PAIR_SYSTEM_MESSAGE` is due. The 10th notification sets `due`, which the next
+/// Whether `pair_system_message` is due. The 10th notification sets `due`, which the next
 /// SessionStart or prompt consumes; after that only SessionStart repeats it, every week. Never
 /// more than once a day either way.
 pub fn pair_message_due(due: bool, last_at: Option<i64>, now: i64, at_session_start: bool) -> bool {
@@ -70,10 +85,11 @@ pub fn pair_message_due(due: bool, last_at: Option<i64>, now: i64, at_session_st
 
 /// The nudge's body with the message shortened so the whole thing fits a notification.
 pub fn body_with_nudge(body: &str) -> String {
+    let nudge = first_nudge_line();
     format!(
-        "{}\n{FIRST_NUDGE_LINE}",
+        "{}\n{nudge}",
         // notify::show caps the body at 200 characters, and truncate adds "..."
-        SessionState::truncate(body, 200 - FIRST_NUDGE_LINE.len() - 4)
+        SessionState::truncate(body, 200 - nudge.chars().count() - 4)
     )
 }
 
@@ -111,9 +127,9 @@ pub fn run(
             let _ = state.save();
             if tool_name.as_deref() == Some("AskUserQuestion") && cfg.settings.notify_on_question()
             {
-                let first = payload::first_question(&tool_input)
-                    .unwrap_or_else(|| QUESTION_TITLE.to_string());
-                show(cfg, QUESTION_TITLE, &first);
+                let title = question_title();
+                let first = payload::first_question(&tool_input).unwrap_or_else(|| title.clone());
+                show(cfg, &title, &first);
             }
             None
         }
@@ -132,11 +148,12 @@ pub fn run(
             } else {
                 payload::permission_card(&inp, false)
             };
+            let title = permission_title();
             let body = card["promptText"]
                 .as_str()
                 .or(card["message"].as_str())
-                .unwrap_or(PERMISSION_TITLE);
-            show(cfg, PERMISSION_TITLE, body);
+                .unwrap_or(&title);
+            show(cfg, &title, body);
             None
         }
         "Stop" => {
@@ -146,12 +163,13 @@ pub fn run(
                 return None;
             }
             let project = inp.project_name();
+            let finished = finished_body();
             let body = inp
                 .str("last_assistant_message")
                 .map(str::trim)
                 .filter(|s| !s.is_empty())
-                .unwrap_or(FINISHED_BODY);
-            show(cfg, project.as_deref().unwrap_or(FINISHED_TITLE), body);
+                .unwrap_or(&finished);
+            show(cfg, &project.unwrap_or_else(finished_title), body);
             None
         }
         "SessionEnd" => {
@@ -176,7 +194,7 @@ fn pair_message(cfg: &mut Config, now: i64, at_session_start: bool) -> Option<Va
     cfg.pair_nudge_due = false;
     cfg.pair_nudge_last_at = Some(now);
     let _ = cfg.save();
-    Some(json!({ "systemMessage": PAIR_SYSTEM_MESSAGE }))
+    Some(json!({ "systemMessage": pair_system_message() }))
 }
 
 /// Shows one desktop notification, when the settings allow, and counts it towards the nudges.
@@ -200,7 +218,7 @@ fn show(cfg: &mut Config, title: &str, body: &str) {
         Milestone::None => notify::show(title, body, sound),
         Milestone::Tenth => {
             notify::show(title, body, sound);
-            notify::show(notify::APP_NAME, MILESTONE_NUDGE, false);
+            notify::show(notify::APP_NAME, &milestone_nudge(), false);
             cfg.pair_nudge_due = true;
         }
     }
@@ -247,8 +265,12 @@ mod tests {
     fn the_nudge_line_fits_with_the_message() {
         let long = "x".repeat(500);
         let body = body_with_nudge(&long);
-        assert!(body.ends_with(&format!("\n{FIRST_NUDGE_LINE}")));
+        assert!(body.ends_with(&format!("\n{}", first_nudge_line())));
         assert!(body.chars().count() <= 200, "{}", body.chars().count());
-        assert_eq!(body_with_nudge("done"), format!("done\n{FIRST_NUDGE_LINE}"));
+        assert_eq!(
+            body_with_nudge("done"),
+            format!("done\n{}", first_nudge_line())
+        );
+        assert_eq!(first_nudge_line(), "Get these on your phone: ccn pair");
     }
 }

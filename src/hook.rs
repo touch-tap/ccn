@@ -3,6 +3,7 @@
 //! must not block Claude.
 
 use anyhow::{Context, Result};
+use rust_i18n::t;
 use serde_json::Value;
 use std::io::Read;
 use std::sync::mpsc;
@@ -22,9 +23,6 @@ const REGISTER_MAX_AGE: i64 = 24 * 60 * 60;
 
 const DAY: i64 = 24 * 60 * 60;
 
-/// The licence line for a server that says `nudge: true` without writing the message itself (one
-/// from before Oct 2026). It describes this computer, never anyone's store purchase; keep it that way.
-pub const LICENCE_SYSTEM_MESSAGE: &str = "Claude Code Notifier: phone notifications aren't unlocked for this computer. Unlock them: ccn unlock";
 /// How often a SessionStart asks the server whether to nudge
 const LICENCE_CHECK_EVERY: i64 = DAY;
 /// Once shown, the licence nudge waits this long before it may repeat
@@ -46,14 +44,10 @@ pub fn licence_nudge_allowed(now: i64, paired_at: Option<i64>, last_shown: Optio
     early || weekly
 }
 
-pub const UNPAIRED_SYSTEM_MESSAGE: &str = "Claude Code Notifier: this computer isn't paired any more, so your phone won't get notifications. Run `ccn pair` in a terminal to reconnect.";
-const UNPAIRED_NOTIFICATION: &str =
-    "This computer isn't paired any more. Run `ccn pair` in a terminal to reconnect.";
-
 /// Shown once, when a SessionStart finds the first phone paired (the user paired from the phone
 /// after leaving `ccn pair`, or scanned the QR code later)
 fn paired_system_message(phone: &str) -> String {
-    format!("Claude Code Notifier: paired with {phone}. Notifications now go to your phone.")
+    t!("hook.paired_message", phone = phone).into_owned()
 }
 
 pub fn run() -> Result<()> {
@@ -155,7 +149,7 @@ fn check_phones(cfg: &mut Config, api: &Api) -> Option<Value> {
         let name = newest
             .name
             .clone()
-            .unwrap_or_else(|| "your phone".to_string());
+            .unwrap_or_else(|| t!("common.your_phone").into_owned());
         message = Some(serde_json::json!({ "systemMessage": paired_system_message(&name) }));
     }
     let _ = cfg.save();
@@ -191,7 +185,7 @@ fn unpaired(
     if cfg.desktop_notifications && now - flag.notified_at > Unpaired::NOTIFY_EVERY {
         notify::show(
             notify::APP_NAME,
-            UNPAIRED_NOTIFICATION,
+            &t!("hook.unpaired_notification"),
             cfg.settings.sound(),
         );
         flag.notified_at = now;
@@ -208,7 +202,7 @@ fn unpaired(
             }
             state.unpaired_warned = true;
             let _ = state.save();
-            Some(serde_json::json!({ "systemMessage": UNPAIRED_SYSTEM_MESSAGE }))
+            Some(serde_json::json!({ "systemMessage": t!("hook.unpaired_message") }))
         }
         _ => None,
     }
@@ -324,7 +318,9 @@ impl Ctx {
         self.cfg.licence_nudge_last_at = Some(now);
         let _ = self.cfg.save();
         let Some(message) = status.nudge_message else {
-            return Some(serde_json::json!({ "systemMessage": LICENCE_SYSTEM_MESSAGE }));
+            // A server that says `nudge: true` without writing the message itself (one from
+            // before Oct 2026). The line describes this computer, never anyone's store purchase.
+            return Some(serde_json::json!({ "systemMessage": t!("hook.licence_message") }));
         };
         if self.cfg.desktop_notifications {
             notify::show(&message.title, &message.body, false);
@@ -338,9 +334,11 @@ impl Ctx {
             ],
         );
         Some(serde_json::json!({
-            "systemMessage": format!(
-                "Claude Code Notifier: {} {} {}",
-                message.title, message.body, message.command
+            "systemMessage": t!(
+                "hook.nudge_message",
+                title = message.title,
+                body = message.body,
+                command = message.command
             )
         }))
     }
@@ -551,10 +549,11 @@ impl Ctx {
         }
         if self.cfg.desktop_notifications {
             let title = card["title"].as_str().unwrap_or("Claude Code");
+            let attention = t!("hook.needs_attention");
             let body = card["promptText"]
                 .as_str()
                 .or(card["message"].as_str())
-                .unwrap_or("Needs your attention");
+                .unwrap_or(&attention);
             notify::show(title, body, self.cfg.settings.sound());
         }
         Ok(id)
