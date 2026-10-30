@@ -1,7 +1,8 @@
-# ccn — Claude Code Notifier for the terminal
+# ccn — Claude Code Notifier for the terminal (macOS, Windows, Linux)
 
 Get a push on your phone when Claude Code finishes or needs you, and approve, deny or answer from
-there. Works on macOS, Linux and Windows, in any terminal, with no app running in the background.
+there, with a Windows toast or macOS notification on the desktop too. Works on macOS, Windows and
+Linux, in any terminal, with no app running in the background.
 
 `ccn` is one small binary that Claude Code calls through its hooks. It runs for a few milliseconds
 when something happens and exits. Install it once with `ccn pair`; after that every `claude`
@@ -13,8 +14,12 @@ session is covered, however you start it.
 # macOS / Linux, and pair in the same step with the code your phone shows
 curl -fsSL https://claudecodenotifier.com/install.sh | sh -s 482913
 
-# Windows (PowerShell)
+# Windows (PowerShell), and pair in the same step
 irm https://claudecodenotifier.com/install.ps1 | iex; ccn pair 482913
+
+# Windows with winget or Scoop (once published)
+winget install TouchTap.ccn; ccn pair 482913
+scoop bucket add touch-tap https://github.com/touch-tap/scoop-bucket; scoop install ccn; ccn pair 482913
 
 # Homebrew, or anyone with Node
 brew trust --formula touch-tap/tap/ccn && brew install touch-tap/tap/ccn && ccn pair 482913
