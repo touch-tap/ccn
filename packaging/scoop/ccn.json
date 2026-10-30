@@ -1,0 +1,46 @@
+{
+    "version": "0.2.0",
+    "description": "Claude Code Notifier for the terminal: phone notifications and approvals for Claude Code",
+    "homepage": "https://claudecodenotifier.com/cli",
+    "license": {
+        "identifier": "PolyForm-Shield-1.0.0",
+        "url": "https://github.com/touch-tap/ccn/blob/main/LICENSE.md"
+    },
+    "suggest": {
+        "vcredist": "extras/vcredist2022"
+    },
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/touch-tap/ccn/releases/download/v0.2.0/ccn-x86_64-pc-windows-msvc.zip",
+            "hash": "0fcb56df73c9cf38cb4806728052f733146535b5e2775b31a37037d1d461517a"
+        },
+        "arm64": {
+            "url": "https://github.com/touch-tap/ccn/releases/download/v0.2.0/ccn-aarch64-pc-windows-msvc.zip",
+            "hash": "28ce4c6796fa6598e9ecfc2bba745ef0da1e1e6b0b5d109e13af3235154469fd"
+        }
+    },
+    "bin": "ccn.exe",
+    "checkver": "github",
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/touch-tap/ccn/releases/download/v$version/ccn-x86_64-pc-windows-msvc.zip",
+                "hash": {
+                    "url": "$baseurl/SHA256SUMS"
+                }
+            },
+            "arm64": {
+                "url": "https://github.com/touch-tap/ccn/releases/download/v$version/ccn-aarch64-pc-windows-msvc.zip",
+                "hash": {
+                    "url": "$baseurl/SHA256SUMS"
+                }
+            }
+        }
+    },
+    "notes": [
+        "Connect your phone: run",
+        "  ccn",
+        "and scan the QR code with the phone's camera, or run",
+        "  ccn pair <the code on your phone>"
+    ]
+}
