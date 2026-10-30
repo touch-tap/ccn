@@ -195,6 +195,13 @@ mod tests {
             text.starts_with("Claude Code Notifier: get a push"),
             "{text}"
         );
+        let text = rust_i18n::t!(
+            "pair.paired_with",
+            locale = "xx",
+            name = "Pixel",
+            platform = "android"
+        );
+        assert_eq!(text, "Paired with Pixel (android).");
     }
 
     #[test]

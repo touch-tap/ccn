@@ -1,6 +1,7 @@
 //! The user-facing commands: pair, setup, doctor, test, devices, config, sync, uninstall, forget.
 
 use anyhow::{Context, Result, bail};
+use rust_i18n::t;
 use serde_json::{Value, json};
 use std::time::Duration;
 
@@ -56,12 +57,35 @@ pub fn ensure_registered(cfg: &mut Config) -> Result<Api> {
     Ok(api)
 }
 
-/// What the user sees when the phone's code is refused or malformed. One whole paragraph, so it
-/// can be translated as one.
-pub const CODE_NOT_RECOGNISED: &str = "That code wasn't recognised. The 6-digit code is in the Claude Code Notifier app under Computers > Add a computer; it changes every 24 hours, so copy the line the app shows right now.";
-const OFFER_QR: &str =
-    "Press Enter to show a QR code here instead (scan it with your phone), or Ctrl+C.";
-const OPTIONS_WITHOUT_TERMINAL: &str = "Run `ccn pair <code>` again with the code the app shows now, or run `ccn pair` to show a QR code here and scan it with your phone.";
+/// A pairing that failed on this side, before or without the server. Typed, so telemetry can name
+/// the reason whatever language the message is in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PairFailure {
+    /// The code typed wasn't six digits
+    MalformedCode,
+    /// The code shown here expired before a phone claimed it
+    CodeTimeout,
+}
+
+impl std::fmt::Display for PairFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&match self {
+            PairFailure::MalformedCode => t!("pair.code_is_six_digits"),
+            PairFailure::CodeTimeout => t!("pair.code_expired"),
+        })
+    }
+}
+
+impl std::error::Error for PairFailure {}
+
+/// "keychain" or "file" as a word in a sentence.
+pub fn store_name(store: &str) -> String {
+    if store == "keychain" {
+        t!("common.store_keychain").into_owned()
+    } else {
+        t!("common.store_file").into_owned()
+    }
+}
 
 /// Why `ccn pair` returned without an error.
 pub enum PairOutcome {
@@ -123,7 +147,7 @@ fn pair_inner(
     // pairings, so it starts over as a new one
     let mut registered = cfg.is_paired();
     if registered && matches!(Api::new(&cfg).me(), Err(err) if api::is_rejected(&err)) {
-        println!("This computer's old pairing has been removed, so it will be registered again.");
+        println!("{}", t!("pair.reregister"));
         cfg.client_id = None;
         cfg.phones = None;
         cfg.paired_at = None;
@@ -153,7 +177,7 @@ fn pair_inner(
             Ok(phone) => paired_with = Some(phone),
             Err(err) if code_was_refused(&err) => {
                 // Explain, and offer the QR code in place of a dead end
-                println!("{CODE_NOT_RECOGNISED}");
+                println!("{}", t!("pair.code_not_recognised"));
                 if !offer_qr_instead()? {
                     return Err(err);
                 }
@@ -202,40 +226,30 @@ fn pair_inner(
             .and_then(|url| qr::render(url).map(|code| (url, code)))
         {
             Some((url, code)) => {
-                println!(
-                    "  Scan this with your phone's camera to connect it. Without the app yet, it"
-                );
-                println!("  takes you to the App Store or Google Play: install, then scan again.");
+                println!("{}", t!("pair.scan"));
                 println!();
                 print!("{code}");
                 println!();
                 println!("  {url}");
-                println!(
-                    "  Or type this code in the Claude Code Notifier app:  {}",
-                    issued.code
-                );
+                println!("{}", t!("pair.or_type_code", code = issued.code));
             }
-            None => println!(
-                "  Enter this code in the Claude Code Notifier app:  {}",
-                issued.code
-            ),
+            None => println!("{}", t!("pair.enter_code", code = issued.code)),
         }
         println!();
+        println!("{}", t!("pair.hooks_already_installed"));
         println!(
-            "  Hooks are installed, so you already get desktop notifications on this computer."
-        );
-        println!(
-            "  Pair when you like: this code lasts {}.",
-            duration_text(issued.expires_in)
+            "{}",
+            t!(
+                "pair.code_lasts",
+                duration = duration_text(issued.expires_in)
+            )
         );
         if no_wait {
-            println!("  Pairing completes on its own when the phone connects.");
+            println!("{}", t!("pair.completes_on_its_own"));
             println!();
             return Ok(PairOutcome::CodeShown);
         }
-        println!(
-            "  Waiting for your phone... (Ctrl+C is safe: pairing completes on its own when the phone connects)"
-        );
+        println!("{}", t!("pair.waiting"));
         println!();
         let deadline = std::time::Instant::now() + Duration::from_secs(issued.expires_in);
         while std::time::Instant::now() < deadline {
@@ -249,7 +263,7 @@ fn pair_inner(
             }
         }
         if paired_with.is_none() {
-            bail!("the code expired before a phone claimed it. Run `ccn pair` again.");
+            bail!(PairFailure::CodeTimeout);
         }
     }
 
@@ -262,8 +276,12 @@ fn pair_inner(
     let store = config::store_token(&cfg, &token)?;
     Unpaired::clear();
     println!(
-        "Credentials stored in the {store} ({}).",
-        config::ccn_dir().display()
+        "{}",
+        t!(
+            "pair.credentials_stored",
+            store = store_name(store),
+            path = config::ccn_dir().display()
+        )
     );
     if list_phones(&mut cfg, &api).is_err() {
         // The server couldn't be asked for the count, but a phone did just pair
@@ -279,8 +297,8 @@ fn pair_inner(
             &payload::test_notification(&device_id),
             Duration::from_secs(10),
         ) {
-            Ok(_) => println!("Sent a test notification to your phone."),
-            Err(err) => println!("Could not send a test notification yet: {err:#}"),
+            Ok(_) => println!("{}", t!("pair.test_sent")),
+            Err(err) => println!("{}", t!("pair.test_failed", error = format!("{err:#}"))),
         },
         None => {}
     }
@@ -288,10 +306,7 @@ fn pair_inner(
     licence_pitch(&api);
 
     println!();
-    println!(
-        "Done. Start `claude` as usual: you will get a push when Claude finishes or needs you,"
-    );
-    println!("and you can approve, deny or answer from the phone. `ccn doctor` checks everything.");
+    println!("{}", t!("pair.done"));
     Ok(PairOutcome::Paired)
 }
 
@@ -299,7 +314,7 @@ fn pair_inner(
 fn claim_with_code(api: &Api, identity: &Value, code: &str) -> Result<PairedPhone> {
     let code = code.trim();
     if code.len() != 6 || !code.chars().all(|c| c.is_ascii_digit()) {
-        bail!("the code is the 6 digits shown in the Claude Code Notifier app");
+        bail!(PairFailure::MalformedCode);
     }
     let mut body = identity.clone();
     body["code"] = Value::String(code.to_string());
@@ -309,7 +324,15 @@ fn claim_with_code(api: &Api, identity: &Value, code: &str) -> Result<PairedPhon
 }
 
 fn print_paired(name: Option<&str>, platform: &str) {
-    println!("Paired with {} ({platform}).", name.unwrap_or("your phone"));
+    let your_phone = t!("common.your_phone");
+    println!(
+        "{}",
+        t!(
+            "pair.paired_with",
+            name = name.unwrap_or(&your_phone),
+            platform = platform
+        )
+    );
 }
 
 /// The server didn't know the code (or it had expired), or it wasn't six digits
@@ -325,11 +348,11 @@ fn code_was_refused(err: &anyhow::Error) -> bool {
 fn offer_qr_instead() -> Result<bool> {
     use std::io::IsTerminal;
     if !std::io::stdin().is_terminal() {
-        println!("{OPTIONS_WITHOUT_TERMINAL}");
+        println!("{}", t!("pair.options_without_terminal"));
         return Ok(false);
     }
     println!();
-    println!("{OFFER_QR}");
+    println!("{}", t!("pair.offer_qr"));
     let mut line = String::new();
     // End of input (Ctrl+D) isn't a yes
     Ok(matches!(std::io::stdin().read_line(&mut line), Ok(n) if n > 0))
@@ -339,13 +362,13 @@ fn offer_qr_instead() -> Result<bool> {
 pub fn duration_text(secs: u64) -> String {
     if secs >= 3600 {
         match secs / 3600 {
-            1 => "1 hour".to_string(),
-            h => format!("{h} hours"),
+            1 => t!("pair.hours_one").into_owned(),
+            h => t!("pair.hours_other", count = h).into_owned(),
         }
     } else {
         match (secs / 60).max(1) {
-            1 => "1 minute".to_string(),
-            m => format!("{m} minutes"),
+            1 => t!("pair.minutes_one").into_owned(),
+            m => t!("pair.minutes_other", count = m).into_owned(),
         }
     }
 }
@@ -371,14 +394,19 @@ fn licence_pitch(api: &Api) {
         return;
     };
     println!();
+    println!("{}", t!("pair.pitch"));
+    println!("{}", t!("pair.pitch_annual", price = offer.annual_price));
     println!(
-        "Your phone will offer a subscription in the app. You can also unlock everything from here, outside the app stores:"
+        "{}",
+        t!("pair.pitch_lifetime", price = offer.lifetime_price)
     );
-    println!("  ccn unlock             {} a year", offer.annual_price);
-    println!("  ccn unlock --lifetime  {} once", offer.lifetime_price);
     println!(
-        "Covers {} computers and every phone paired with them. {}-day money-back.",
-        offer.computers, offer.money_back_days
+        "{}",
+        t!(
+            "pair.pitch_covers",
+            computers = offer.computers,
+            days = offer.money_back_days
+        )
     );
     telemetry::event("cli_pitch_shown", &[]);
 }
@@ -389,11 +417,11 @@ fn wait_for_welcome(api: &Api, notification_id: &str) {
     use std::io::IsTerminal;
     println!();
     if !std::io::stdin().is_terminal() {
-        println!("A test notification is on its way to your phone: try answering it there.");
+        println!("{}", t!("pair.welcome_no_terminal"));
         return;
     }
-    println!("A test notification is on its way to your phone. Try answering it there...");
-    println!("(press Enter to skip)");
+    println!("{}", t!("pair.welcome"));
+    println!("{}", t!("pair.welcome_skip"));
     let (skip_tx, skip_rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
         let mut line = String::new();
@@ -409,10 +437,7 @@ fn wait_for_welcome(api: &Api, notification_id: &str) {
         }
         match api.wait_response(notification_id, 3) {
             Ok(api::Wait::Responded(answer)) => {
-                println!(
-                    "✓ Your phone answered \"{}\". That is how you'll answer Claude.",
-                    answer.trim()
-                );
+                println!("{}", t!("pair.welcome_answered", answer = answer.trim()));
                 return;
             }
             Ok(api::Wait::Settled(_)) => return,
@@ -420,7 +445,7 @@ fn wait_for_welcome(api: &Api, notification_id: &str) {
             Err(_) => std::thread::sleep(Duration::from_secs(3)),
         }
     }
-    println!("No answer yet. The notification stays on your phone for an hour.");
+    println!("{}", t!("pair.welcome_no_answer"));
 }
 
 /// `ccn` on its own: pair when no phone is paired with this computer yet (so `npx @touchtap/ccn` and a
@@ -438,18 +463,21 @@ pub fn default_command() -> Result<()> {
         return pair(None, None, false, false);
     }
     println!(
-        "ccn {} is set up on this computer as \"{}\".",
-        config::VERSION,
-        cfg.machine_name()
+        "{}",
+        t!(
+            "status.set_up",
+            version = config::VERSION,
+            name = cfg.machine_name()
+        )
     );
-    if let Some(line) = licence::status_line(&api) {
-        println!("Licence: {line}");
+    if let Some((_, line)) = licence::status_line(&api) {
+        println!("{}", t!("status.licence", line = line));
     }
     println!();
-    println!("  ccn doctor     check hooks, credentials and the server");
-    println!("  ccn test       send a test notification to your phone");
-    println!("  ccn pair       pair another phone");
-    println!("  ccn --help     everything else");
+    println!("{}", t!("status.hint_doctor"));
+    println!("{}", t!("status.hint_test"));
+    println!("{}", t!("status.hint_pair"));
+    println!("{}", t!("status.hint_help"));
     Ok(())
 }
 
@@ -461,26 +489,24 @@ pub fn setup(replace_mac_app: bool) -> Result<()> {
 /// was already in place, so pairing and the install scripts can run it every time.
 pub fn ensure_setup(replace_mac_app: bool) -> Result<()> {
     if let Some(copy) = hookcfg::install_self()? {
-        println!("Installed ccn to {}.", copy.display());
+        println!("{}", t!("setup.installed_self", path = copy.display()));
     }
     let report = hookcfg::install(replace_mac_app)?;
     if report.changed {
         println!(
-            "Hooks installed in {} (using {}).",
-            report.path.display(),
-            report.exe.display()
+            "{}",
+            t!(
+                "setup.hooks_installed",
+                path = report.path.display(),
+                exe = report.exe.display()
+            )
         );
     }
     if report.mac_app_hooks_found && !report.mac_app_hooks_removed {
         println!();
-        println!(
-            "Note: the Claude Code Notifier Mac app's hooks are also installed, so each event"
-        );
-        println!(
-            "would be sent twice. Run `ccn setup --replace-mac-app` to remove them, or quit the Mac app."
-        );
+        println!("{}", t!("setup.mac_app_note"));
     } else if report.mac_app_hooks_removed {
-        println!("Removed the Mac app's hook entries; ccn handles notifications from now on.");
+        println!("{}", t!("setup.mac_app_removed"));
     }
     if let Some(line) = notify::install() {
         println!("{line}");
@@ -498,7 +524,7 @@ fn sync_settings(cfg: &mut Config, api: &Api) {
             let _ = cfg.save();
         }
         Ok(None) => {}
-        Err(err) => println!("Settings not synced yet: {err:#}"),
+        Err(err) => println!("{}", t!("sync.not_synced", error = format!("{err:#}"))),
     }
 }
 
@@ -507,13 +533,13 @@ pub fn sync() -> Result<()> {
     require_paired(&cfg)?;
     let api = Api::new(&cfg);
     sync_settings(&mut cfg, &api);
-    println!("Settings synced.");
+    println!("{}", t!("sync.synced"));
     config_show()
 }
 
 fn require_paired(cfg: &Config) -> Result<()> {
     if !cfg.is_paired() {
-        bail!("this computer is not paired yet. Run `ccn pair <code>` with the code from the app.");
+        bail!("{}", t!("common.not_paired"));
     }
     Ok(())
 }
@@ -522,31 +548,42 @@ pub fn doctor() -> Result<()> {
     let mut cfg = Config::load();
     let yes = "ok ";
     let no = "!! ";
-    println!("ccn {} on {}", config::VERSION, config::platform());
-    println!("{}config: {}", yes, config::config_path().display());
+    println!(
+        "{}",
+        t!(
+            "doctor.header",
+            version = config::VERSION,
+            platform = config::platform()
+        )
+    );
+    println!(
+        "{yes}{}",
+        t!("doctor.config", path = config::config_path().display())
+    );
 
     let paired = cfg.is_paired();
-    println!(
-        "{}credentials: {}",
-        if paired { yes } else { no },
-        if paired {
-            format!(
-                "present ({})",
-                if config::credential_store(&cfg) == "keychain" {
-                    "keychain"
-                } else {
-                    "file"
-                }
+    if paired {
+        println!(
+            "{yes}{}",
+            t!(
+                "doctor.credentials_present",
+                store = store_name(config::credential_store(&cfg))
             )
-        } else {
-            "missing: run `ccn pair <code>`".to_string()
-        }
-    );
+        );
+    } else {
+        println!("{no}{}", t!("doctor.credentials_missing"));
+    }
 
     let api = Api::new(&cfg);
     match api.health() {
-        Ok(()) => println!("{}server: {} reachable", yes, cfg.server_url),
-        Err(err) => println!("{}server: {err:#}", no),
+        Ok(()) => println!(
+            "{yes}{}",
+            t!("doctor.server_reachable", url = cfg.server_url)
+        ),
+        Err(err) => println!(
+            "{no}{}",
+            t!("doctor.server_error", error = format!("{err:#}"))
+        ),
     }
     let mut accepted = paired;
     if paired {
@@ -554,47 +591,49 @@ pub fn doctor() -> Result<()> {
             Ok(me) => {
                 Unpaired::clear();
                 println!(
-                    "{}registered as \"{}\" ({} {}), capabilities: {}",
-                    yes,
-                    me.name,
-                    me.client_kind.unwrap_or_else(|| "cli".to_string()),
-                    me.platform
-                        .unwrap_or_else(|| config::platform().to_string()),
-                    me.capabilities.unwrap_or_default().join(", ")
+                    "{yes}{}",
+                    t!(
+                        "doctor.registered",
+                        name = me.name,
+                        kind = me.client_kind.unwrap_or_else(|| "cli".to_string()),
+                        platform = me
+                            .platform
+                            .unwrap_or_else(|| config::platform().to_string()),
+                        capabilities = me.capabilities.unwrap_or_default().join(", ")
+                    )
                 )
             }
             Err(err) if api::is_rejected(&err) => {
                 if Unpaired::load().is_none() {
                     Unpaired::new().save();
                 }
-                println!("{}pairing: not paired any more: run `ccn pair`", no);
+                println!("{no}{}", t!("doctor.not_paired_any_more"));
                 accepted = false;
             }
             Err(err) => {
                 if Unpaired::load().is_some() {
-                    println!("{}pairing: not paired any more: run `ccn pair`", no);
+                    println!("{no}{}", t!("doctor.not_paired_any_more"));
                     accepted = false;
                 }
-                println!("{}registration: {err:#}", no);
+                println!(
+                    "{no}{}",
+                    t!("doctor.registration_error", error = format!("{err:#}"))
+                );
             }
         }
     }
     if accepted {
-        if let Some(line) = licence::status_line(&api) {
+        if let Some((licensed, line)) = licence::status_line(&api) {
             println!(
-                "{}licence: {line}",
-                if line.ends_with("ccn upgrade") || line.ends_with("ccn unlock") {
-                    no
-                } else {
-                    yes
-                }
+                "{}{}",
+                if licensed { yes } else { no },
+                t!("doctor.licence", line = line)
             );
         }
         match list_phones(&mut cfg, &api) {
-            Ok(devices) if devices.is_empty() => println!(
-                "{}phones: none paired yet, so notifications stay on this desktop (run `ccn pair`)",
-                no
-            ),
+            Ok(devices) if devices.is_empty() => {
+                println!("{no}{}", t!("doctor.phones_none"))
+            }
             Ok(devices) => {
                 let names: Vec<String> = devices
                     .iter()
@@ -606,9 +645,12 @@ pub fn doctor() -> Result<()> {
                         )
                     })
                     .collect();
-                println!("{}phones: {}", yes, names.join(", "));
+                println!("{yes}{}", t!("doctor.phones", names = names.join(", ")));
             }
-            Err(err) => println!("{}phones: {err:#}", no),
+            Err(err) => println!(
+                "{no}{}",
+                t!("doctor.phones_error", error = format!("{err:#}"))
+            ),
         }
     }
 
@@ -616,58 +658,68 @@ pub fn doctor() -> Result<()> {
         Ok(status) => {
             if status.missing.is_empty() {
                 println!(
-                    "{}hooks: all {} installed in {}",
-                    yes,
-                    status.installed.len(),
-                    status.path.display()
+                    "{yes}{}",
+                    t!(
+                        "doctor.hooks_all",
+                        count = status.installed.len(),
+                        path = status.path.display()
+                    )
                 );
             } else {
                 println!(
-                    "{}hooks: missing {} (run `ccn setup`)",
-                    no,
-                    status.missing.join(", ")
+                    "{no}{}",
+                    t!("doctor.hooks_missing", names = status.missing.join(", "))
                 );
             }
             if status.stale_exe {
-                println!(
-                    "{}hooks point at a different ccn binary; run `ccn setup` to update them",
-                    no
-                );
+                println!("{no}{}", t!("doctor.hooks_stale"));
             }
             if status.mac_app_present {
-                println!(
-                    "{}the Mac app's hooks are also installed (run `ccn setup --replace-mac-app`)",
-                    no
-                );
+                println!("{no}{}", t!("doctor.mac_app_hooks"));
             }
         }
-        Err(err) => println!("{}hooks: {err:#}", no),
+        Err(err) => println!(
+            "{no}{}",
+            t!("doctor.hooks_error", error = format!("{err:#}"))
+        ),
     }
 
     match presence::idle_seconds() {
         Some(idle) => println!(
-            "{}presence: idle {:.0}s now, threshold {:.0}s",
-            yes,
-            idle,
-            cfg.settings.presence_threshold()
+            "{yes}{}",
+            t!(
+                "doctor.presence",
+                idle = format!("{idle:.0}"),
+                threshold = format!("{:.0}", cfg.settings.presence_threshold())
+            )
         ),
-        None => println!(
-            "{}presence: not detectable here, so every request waits for the phone",
-            no
-        ),
+        None => println!("{no}{}", t!("doctor.presence_none")),
     }
     let tmux = std::env::var("TMUX")
         .map(|v| !v.is_empty())
         .unwrap_or(false);
     println!(
-        "{}replies: approvals and question answers from the phone work in any terminal; free text into an idle session {}",
-        yes,
-        if tmux { "works (tmux)" } else { "needs tmux" }
+        "{yes}{}",
+        t!(
+            "doctor.replies",
+            free_text = if tmux {
+                t!("doctor.replies_tmux")
+            } else {
+                t!("doctor.replies_no_tmux")
+            }
+        )
     );
     if let Some((ok, line)) = notify::doctor_line() {
-        println!("{}desktop notifications: {line}", if ok { yes } else { no });
+        println!(
+            "{}{}",
+            if ok { yes } else { no },
+            t!("doctor.desktop", line = line)
+        );
     }
-    println!("{}log: {}", yes, config::log_path().display());
+    println!(
+        "{yes}{}",
+        t!("doctor.log", path = config::log_path().display())
+    );
     Ok(())
 }
 
@@ -677,13 +729,16 @@ pub fn test() -> Result<()> {
     let api = Api::new(&cfg);
     let devices = list_phones(&mut cfg, &api)?;
     if devices.is_empty() {
-        bail!("no phones are paired. Run `ccn pair <code>`.");
+        bail!("{}", t!("test.none_paired"));
     }
     for d in devices {
         let name = d.name.clone().unwrap_or_else(|| d.id.clone());
         match api.post_event(&payload::test_notification(&d.id), Duration::from_secs(10)) {
-            Ok(_) => println!("Sent a test notification to {name} ({}).", d.platform),
-            Err(err) => println!("{name}: {err:#}"),
+            Ok(_) => println!("{}", t!("test.sent", name = name, platform = d.platform)),
+            Err(err) => println!(
+                "{}",
+                t!("test.failed", name = name, error = format!("{err:#}"))
+            ),
         }
     }
     Ok(())
@@ -695,7 +750,7 @@ pub fn devices() -> Result<()> {
     let api = Api::new(&cfg);
     let devices = list_phones(&mut cfg, &api)?;
     if devices.is_empty() {
-        println!("No phones paired. Run `ccn pair <code>` with the code from the app.");
+        println!("{}", t!("devices.none"));
         return Ok(());
     }
     for d in devices {
@@ -703,15 +758,18 @@ pub fn devices() -> Result<()> {
             .map(|t| t.format("%Y-%m-%d").to_string())
             .unwrap_or_default();
         println!(
-            "{:<24} {:<8} paired {}{}",
-            d.name.clone().unwrap_or_else(|| d.id.clone()),
-            d.platform,
-            since,
-            if d.notifications_enabled == Some(false) {
-                "  (notifications off)"
-            } else {
-                ""
-            }
+            "{}",
+            t!(
+                "devices.row",
+                name = format!("{:<24}", d.name.clone().unwrap_or_else(|| d.id.clone())),
+                platform = format!("{:<8}", d.platform),
+                since = since,
+                off = if d.notifications_enabled == Some(false) {
+                    t!("devices.notifications_off")
+                } else {
+                    "".into()
+                }
+            )
         );
     }
     Ok(())
@@ -731,11 +789,14 @@ pub fn revoke(device: &str) -> Result<()> {
                     .map(|n| n.eq_ignore_ascii_case(device))
                     .unwrap_or(false)
         })
-        .with_context(|| format!("no paired phone called '{device}'"))?;
+        .with_context(|| t!("devices.no_such_phone", device = device).into_owned())?;
     api.revoke(&target.pairing_id)?;
     println!(
-        "Revoked {}.",
-        target.name.clone().unwrap_or_else(|| target.id.clone())
+        "{}",
+        t!(
+            "devices.revoked",
+            name = target.name.clone().unwrap_or_else(|| target.id.clone())
+        )
     );
     let _ = list_phones(&mut cfg, &api);
     Ok(())
@@ -744,6 +805,7 @@ pub fn revoke(device: &str) -> Result<()> {
 pub fn config_show() -> Result<()> {
     let cfg = Config::load();
     let s = &cfg.settings;
+    let local_only = t!("config.local_only");
     println!("notify_on_done             {}", s.notify_on_done());
     println!("notify_on_permission       {}", s.notify_on_permission());
     println!("notify_on_question         {}", s.notify_on_question());
@@ -767,22 +829,22 @@ pub fn config_show() -> Result<()> {
     println!("sound                      {}", s.sound());
     println!("quiet_when_present         {}", s.quiet_when_present());
     println!(
-        "desktop_notifications      {} (local only)",
+        "desktop_notifications      {} {local_only}",
         cfg.desktop_notifications
     );
     println!(
-        "credential_store           {} (local only)",
+        "credential_store           {} {local_only}",
         config::credential_store(&cfg)
     );
     println!(
-        "pair_nudges                {} (local only)",
+        "pair_nudges                {} {local_only}",
         if cfg.pair_nudges { "on" } else { "off" }
     );
     if let Some(at) = cfg.settings_updated_at {
         let when = chrono::DateTime::from_timestamp(at, 0)
             .map(|t| t.to_rfc3339())
             .unwrap_or_default();
-        println!("(last changed {when}; also editable from the phone)");
+        println!("{}", t!("config.last_changed", when = when));
     }
     Ok(())
 }
@@ -809,7 +871,8 @@ pub fn config_set(key: &str, value: &str) -> Result<()> {
         let store = value.to_ascii_lowercase();
         anyhow::ensure!(
             store == "keychain" || store == "file",
-            "credential_store expects keychain or file"
+            "{}",
+            t!("config.credential_store_expects")
         );
         // Move the token: read it from wherever it is now, then store it in the chosen place
         let token = config::load_token(&cfg);
@@ -821,7 +884,10 @@ pub fn config_set(key: &str, value: &str) -> Result<()> {
                 config::delete_token();
             }
             let went = config::store_token(&cfg, &token)?;
-            println!("Credentials are now in the {went}.");
+            println!(
+                "{}",
+                t!("config.credentials_moved", store = store_name(went))
+            );
         }
         return config_show();
     }
@@ -849,44 +915,35 @@ pub fn uninstall() -> Result<()> {
 pub fn forget(yes: bool) -> Result<()> {
     use std::io::{IsTerminal, Write};
     if !yes && !std::io::stdin().is_terminal() {
-        bail!("ccn forget needs a yes from you: run it in a terminal, or add --yes");
+        bail!("{}", t!("forget.needs_yes"));
     }
-    println!(
-        "This erases this computer and its pairings from the Claude Code Notifier server, then"
-    );
-    println!(
-        "removes ccn from Claude Code and deletes its credentials and files here, as `ccn uninstall` does."
-    );
-    println!("Phones paired with this computer will see it disappear.");
-    println!(
-        "A licence bought on the website is not cancelled: do that at claudecodenotifier.com/licence"
-    );
-    println!("with \"Erase my licence\".");
+    println!("{}", t!("forget.warning"));
     if !yes {
-        print!("\nType yes to continue: ");
+        let yes_word = t!("forget.yes_word");
+        print!("{}", t!("forget.prompt", yes = yes_word));
         std::io::stdout().flush()?;
         let mut line = String::new();
         std::io::stdin().read_line(&mut line)?;
-        if line.trim() != "yes" {
-            println!("Nothing was erased.");
+        // The English word always works too, whatever the prompt said
+        if line.trim() != yes_word && line.trim() != "yes" {
+            println!("{}", t!("forget.nothing_erased"));
             return Ok(());
         }
     }
     let cfg = Config::load();
     if cfg.is_paired() {
         match Api::new(&cfg).erase() {
-            Ok(()) => println!("Erased this computer and its pairings from the server."),
+            Ok(()) => println!("{}", t!("forget.erased")),
             Err(err) if api::is_rejected(&err) => {
-                println!("The server had already forgotten this computer.")
+                println!("{}", t!("forget.already_forgotten"))
             }
             Err(err) => bail!(
-                "{err:#}. Nothing was removed from this computer, so you can run `ccn forget` again"
+                "{}",
+                t!("forget.nothing_removed", error = format!("{err:#}"))
             ),
         }
     } else {
-        println!(
-            "This computer isn't registered with the server, so there is nothing to erase there."
-        );
+        println!("{}", t!("forget.not_registered"));
     }
     // The server has already dropped the licence slot and the pairings
     remove_local(false)
@@ -897,24 +954,27 @@ pub fn forget(yes: bool) -> Result<()> {
 fn remove_local(revoke_on_server: bool) -> Result<()> {
     let cfg = Config::load();
     let path = hookcfg::uninstall()?;
-    println!("Removed ccn's hooks from {}.", path.display());
+    println!("{}", t!("uninstall.hooks_removed", path = path.display()));
     notify::uninstall();
     if revoke_on_server && cfg.is_paired() {
         let api = Api::new(&cfg);
         // Free the licence slot first, so a reinstall (which is a new computer) doesn't find it taken
         if let Ok(true) = api.deactivate_licence() {
-            println!("Freed this computer's licence slot.");
+            println!("{}", t!("uninstall.slot_freed"));
         }
         if let Ok(devices) = api.pairings() {
             for d in devices {
                 let _ = api.revoke(&d.pairing_id);
             }
-            println!("Unpaired every phone.");
+            println!("{}", t!("uninstall.unpaired_all"));
         }
     }
     config::delete_token();
     let _ = std::fs::remove_dir_all(config::ccn_dir());
-    println!("Removed {}.", config::ccn_dir().display());
+    println!(
+        "{}",
+        t!("uninstall.removed_dir", path = config::ccn_dir().display())
+    );
     Ok(())
 }
 
@@ -935,13 +995,24 @@ mod tests {
     #[test]
     fn only_a_refused_code_offers_the_qr_code() {
         let refused = anyhow::anyhow!("pairing: Invalid or expired pairing code");
-        let malformed =
-            anyhow::anyhow!("the code is the 6 digits shown in the Claude Code Notifier app");
+        let malformed = anyhow::anyhow!(PairFailure::MalformedCode);
         let network = anyhow::anyhow!("POST /api/pairing/claim-by-client: io: Connection refused");
         let limited = anyhow::anyhow!("pairing: Too many pairing attempts");
         assert!(code_was_refused(&refused));
         assert!(code_was_refused(&malformed));
         assert!(!code_was_refused(&network));
         assert!(!code_was_refused(&limited));
+    }
+
+    #[test]
+    fn pair_failures_read_as_before() {
+        assert_eq!(
+            format!("{:#}", anyhow::anyhow!(PairFailure::MalformedCode)),
+            "the code is the 6 digits shown in the Claude Code Notifier app"
+        );
+        assert_eq!(
+            format!("{:#}", anyhow::anyhow!(PairFailure::CodeTimeout)),
+            "the code expired before a phone claimed it. Run `ccn pair` again."
+        );
     }
 }

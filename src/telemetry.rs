@@ -79,19 +79,23 @@ pub fn event(name: &str, properties: &[(&str, &str)]) {
         .send_json(body);
 }
 
-/// A short reason for a failed pairing, from the server's message or the transport error.
+/// A short reason for a failed pairing: the typed kind when ccn raised it itself (its message is
+/// in the user's language), otherwise from the server's message or the transport error.
 pub fn failure_reason(err: &anyhow::Error) -> &'static str {
+    use crate::commands::PairFailure;
+    if let Some(kind) = err.downcast_ref::<PairFailure>() {
+        return match kind {
+            PairFailure::MalformedCode => "malformed_code",
+            PairFailure::CodeTimeout => "code_timeout",
+        };
+    }
     let text = format!("{err:#}").to_lowercase();
     if text.contains("invalid or expired pairing code") {
         "invalid_code"
-    } else if text.contains("6 digits") {
-        "malformed_code"
     } else if text.contains("too many pairing attempts") {
         "rate_limited"
     } else if text.contains("maximum") {
         "max_devices"
-    } else if text.contains("expired before a phone claimed") {
-        "code_timeout"
     } else if text.contains("settings.json") || text.contains("hook") {
         "hooks"
     } else if text.contains("credential") || text.contains("keyring") || text.contains("keychain") {
@@ -124,8 +128,14 @@ mod tests {
             "rate_limited"
         );
         assert_eq!(
-            r("the code is the 6 digits shown in the Claude Code Notifier app"),
+            failure_reason(&anyhow::anyhow!(
+                crate::commands::PairFailure::MalformedCode
+            )),
             "malformed_code"
+        );
+        assert_eq!(
+            failure_reason(&anyhow::anyhow!(crate::commands::PairFailure::CodeTimeout)),
+            "code_timeout"
         );
         assert_eq!(
             r("POST /api/pairing/claim-by-client: io: Connection refused"),

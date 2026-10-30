@@ -4,6 +4,7 @@
 //! Keys are only ever typed here or on the website's licence page, never in the phone apps.
 
 use anyhow::{Result, bail};
+use rust_i18n::t;
 use std::io::{IsTerminal, Write};
 use std::time::{Duration, Instant};
 
@@ -40,13 +41,14 @@ pub fn unlock(lifetime: bool) -> Result<()> {
             Some(e) if e.code == "ALREADY_LICENSED" => {
                 let licence = e.licence();
                 println!(
-                    "This computer is already licensed ({}).",
-                    licence.as_ref().map(describe).unwrap_or_default()
+                    "{}",
+                    t!(
+                        "licence.already_licensed",
+                        licence = licence.as_ref().map(describe).unwrap_or_default()
+                    )
                 );
                 if licence.map(|l| l.plan == "annual").unwrap_or(false) {
-                    println!(
-                        "To switch to a lifetime licence, keeping the same key: ccn unlock --lifetime"
-                    );
+                    println!("{}", t!("licence.switch_to_lifetime"));
                 }
                 return Ok(());
             }
@@ -61,11 +63,9 @@ pub fn unlock(lifetime: bool) -> Result<()> {
     );
     println!();
     if opened {
-        println!(
-            "  The checkout is open in your browser. To pay on your phone instead, scan this:"
-        );
+        println!("{}", t!("licence.checkout_open"));
     } else {
-        println!("  Open this link to pay, or scan it with your phone:");
+        println!("{}", t!("licence.checkout_link"));
     }
     println!();
     if let Some(code) = qr::render(&checkout.url) {
@@ -74,7 +74,7 @@ pub fn unlock(lifetime: bool) -> Result<()> {
     }
     println!("  {}", checkout.url);
     println!();
-    println!("  Waiting for the payment... (Ctrl+C to stop; the key is emailed to you either way)");
+    println!("{}", t!("licence.waiting_payment"));
 
     let deadline = Instant::now() + CHECKOUT_WAIT;
     while Instant::now() < deadline {
@@ -89,23 +89,17 @@ pub fn unlock(lifetime: bool) -> Result<()> {
                 telemetry::event("cli_licensed", &[("method", "checkout")]);
                 println!();
                 if upgraded {
-                    println!(
-                        "✓ Upgraded to a lifetime licence. Same key, same computers; the annual renewal is cancelled."
-                    );
+                    println!("{}", t!("licence.upgraded"));
                     return Ok(());
                 }
-                println!("✓ This computer is licensed ({}).", describe(&licence));
+                println!("{}", t!("licence.licensed", licence = describe(&licence)));
                 if let Some(key) = key {
-                    println!(
-                        "  Key: {key} (also emailed). Use it on up to 2 more computers: ccn activate {key}"
-                    );
+                    println!("{}", t!("licence.key", key = key));
                 }
                 if activated {
-                    println!("  Every phone paired with this computer is unlocked.");
+                    println!("{}", t!("licence.phones_unlocked"));
                 } else {
-                    println!(
-                        "  Run `ccn activate <key>` with the emailed key to use it on this computer."
-                    );
+                    println!("{}", t!("licence.activate_with_key"));
                 }
                 return Ok(());
             }
@@ -114,9 +108,7 @@ pub fn unlock(lifetime: bool) -> Result<()> {
         }
     }
     println!();
-    println!(
-        "Still no payment after 15 minutes. If you paid, the key is in your email: ccn activate <key>"
-    );
+    println!("{}", t!("licence.no_payment"));
     Ok(())
 }
 
@@ -132,27 +124,27 @@ pub fn activate(key: &str, replace: Option<String>) -> Result<()> {
             Some(e) if e.code == "SLOTS_FULL" && replace.is_none() => {
                 let computers = e.computers();
                 match reinstalled_slot(&computers, &cfg.machine_name()) {
-                    Some(old)
-                        if confirm(&format!(
-                            "\"{}\" hasn't been seen for over a week. Is that this computer? Replace it?",
-                            name_of(old)
-                        )) =>
-                    {
+                    Some(old) if confirm(&t!("licence.replace_stale", name = name_of(old))) => {
                         api.activate_licence(key, Some(&old.id))
                     }
                     _ => {
                         telemetry::event("cli_activate_failed", &[("reason", "slots_full")]);
-                        println!("This licence is already on {} computers:", computers.len());
+                        println!("{}", t!("licence.slots_full", count = computers.len()));
                         print_computers(&computers);
                         println!();
+                        println!("{}", t!("licence.free_one"));
                         println!(
-                            "Free one with `ccn deactivate` on that computer, or replace it from here:"
+                            "{}",
+                            t!(
+                                "licence.replace_example",
+                                key = key,
+                                name = computers
+                                    .first()
+                                    .map(name_of)
+                                    .unwrap_or_else(|| t!("licence.old_laptop").into_owned())
+                            )
                         );
-                        println!(
-                            "  ccn activate {key} --replace \"{}\"",
-                            computers.first().map(name_of).unwrap_or("Old laptop")
-                        );
-                        bail!("no free computer slot");
+                        bail!("{}", t!("licence.no_free_slot"));
                     }
                 }
             }
@@ -160,7 +152,7 @@ pub fn activate(key: &str, replace: Option<String>) -> Result<()> {
                 let reason = e.code.to_lowercase();
                 telemetry::event("cli_activate_failed", &[("reason", reason.as_str())]);
                 if e.code == "NO_SUCH_COMPUTER" {
-                    println!("Computers on this licence:");
+                    println!("{}", t!("licence.computers_on_licence"));
                     print_computers(&e.computers());
                 }
                 return Err(err);
@@ -179,8 +171,12 @@ pub fn activate(key: &str, replace: Option<String>) -> Result<()> {
     telemetry::event("cli_licensed", &[("method", "key")]);
     let licence = result.licence.as_ref().map(describe).unwrap_or_default();
     println!(
-        "✓ Licensed ({licence}). {} of 3 computers in use.",
-        result.computers.len()
+        "{}",
+        t!(
+            "licence.activated",
+            licence = licence,
+            count = result.computers.len()
+        )
     );
     if !cfg.is_paired()
         || Api::new(&cfg)
@@ -188,9 +184,9 @@ pub fn activate(key: &str, replace: Option<String>) -> Result<()> {
             .map(|d| d.is_empty())
             .unwrap_or(false)
     {
-        println!("  Pair a phone with `ccn pair` and it is unlocked straight away.");
+        println!("{}", t!("licence.pair_to_unlock"));
     } else {
-        println!("  Every phone paired with this computer is unlocked.");
+        println!("{}", t!("licence.phones_unlocked"));
     }
     Ok(())
 }
@@ -198,62 +194,81 @@ pub fn activate(key: &str, replace: Option<String>) -> Result<()> {
 pub fn deactivate() -> Result<()> {
     let cfg = Config::load();
     if !cfg.is_paired() {
-        println!("This computer has no licence.");
+        println!("{}", t!("licence.none"));
         return Ok(());
     }
     let api = Api::new(&cfg);
     let before = api.licence_status(Duration::from_secs(10))?;
     if !api.deactivate_licence()? {
-        println!("This computer has no licence.");
+        println!("{}", t!("licence.none"));
         return Ok(());
     }
     telemetry::event("cli_deactivated", &[]);
     let left = before.computers.len().saturating_sub(1);
-    println!("Freed. This licence now has {left} of 3 computers in use.");
+    println!("{}", t!("licence.freed", count = left));
     Ok(())
 }
 
 pub fn show() -> Result<()> {
     let cfg = Config::load();
     if !cfg.is_paired() {
-        println!("No licence on this computer. Buy one: ccn unlock");
+        println!("{}", t!("licence.none_buy"));
         return Ok(());
     }
     let status = Api::new(&cfg).licence_status(Duration::from_secs(10))?;
     let Some(licence) = &status.licence else {
-        println!("No licence on this computer.");
-        println!("  Buy one:            ccn unlock (annual) or ccn unlock --lifetime");
-        println!("  Already have a key: ccn activate <key>");
+        println!("{}", t!("licence.none_short"));
+        println!("{}", t!("licence.buy_options"));
+        println!("{}", t!("licence.have_key"));
         return Ok(());
     };
-    println!("Licence:   {}", describe(licence));
-    println!("Key:       CCN-…-{}", licence.key_last4);
     println!(
-        "Unlocks:   {}",
-        if status.licensed {
-            "yes, every phone paired with this computer"
-        } else {
-            "no"
-        }
+        "{}",
+        t!("licence.show_licence", licence = describe(licence))
     );
-    println!("Computers: {} of 3", status.computers.len());
+    println!("{}", t!("licence.show_key", last4 = licence.key_last4));
+    println!(
+        "{}",
+        t!(
+            "licence.show_unlocks",
+            value = if status.licensed {
+                t!("licence.unlocks_yes")
+            } else {
+                t!("licence.unlocks_no")
+            }
+        )
+    );
+    println!(
+        "{}",
+        t!("licence.show_computers", count = status.computers.len())
+    );
     print_computers(&status.computers);
     if licence.plan == "annual" && status.licensed {
         println!();
-        println!("Switch to lifetime, keeping the key: ccn unlock --lifetime");
+        println!("{}", t!("licence.switch_lifetime_keep_key"));
     }
     Ok(())
 }
 
-/// One line for bare `ccn` and `ccn doctor`, or None when the server can't be asked quickly.
-pub fn status_line(api: &Api) -> Option<String> {
+/// One line for bare `ccn` and `ccn doctor`, with whether this computer is licensed, or None when
+/// the server can't be asked quickly.
+pub fn status_line(api: &Api) -> Option<(bool, String)> {
     let status = api.licence_status(Duration::from_secs(5)).ok()?;
     Some(match &status.licence {
-        Some(l) if status.licensed => {
-            format!("{}, {} of 3 computers", describe(l), status.computers.len())
-        }
-        Some(l) => format!("{}: ccn unlock", describe(l)),
-        None => "none: ccn unlock".to_string(),
+        Some(l) if status.licensed => (
+            true,
+            t!(
+                "licence.status_licensed",
+                licence = describe(l),
+                count = status.computers.len()
+            )
+            .into_owned(),
+        ),
+        Some(l) => (
+            false,
+            t!("licence.status_unlicensed", licence = describe(l)).into_owned(),
+        ),
+        None => (false, t!("licence.status_none").into_owned()),
     })
 }
 
@@ -262,20 +277,29 @@ pub fn describe(l: &Licence) -> String {
     let date = l
         .valid_until
         .and_then(|t| chrono::DateTime::from_timestamp(t, 0))
-        .map(|t| t.format("%-d %b %Y").to_string());
+        .map(format_date);
     match (l.plan.as_str(), l.status.as_str(), date) {
-        (_, "refunded", _) => "refunded".to_string(),
-        ("lifetime", _, _) => "lifetime".to_string(),
-        (_, "active", Some(d)) => format!("annual, renews {d}"),
-        (_, "past_due", _) => "annual, payment retrying".to_string(),
-        (_, "cancelled", Some(d)) => format!("annual, ends {d}"),
-        (_, "expired", Some(d)) => format!("annual, ended {d}"),
-        (plan, status, _) => format!("{plan}, {status}"),
+        (_, "refunded", _) => t!("licence.describe_refunded").into_owned(),
+        ("lifetime", _, _) => t!("licence.describe_lifetime").into_owned(),
+        (_, "active", Some(d)) => t!("licence.describe_renews", date = d).into_owned(),
+        (_, "past_due", _) => t!("licence.describe_past_due").into_owned(),
+        (_, "cancelled", Some(d)) => t!("licence.describe_ends", date = d).into_owned(),
+        (_, "expired", Some(d)) => t!("licence.describe_ended", date = d).into_owned(),
+        (plan, status, _) => {
+            t!("licence.describe_other", plan = plan, status = status).into_owned()
+        }
     }
 }
 
-fn name_of(c: &LicenceComputer) -> &str {
-    c.name.as_deref().unwrap_or("unnamed computer")
+/// A date in a sentence, in the locale's own format (chrono only knows English month names).
+fn format_date(t: chrono::DateTime<chrono::Utc>) -> String {
+    t.format(&t!("common.date_format")).to_string()
+}
+
+fn name_of(c: &LicenceComputer) -> String {
+    c.name
+        .clone()
+        .unwrap_or_else(|| t!("licence.unnamed_computer").into_owned())
 }
 
 fn print_computers(computers: &[LicenceComputer]) {
@@ -283,13 +307,20 @@ fn print_computers(computers: &[LicenceComputer]) {
         let seen = c
             .last_seen_at
             .and_then(|t| chrono::DateTime::from_timestamp(t, 0))
-            .map(|t| format!("last seen {}", t.format("%-d %b %Y")))
-            .unwrap_or_else(|| "not seen recently".to_string());
+            .map(|t| t!("licence.last_seen", date = format_date(t)).into_owned())
+            .unwrap_or_else(|| t!("licence.not_seen_recently").into_owned());
         println!(
-            "  {:<28} {}{}",
-            name_of(c),
-            seen,
-            if c.current { "  (this computer)" } else { "" }
+            "{}",
+            t!(
+                "licence.computer_row",
+                name = format!("{:<28}", name_of(c)),
+                seen = seen,
+                current = if c.current {
+                    t!("licence.this_computer")
+                } else {
+                    "".into()
+                }
+            )
         );
     }
 }
@@ -314,13 +345,15 @@ fn confirm(question: &str) -> bool {
     if !std::io::stdin().is_terminal() {
         return false;
     }
-    print!("{question} [Y/n] ");
+    print!("{question}{}", t!("licence.yes_no"));
     let _ = std::io::stdout().flush();
     let mut answer = String::new();
     if std::io::stdin().read_line(&mut answer).is_err() {
         return false;
     }
-    !answer.trim().to_lowercase().starts_with('n')
+    let answer = answer.trim().to_lowercase();
+    // "n" always means no, as does the locale's own first letter for no
+    !(answer.starts_with('n') || answer.starts_with(&*t!("licence.no_initial")))
 }
 
 /// Opens the checkout in the default browser. Over SSH there is no browser to open here.
