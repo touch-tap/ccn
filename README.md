@@ -131,6 +131,15 @@ run instead, and the daily check mentions a newer release in Claude Code once a 
 | scoop | `scoop update ccn` |
 | winget | `winget upgrade TouchTap.ccn` |
 
+## Languages
+
+`ccn` speaks the OS language when it has it: English, Arabic, German, Spanish, French, Hebrew,
+Italian, Japanese, Korean, Dutch, Polish, Portuguese (Brazil), Russian, Turkish, Vietnamese,
+Simplified and Traditional Chinese (the same 17 as the apps and the website). `CCN_LANG=de`
+overrides the OS setting, for one command or in your shell profile; anything else falls back to
+English. Command names, setting keys and `--help`'s own headings stay English. Translations live
+in [`locales/`](locales/README.md), one file per language.
+
 ## Files
 
 - `~/.config/ccn/` (`%APPDATA%\ccn\` on Windows, or `$CCN_HOME`): `config.toml`, `sessions/`,
