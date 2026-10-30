@@ -1,5 +1,5 @@
 {
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "Claude Code Notifier for the terminal: phone notifications and approvals for Claude Code",
     "homepage": "https://claudecodenotifier.com/cli",
     "license": {
@@ -11,12 +11,12 @@
     },
     "architecture": {
         "64bit": {
-            "url": "https://github.com/touch-tap/ccn/releases/download/v0.2.0/ccn-x86_64-pc-windows-msvc.zip",
-            "hash": "0fcb56df73c9cf38cb4806728052f733146535b5e2775b31a37037d1d461517a"
+            "url": "https://github.com/touch-tap/ccn/releases/download/v0.3.0/ccn-x86_64-pc-windows-msvc.zip",
+            "hash": "a6fd227587fa480d7a95ea8f59736af8f1cdaa9b87917b1c644b197441a9058d"
         },
         "arm64": {
-            "url": "https://github.com/touch-tap/ccn/releases/download/v0.2.0/ccn-aarch64-pc-windows-msvc.zip",
-            "hash": "28ce4c6796fa6598e9ecfc2bba745ef0da1e1e6b0b5d109e13af3235154469fd"
+            "url": "https://github.com/touch-tap/ccn/releases/download/v0.3.0/ccn-aarch64-pc-windows-msvc.zip",
+            "hash": "fc3518cf3ba6c7c11bad27ed404843ab7d328301f15a8b7d0af5c7c9dcfa3e75"
         }
     },
     "bin": "ccn.exe",
