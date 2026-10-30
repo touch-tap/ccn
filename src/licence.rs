@@ -1,4 +1,4 @@
-//! Licences bought on the web: `ccn upgrade`, `ccn activate`, `ccn deactivate`, `ccn licence`.
+//! Licences bought on the web: `ccn unlock`, `ccn activate`, `ccn deactivate`, `ccn licence`.
 //!
 //! A licence covers up to 3 computers, and every phone paired with a licensed computer is unlocked.
 //! Keys are only ever typed here or on the website's licence page, never in the phone apps.
@@ -12,16 +12,18 @@ use crate::commands::ensure_registered;
 use crate::config::{self, Config};
 use crate::{qr, telemetry};
 
-/// How long `ccn upgrade` waits for the payment before leaving it to the emailed key.
+/// How long `ccn unlock` waits for the payment before leaving it to the emailed key.
 const CHECKOUT_WAIT: Duration = Duration::from_secs(15 * 60);
 /// A computer with this machine's name not seen for this long is probably this one, reinstalled.
 const STALE_SLOT_SECS: i64 = 7 * 24 * 3600;
 
-pub fn upgrade(lifetime: bool) -> Result<()> {
+pub fn unlock(lifetime: bool) -> Result<()> {
     let plan = if lifetime { "lifetime" } else { "annual" };
     let mut cfg = Config::load();
     let api = ensure_registered(&mut cfg)?;
+    // Both names, so the dashboards built on the old one keep working
     telemetry::event("cli_upgrade_started", &[("plan", plan)]);
+    telemetry::event("cli_unlock_started", &[("plan", plan)]);
 
     // An annual licence asking for lifetime is an upgrade of the same licence
     let current = api.licence_status(Duration::from_secs(10)).ok();
@@ -43,7 +45,7 @@ pub fn upgrade(lifetime: bool) -> Result<()> {
                 );
                 if licence.map(|l| l.plan == "annual").unwrap_or(false) {
                     println!(
-                        "To switch to a lifetime licence, keeping the same key: ccn upgrade --lifetime"
+                        "To switch to a lifetime licence, keeping the same key: ccn unlock --lifetime"
                     );
                 }
                 return Ok(());
@@ -214,13 +216,13 @@ pub fn deactivate() -> Result<()> {
 pub fn show() -> Result<()> {
     let cfg = Config::load();
     if !cfg.is_paired() {
-        println!("No licence on this computer. Buy one: ccn upgrade");
+        println!("No licence on this computer. Buy one: ccn unlock");
         return Ok(());
     }
     let status = Api::new(&cfg).licence_status(Duration::from_secs(10))?;
     let Some(licence) = &status.licence else {
         println!("No licence on this computer.");
-        println!("  Buy one:            ccn upgrade (annual) or ccn upgrade --lifetime");
+        println!("  Buy one:            ccn unlock (annual) or ccn unlock --lifetime");
         println!("  Already have a key: ccn activate <key>");
         return Ok(());
     };
@@ -238,7 +240,7 @@ pub fn show() -> Result<()> {
     print_computers(&status.computers);
     if licence.plan == "annual" && status.licensed {
         println!();
-        println!("Switch to lifetime, keeping the key: ccn upgrade --lifetime");
+        println!("Switch to lifetime, keeping the key: ccn unlock --lifetime");
     }
     Ok(())
 }
@@ -250,8 +252,8 @@ pub fn status_line(api: &Api) -> Option<String> {
         Some(l) if status.licensed => {
             format!("{}, {} of 3 computers", describe(l), status.computers.len())
         }
-        Some(l) => format!("{}: ccn upgrade", describe(l)),
-        None => "none: ccn upgrade".to_string(),
+        Some(l) => format!("{}: ccn unlock", describe(l)),
+        None => "none: ccn unlock".to_string(),
     })
 }
 

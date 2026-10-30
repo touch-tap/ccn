@@ -70,7 +70,8 @@ enum Command {
     /// Pull the latest settings from the server now
     Sync,
     /// Buy a licence for this computer in the browser: unlocks every phone paired with it
-    Upgrade {
+    #[command(alias = "buy")]
+    Unlock {
         /// Pay once instead of yearly (or switch an annual licence to lifetime, keeping the key)
         #[arg(long)]
         lifetime: bool,
@@ -152,7 +153,7 @@ fn main() {
             ConfigCommand::Set { key, value } => commands::config_set(&key, &value),
         },
         Command::Sync => commands::sync(),
-        Command::Upgrade { lifetime } => licence::upgrade(lifetime),
+        Command::Unlock { lifetime } => licence::unlock(lifetime),
         Command::Activate { key, replace } => licence::activate(&key, replace),
         Command::Deactivate => licence::deactivate(),
         Command::Licence => licence::show(),
