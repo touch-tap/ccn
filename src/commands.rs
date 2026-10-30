@@ -79,6 +79,8 @@ pub fn pair(code: Option<String>, name: Option<String>, replace_mac_app: bool) -
 }
 
 fn pair_inner(code: Option<String>, name: Option<String>, replace_mac_app: bool) -> Result<()> {
+    // Hooks first: a computer that never finishes pairing still gets desktop notifications
+    ensure_setup(replace_mac_app)?;
     let mut cfg = Config::load();
     if let Some(n) = name {
         cfg.machine_name = Some(n);
@@ -222,7 +224,6 @@ fn pair_inner(code: Option<String>, name: Option<String>, replace_mac_app: bool)
         config::ccn_dir().display()
     );
 
-    setup_inner(replace_mac_app)?;
     sync_settings(&mut cfg, &api);
 
     match paired_with {
@@ -289,6 +290,7 @@ fn wait_for_welcome(api: &Api, notification_id: &str) {
 /// `ccn` on its own: pair when no phone is paired with this computer yet (so `npx @touchtap/ccn` and a
 /// fresh `brew install` go straight to the QR code), otherwise say where things stand.
 pub fn default_command() -> Result<()> {
+    ensure_setup(false)?;
     let cfg = Config::load();
     if !cfg.is_paired() {
         return pair(None, None, false);
@@ -314,19 +316,23 @@ pub fn default_command() -> Result<()> {
 }
 
 pub fn setup(replace_mac_app: bool) -> Result<()> {
-    setup_inner(replace_mac_app)
+    ensure_setup(replace_mac_app)
 }
 
-fn setup_inner(replace_mac_app: bool) -> Result<()> {
+/// Installs the hooks and registers desktop notifications. Idempotent, and silent when everything
+/// was already in place, so pairing and the install scripts can run it every time.
+pub fn ensure_setup(replace_mac_app: bool) -> Result<()> {
     if let Some(copy) = hookcfg::install_self()? {
         println!("Installed ccn to {}.", copy.display());
     }
     let report = hookcfg::install(replace_mac_app)?;
-    println!(
-        "Hooks installed in {} (using {}).",
-        report.path.display(),
-        report.exe.display()
-    );
+    if report.changed {
+        println!(
+            "Hooks installed in {} (using {}).",
+            report.path.display(),
+            report.exe.display()
+        );
+    }
     if report.mac_app_hooks_found && !report.mac_app_hooks_removed {
         println!();
         println!(

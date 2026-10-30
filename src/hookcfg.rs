@@ -24,6 +24,8 @@ const MAC_APP_MARKER: &str = "ccnotifier-hook.sh";
 pub struct InstallReport {
     pub path: PathBuf,
     pub exe: PathBuf,
+    /// False when settings.json already had exactly these entries, so it was left untouched
+    pub changed: bool,
     pub mac_app_hooks_found: bool,
     pub mac_app_hooks_removed: bool,
 }
@@ -215,7 +217,8 @@ fn strip(hooks: &mut serde_json::Map<String, Value>, remove_mac_app: bool) -> (b
 pub fn install(replace_mac_app: bool) -> Result<InstallReport> {
     let path = config::claude_settings_path();
     let exe = exe_path()?;
-    let mut root = load(&path)?;
+    let before = load(&path)?;
+    let mut root = before.clone();
     let obj = root
         .as_object_mut()
         .context("settings.json is not a JSON object")?;
@@ -238,10 +241,15 @@ pub fn install(replace_mac_app: bool) -> Result<InstallReport> {
         groups.push(group);
     }
 
-    save(&path, &root)?;
+    // Idempotent: a second run finds its own entries at the end of each list and writes nothing
+    let changed = root != before;
+    if changed {
+        save(&path, &root)?;
+    }
     Ok(InstallReport {
         path,
         exe,
+        changed,
         mac_app_hooks_found: found_mac,
         mac_app_hooks_removed: removed_mac,
     })
@@ -365,6 +373,35 @@ pub fn status() -> Result<Status> {
 #[cfg(test)]
 mod exe_tests {
     use super::*;
+
+    #[test]
+    fn installing_twice_changes_nothing_the_second_time() {
+        let dir = std::env::temp_dir().join(format!("ccn-hooks-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("settings.json");
+        fs::write(&path, r#"{"permissions":{"allow":["Bash(ls)"]}}"#).unwrap();
+        // The hooks must name a binary called ccn, which the test binary isn't: point them at the
+        // path an npx install would copy to
+        unsafe {
+            std::env::set_var("CLAUDE_CONFIG_DIR", &dir);
+            std::env::set_var("CCN_EPHEMERAL", "1");
+            std::env::set_var("CCN_INSTALL_DIR", &dir);
+        }
+        let first = install(false).unwrap();
+        assert!(first.changed);
+        let written = fs::read_to_string(&path).unwrap();
+        let second = install(false).unwrap();
+        assert!(!second.changed);
+        assert_eq!(fs::read_to_string(&path).unwrap(), written);
+        assert!(written.contains("Bash(ls)"));
+        unsafe {
+            std::env::remove_var("CLAUDE_CONFIG_DIR");
+            std::env::remove_var("CCN_EPHEMERAL");
+            std::env::remove_var("CCN_INSTALL_DIR");
+        }
+        fs::remove_dir_all(dir).ok();
+    }
 
     #[test]
     #[cfg(unix)] // Homebrew paths are Unix paths

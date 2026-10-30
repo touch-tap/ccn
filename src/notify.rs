@@ -40,12 +40,16 @@ fn icon_path() -> std::path::PathBuf {
     }
 }
 
+/// Writes the icon when it is missing or different. Returns (path, whether it was written).
 #[cfg(not(target_os = "macos"))]
-fn write_icon() -> Option<std::path::PathBuf> {
+fn write_icon() -> Option<(std::path::PathBuf, bool)> {
     let path = icon_path();
+    if std::fs::read(&path).is_ok_and(|on_disk| on_disk == ICON) {
+        return Some((path, false));
+    }
     std::fs::create_dir_all(path.parent()?).ok()?;
     std::fs::write(&path, ICON).ok()?;
-    Some(path)
+    Some((path, true))
 }
 
 /// `CCN_NOTIFY=off` silences desktop notifications (for tests).
@@ -100,17 +104,28 @@ pub fn show(title: &str, body: &str, sound: bool) {
 }
 
 /// What `ccn setup` adds for desktop notifications: the icon, and on Windows the app identity
-/// toasts are shown under. Returns a line to print when it did something.
+/// toasts are shown under. Returns a line to print when it did something, and None when it was
+/// all in place already, so a repeated setup is quiet.
 pub fn install() -> Option<String> {
     #[cfg(windows)]
     {
         let icon = write_icon();
-        win::register(icon.as_deref()).ok()?;
+        let icon_written = icon.as_ref().is_some_and(|(_, written)| *written);
+        if win::registered() && !icon_written {
+            return None;
+        }
+        win::register(icon.as_ref().map(|(p, _)| p.as_path())).ok()?;
         Some("Registered \"Claude Code Notifier\" for Windows notifications.".to_string())
     }
     #[cfg(target_os = "linux")]
     {
-        write_icon().map(|p| format!("Installed the notification icon at {}.", p.display()))
+        match write_icon()? {
+            (p, true) => Some(format!(
+                "Installed the notification icon at {}.",
+                p.display()
+            )),
+            (_, false) => None,
+        }
     }
     #[cfg(target_os = "macos")]
     {
@@ -283,13 +298,11 @@ mod mac {
     }
 
     /// Asks for permission while the user is at the terminal. macOS only shows the prompt to an app
-    /// launched through Launch Services, hence `open`.
+    /// launched through Launch Services, hence `open`. Quiet once permission is granted.
     pub fn install() -> Option<String> {
         let name = super::APP_NAME;
         match status()?.as_str() {
-            "authorized" => {
-                return Some(format!("Desktop notifications are allowed for \"{name}\"."));
-            }
+            "authorized" => return None,
             "denied" => {
                 return Some(format!(
                     "Desktop notifications are turned off for \"{name}\". Turn them on in System Settings > Notifications."
@@ -339,7 +352,7 @@ mod win {
         s.encode_utf16().chain(std::iter::once(0)).collect()
     }
 
-    fn registered() -> bool {
+    pub fn registered() -> bool {
         let path = wide(&key_path());
         let mut key: HKEY = std::ptr::null_mut();
         // SAFETY: a valid NUL-terminated path and out pointer; the key is closed below.
