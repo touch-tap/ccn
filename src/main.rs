@@ -9,6 +9,7 @@ mod commands;
 mod config;
 mod hook;
 mod hookcfg;
+mod i18n;
 mod licence;
 mod live;
 mod local;
@@ -23,102 +24,92 @@ mod telemetry;
 mod update;
 
 use clap::{Parser, Subcommand};
+use rust_i18n::t;
 
+// Every string a person reads lives in locales/<lang>.yml; an unknown language reads English
+rust_i18n::i18n!("locales", fallback = "en");
+
+// The help text is read at `Cli::parse()`, after `i18n::init` has chosen the language. clap's own
+// scaffolding (Usage, Commands, Options, "Print help") stays English: clap has no translations.
 #[derive(Parser)]
-#[command(
-    name = "ccn",
-    version,
-    about = "Claude Code Notifier: get a push on your phone when Claude Code needs you, and answer from there"
-)]
+#[command(name = "ccn", version, about = t!("cli.about").to_string())]
 struct Cli {
-    /// With no command: pair this computer if it isn't yet, otherwise show its status
+    // With no command: pair this computer if it isn't yet, otherwise show its status
     #[command(subcommand)]
     command: Option<Command>,
 }
 
 #[derive(Subcommand)]
 enum Command {
-    /// Pair this computer with your phone. Pass the code the app shows, or run with no code to get one to type into the app
+    #[command(about = t!("cli.pair.about").to_string())]
     Pair {
-        /// The 6-digit code shown in the Claude Code Notifier app
+        #[arg(help = t!("cli.pair.code").to_string())]
         code: Option<String>,
-        /// What this computer is called on your phone (default: the hostname)
-        #[arg(long)]
+        #[arg(long, help = t!("cli.pair.name").to_string())]
         name: Option<String>,
-        /// Also remove the Mac menu bar app's hook entries, so notifications are not sent twice
-        #[arg(long)]
+        #[arg(long, help = t!("cli.pair.replace_mac_app").to_string())]
         replace_mac_app: bool,
-        /// Show the QR code and return at once: pairing completes on its own when the phone connects
-        #[arg(long)]
+        #[arg(long, help = t!("cli.pair.no_wait").to_string())]
         no_wait: bool,
     },
-    /// Install the Claude Code hooks and desktop notifications (pair and bare ccn do this first)
+    #[command(about = t!("cli.setup.about").to_string())]
     Setup {
-        /// Also remove the Mac menu bar app's hook entries
-        #[arg(long)]
+        #[arg(long, help = t!("cli.setup.replace_mac_app").to_string())]
         replace_mac_app: bool,
     },
-    /// Check hooks, credentials, the server and what this terminal supports
+    #[command(about = t!("cli.doctor.about").to_string())]
     Doctor,
-    /// Send a test notification to every paired phone
+    #[command(about = t!("cli.test.about").to_string())]
     Test,
-    /// List paired phones, or revoke one
+    #[command(about = t!("cli.devices.about").to_string())]
     Devices {
         #[command(subcommand)]
         action: Option<DevicesCommand>,
     },
-    /// Show or change this computer's settings (also editable from the phone)
+    #[command(about = t!("cli.config.about").to_string())]
     Config {
         #[command(subcommand)]
         action: ConfigCommand,
     },
-    /// Pull the latest settings from the server now
+    #[command(about = t!("cli.sync.about").to_string())]
     Sync,
-    /// Buy a licence for this computer in the browser: unlocks every phone paired with it
-    #[command(alias = "buy")]
+    #[command(alias = "buy", about = t!("cli.unlock.about").to_string())]
     Unlock {
-        /// Pay once instead of yearly (or switch an annual licence to lifetime, keeping the key)
-        #[arg(long)]
+        #[arg(long, help = t!("cli.unlock.lifetime").to_string())]
         lifetime: bool,
     },
-    /// Update ccn to the latest release (checked once a day in the background too)
-    #[command(alias = "update")]
+    #[command(alias = "update", about = t!("cli.upgrade.about").to_string())]
     Upgrade {
-        /// Only say whether a newer release exists: exit 0 when up to date, 10 when one is available
-        #[arg(long)]
+        #[arg(long, help = t!("cli.upgrade.check").to_string())]
         check: bool,
-        /// Print nothing unless something went wrong
-        #[arg(long)]
+        #[arg(long, help = t!("cli.upgrade.quiet").to_string())]
         quiet: bool,
-        /// Started by the daily check: never prints, logs to ccn.log instead
+        // Started by the daily check: never prints, logs to ccn.log instead
         #[arg(long, hide = true)]
         background: bool,
     },
-    /// Use a licence key on this computer (up to 3 computers per licence)
+    #[command(about = t!("cli.activate.about").to_string())]
     Activate {
-        /// The key from your email, CCN-XXXX-XXXX-XXXX-XXXX
+        #[arg(help = t!("cli.activate.key").to_string())]
         key: String,
-        /// Free the slot of another computer on the licence, by its name, to make room for this one
-        #[arg(long)]
+        #[arg(long, help = t!("cli.activate.replace").to_string())]
         replace: Option<String>,
     },
-    /// Free this computer's licence slot so the key can be used elsewhere
+    #[command(about = t!("cli.deactivate.about").to_string())]
     Deactivate,
-    /// Show this computer's licence and the computers using it
-    #[command(alias = "license")]
+    #[command(alias = "license", about = t!("cli.licence.about").to_string())]
     Licence,
-    /// Remove the hooks, credentials, pairings and local state
+    #[command(about = t!("cli.uninstall.about").to_string())]
     Uninstall,
-    /// Erase this computer and its pairings from the server, then uninstall
+    #[command(about = t!("cli.forget.about").to_string())]
     Forget {
-        /// Don't ask for confirmation
-        #[arg(short, long)]
+        #[arg(short, long, help = t!("cli.forget.yes").to_string())]
         yes: bool,
     },
-    /// Run as a Claude Code hook: reads the event JSON on stdin
+    // Run as a Claude Code hook: reads the event JSON on stdin
     #[command(hide = true)]
     Hook {
-        /// Called by the Claude Code plugin, which stands aside when settings.json has ccn's hooks too
+        // Called by the Claude Code plugin, which stands aside when settings.json has ccn's hooks too
         #[arg(long)]
         plugin: bool,
     },
@@ -126,19 +117,20 @@ enum Command {
 
 #[derive(Subcommand)]
 enum DevicesCommand {
-    /// Revoke a paired phone by name or id
+    #[command(about = t!("cli.devices.revoke").to_string())]
     Revoke { device: String },
 }
 
 #[derive(Subcommand)]
 enum ConfigCommand {
-    /// Print the effective settings
+    #[command(about = t!("cli.config.show").to_string())]
     Show,
-    /// Set one setting, e.g. `ccn config set hold_ceiling_seconds 300` or `ccn config set quiet_hours 22:00-08:00`
+    #[command(about = t!("cli.config.set").to_string())]
     Set { key: String, value: String },
 }
 
 fn main() {
+    i18n::init();
     update::remove_leftovers();
     let cli = Cli::parse();
     let Some(command) = cli.command else {

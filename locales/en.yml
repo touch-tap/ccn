@@ -1,0 +1,49 @@
+# English, the source language. Every other locales/<lang>.yml translates these keys.
+# See locales/README.md before translating. Values are double-quoted so that leading spaces,
+# colons and backticks survive; %{name} is a placeholder and must appear in every translation.
+_version: 1
+
+cli:
+  about: "Claude Code Notifier: get a push on your phone when Claude Code needs you, and answer from there"
+  pair:
+    about: "Pair this computer with your phone. Pass the code the app shows, or run with no code to get one to type into the app"
+    code: "The 6-digit code shown in the Claude Code Notifier app"
+    name: "What this computer is called on your phone (default: the hostname)"
+    replace_mac_app: "Also remove the Mac menu bar app's hook entries, so notifications are not sent twice"
+    no_wait: "Show the QR code and return at once: pairing completes on its own when the phone connects"
+  setup:
+    about: "Install the Claude Code hooks and desktop notifications (pair and bare ccn do this first)"
+    replace_mac_app: "Also remove the Mac menu bar app's hook entries"
+  doctor:
+    about: "Check hooks, credentials, the server and what this terminal supports"
+  test:
+    about: "Send a test notification to every paired phone"
+  devices:
+    about: "List paired phones, or revoke one"
+    revoke: "Revoke a paired phone by name or id"
+  config:
+    about: "Show or change this computer's settings (also editable from the phone)"
+    show: "Print the effective settings"
+    set: "Set one setting, e.g. `ccn config set hold_ceiling_seconds 300` or `ccn config set quiet_hours 22:00-08:00`"
+  sync:
+    about: "Pull the latest settings from the server now"
+  unlock:
+    about: "Buy a licence for this computer in the browser: unlocks every phone paired with it"
+    lifetime: "Pay once instead of yearly (or switch an annual licence to lifetime, keeping the key)"
+  upgrade:
+    about: "Update ccn to the latest release (checked once a day in the background too)"
+    check: "Only say whether a newer release exists: exit 0 when up to date, 10 when one is available"
+    quiet: "Print nothing unless something went wrong"
+  activate:
+    about: "Use a licence key on this computer (up to 3 computers per licence)"
+    key: "The key from your email, CCN-XXXX-XXXX-XXXX-XXXX"
+    replace: "Free the slot of another computer on the licence, by its name, to make room for this one"
+  deactivate:
+    about: "Free this computer's licence slot so the key can be used elsewhere"
+  licence:
+    about: "Show this computer's licence and the computers using it"
+  uninstall:
+    about: "Remove the hooks, credentials, pairings and local state"
+  forget:
+    about: "Erase this computer and its pairings from the server, then uninstall"
+    yes: "Don't ask for confirmation"
