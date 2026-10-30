@@ -75,6 +75,9 @@ ccn config show         effective settings (also editable from the phone)
 ccn config set KEY VAL  e.g. hold_ceiling_seconds 300, quiet_hours 22:00-08:00, stop_hold_seconds 0
 ccn sync                pull settings from the server now
 ccn setup               reinstall the hooks (after moving the binary)
+ccn upgrade [--check]   update ccn to the latest release (checked once a day in the background too)
+ccn unlock [--lifetime] buy a licence in the browser: unlocks every phone paired with this computer
+ccn activate KEY        use a licence key here (up to 3 computers); ccn licence shows it
 ccn uninstall           remove hooks, pairings, credentials and local state
 ccn forget [--yes]      erase this computer and its pairings from the server, then uninstall
 ```
@@ -82,7 +85,32 @@ ccn forget [--yes]      erase this computer and its pairings from the server, th
 Settings: `notify_on_done`, `notify_on_permission`, `notify_on_question`, `quiet_hours`,
 `quiet_when_present` (default on), `hold_ceiling_seconds` (30–3600, default 600),
 `presence_threshold_seconds` (default 30), `stop_hold_seconds` (0–600, default 120), `sound`, and
-the local-only `desktop_notifications` and `credential_store` (`keychain` or `file`).
+the local-only `desktop_notifications`, `credential_store` (`keychain` or `file`) and `auto_update`.
+
+## Updating
+
+Once a day, when a Claude Code session starts, `ccn` checks for a newer release in the background
+(a detached process: the hook itself never waits on the network). When ccn owns its binary (the
+install scripts, `npx`, or a copy you made) it downloads the release for this computer, checks it
+against the release's `SHA256SUMS`, writes it beside the old binary and renames it into place, so a
+hook running mid-update never sees a half-written file. The macOS binaries carry the same Developer
+ID signature from one version to the next, so the keychain token keeps working.
+
+```sh
+ccn upgrade             # update now (also: ccn update)
+ccn upgrade --check     # just say whether a newer release exists (exit 10 if so)
+ccn config set auto_update off   # or CCN_NO_AUTO_UPDATE=1: no daily check, no background update
+```
+
+When a package manager owns the binary ccn never replaces it. `ccn upgrade` prints the command to
+run instead, and the daily check mentions a newer release in Claude Code once a week:
+
+| Installed with | Update with |
+| --- | --- |
+| Homebrew | `brew upgrade touch-tap/tap/ccn` |
+| npm | `npm install -g @touchtap/ccn@latest` |
+| scoop | `scoop update ccn` |
+| winget | `winget upgrade TouchTap.ccn` |
 
 ## Files
 
