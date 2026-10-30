@@ -1,0 +1,300 @@
+# Hebrew. Plural imperative where English gives an instruction (הריצו, סרקו), neutral elsewhere, as
+# the app and the push copy do. Terminology follows the app: צימוד (pair), רישיון (licence), מפתח
+# רישיון (licence key), פתיחה/פתוח (unlock/unlocked), מחשב, טלפון, אישורים, התראות, טרמינל.
+# `hooks` stays in Latin (it is the settings.json section name); commands sit at the start or the
+# end of a sentence so a left-to-right terminal shows mixed lines readably.
+_version: 1
+
+cli:
+  about: "Claude Code Notifier: קבלו התראה בטלפון כש-Claude Code צריך אתכם, וענו משם"
+  pair:
+    about: "צמדו את המחשב הזה לטלפון. העבירו את הקוד שהאפליקציה מציגה, או הריצו בלי קוד כדי לקבל קוד להקלדה באפליקציה"
+    code: "הקוד בן 6 הספרות שמוצג באפליקציית Claude Code Notifier"
+    name: "השם של המחשב הזה בטלפון (ברירת המחדל: שם המארח)"
+    replace_mac_app: "הסירו גם את רשומות ה-hooks של אפליקציית שורת התפריטים ב-Mac, כדי שהתראות לא יישלחו פעמיים"
+    no_wait: "הציגו את קוד ה-QR וחזרו מיד: הצימוד מסתיים מעצמו כשהטלפון מתחבר"
+  setup:
+    about: "התקינו את ה-hooks של Claude Code והתראות שולחן העבודה (pair ו-ccn בלי פקודה עושים זאת קודם)"
+    replace_mac_app: "הסירו גם את רשומות ה-hooks של אפליקציית שורת התפריטים ב-Mac"
+  doctor:
+    about: "בדקו את ה-hooks, פרטי הגישה, השרת ומה הטרמינל הזה תומך בו"
+  test:
+    about: "שלחו התראת בדיקה לכל טלפון מצומד"
+  devices:
+    about: "הציגו את הטלפונים המצומדים, או בטלו צימוד של אחד מהם"
+    revoke: "בטלו צימוד של טלפון לפי שם או מזהה"
+  config:
+    about: "הציגו או שנו את ההגדרות של המחשב הזה (אפשר לערוך גם מהטלפון)"
+    show: "הדפיסו את ההגדרות בתוקף"
+    set: "קבעו הגדרה אחת, למשל `ccn config set hold_ceiling_seconds 300` או `ccn config set quiet_hours 22:00-08:00`"
+  sync:
+    about: "משכו עכשיו את ההגדרות העדכניות מהשרת"
+  unlock:
+    about: "רכשו רישיון למחשב הזה בדפדפן: פותח כל טלפון שמצומד אליו"
+    lifetime: "תשלום אחד במקום שנתי (או העברת רישיון שנתי לרישיון לכל החיים, עם אותו מפתח)"
+  upgrade:
+    about: "עדכנו את ccn לגרסה האחרונה (נבדק גם פעם ביום ברקע)"
+    check: "רק דווחו אם קיימת גרסה חדשה: יציאה 0 כשהכול מעודכן, 10 כשיש גרסה חדשה"
+    quiet: "אל תדפיסו דבר אלא אם משהו השתבש"
+  activate:
+    about: "השתמשו במפתח רישיון במחשב הזה (עד 3 מחשבים לרישיון)"
+    key: "המפתח מהאימייל שלכם, CCN-XXXX-XXXX-XXXX-XXXX"
+    replace: "שחררו את המקום של מחשב אחר ברישיון, לפי שמו, כדי לפנות מקום למחשב הזה"
+  deactivate:
+    about: "שחררו את מקום הרישיון של המחשב הזה כדי שאפשר יהיה להשתמש במפתח במקום אחר"
+  licence:
+    about: "הציגו את הרישיון של המחשב הזה ואת המחשבים שמשתמשים בו"
+  uninstall:
+    about: "הסירו את ה-hooks, פרטי הגישה, הצימודים והמצב המקומי"
+  forget:
+    about: "מחקו את המחשב הזה ואת הצימודים שלו מהשרת, ואז הסירו את ההתקנה"
+    yes: "לא לבקש אישור"
+
+common:
+  your_phone: "הטלפון שלכם"
+  not_paired: "המחשב הזה עדיין לא מצומד. הריצו עם הקוד מהאפליקציה: `ccn pair <code>`"
+  store_keychain: "צרור המפתחות"
+  store_file: "קובץ"
+  date_format: "%d/%m/%Y"
+
+pair:
+  reregister: "הצימוד הישן של המחשב הזה הוסר, ולכן הוא יירשם מחדש."
+  code_not_recognised: "הקוד לא זוהה. הקוד בן 6 הספרות נמצא באפליקציית Claude Code Notifier תחת מחשבים > הוספת מחשב; הוא מתחלף כל 24 שעות, אז העתיקו את השורה שהאפליקציה מציגה עכשיו."
+  offer_qr: "הקישו Enter כדי להציג כאן קוד QR במקום (וסרקו אותו בטלפון), או Ctrl+C."
+  options_without_terminal: "הריצו שוב `ccn pair <code>` עם הקוד שהאפליקציה מציגה עכשיו, או הציגו כאן קוד QR וסרקו אותו בטלפון עם: `ccn pair`"
+  scan: "  סרקו את זה במצלמת הטלפון כדי לחבר אותו. אם האפליקציה עוד לא מותקנת, זה\n  מוביל ל-App Store או ל-Google Play: התקינו, ואז סרקו שוב."
+  or_type_code: "  או הקלידו את הקוד הזה באפליקציית Claude Code Notifier:  %{code}"
+  enter_code: "  הקלידו את הקוד הזה באפליקציית Claude Code Notifier:  %{code}"
+  hooks_already_installed: "  ה-hooks מותקנים, אז אתם כבר מקבלים התראות שולחן עבודה במחשב הזה."
+  code_lasts: "  צמדו מתי שתרצו: הקוד הזה תקף %{duration}."
+  completes_on_its_own: "  הצימוד מסתיים מעצמו כשהטלפון מתחבר."
+  waiting: "  מחכים לטלפון... (Ctrl+C בטוח: הצימוד מסתיים מעצמו כשהטלפון מתחבר)"
+  code_expired: "הקוד פקע לפני שטלפון השתמש בו. הריצו שוב: `ccn pair`"
+  code_is_six_digits: "הקוד הוא 6 הספרות שמוצגות באפליקציית Claude Code Notifier"
+  credentials_stored: "פרטי הגישה נשמרו ב%{store}: %{path}"
+  test_sent: "התראת בדיקה נשלחה לטלפון."
+  test_failed: "עדיין לא ניתן לשלוח התראת בדיקה: %{error}"
+  done: "סיימנו. הפעילו `claude` כרגיל: תקבלו התראה כש-Claude מסיים או צריך אתכם,\nותוכלו לאשר, לדחות או לענות מהטלפון. לבדיקה של הכול: `ccn doctor`"
+  paired_with: "מצומד עם %{name} (%{platform})."
+  hours_one: "שעה אחת"
+  hours_other: "%{count} שעות"
+  minutes_one: "דקה אחת"
+  minutes_other: "%{count} דקות"
+  pitch: "הטלפון יציע מנוי בתוך האפליקציה. אפשר גם לפתוח את הכול מכאן, מחוץ לחנויות האפליקציות:"
+  pitch_annual: "  ccn unlock             %{price} לשנה"
+  pitch_lifetime: "  ccn unlock --lifetime  %{price} פעם אחת"
+  pitch_covers: "מכסה %{computers} מחשבים וכל טלפון שמצומד אליהם. החזר כספי תוך %{days} ימים."
+  welcome_no_terminal: "התראת בדיקה בדרך לטלפון: נסו לענות עליה משם."
+  welcome: "התראת בדיקה בדרך לטלפון. נסו לענות עליה משם..."
+  welcome_skip: "(הקישו Enter כדי לדלג)"
+  welcome_answered: "✓ הטלפון ענה \"%{answer}\". כך תענו ל-Claude."
+  welcome_no_answer: "עדיין אין תשובה. ההתראה נשארת בטלפון למשך שעה."
+
+status:
+  set_up: "ccn %{version} מוגדר במחשב הזה בשם \"%{name}\"."
+  licence: "רישיון: %{line}"
+  hint_doctor: "  ccn doctor     בדיקת ה-hooks, פרטי הגישה והשרת"
+  hint_test: "  ccn test       שליחת התראת בדיקה לטלפון"
+  hint_pair: "  ccn pair       צימוד טלפון נוסף"
+  hint_help: "  ccn --help     כל השאר"
+
+setup:
+  installed_self: "ccn הותקן ב-%{path}."
+  hooks_installed: "ה-hooks הותקנו ב-%{path} (באמצעות %{exe})."
+  mac_app_note: "שימו לב: גם ה-hooks של אפליקציית Claude Code Notifier ל-Mac מותקנים, ולכן כל אירוע\nיישלח פעמיים. הסירו אותם עם `ccn setup --replace-mac-app`, או סגרו את אפליקציית ה-Mac."
+  mac_app_removed: "רשומות ה-hooks של אפליקציית ה-Mac הוסרו; מעכשיו ccn מטפל בהתראות."
+
+sync:
+  not_synced: "ההגדרות עדיין לא סונכרנו: %{error}"
+  synced: "ההגדרות סונכרנו."
+
+doctor:
+  header: "ccn %{version} על %{platform}"
+  config: "הגדרות: %{path}"
+  credentials_present: "פרטי גישה: קיימים (%{store})"
+  credentials_missing: "פרטי גישה: חסרים: הריצו `ccn pair <code>`"
+  server_reachable: "שרת: זמין ב-%{url}"
+  server_error: "שרת: %{error}"
+  registered: "רשום בשם \"%{name}\" (%{kind} %{platform}), יכולות: %{capabilities}"
+  not_paired_any_more: "צימוד: כבר לא מצומד: הריצו `ccn pair`"
+  registration_error: "רישום: %{error}"
+  licence: "רישיון: %{line}"
+  phones_none: "טלפונים: עדיין אין טלפון מצומד, ולכן ההתראות נשארות בשולחן העבודה הזה (הריצו `ccn pair`)"
+  phones: "טלפונים: %{names}"
+  phones_error: "טלפונים: %{error}"
+  hooks_all: "hooks: כל %{count} מותקנים ב-%{path}"
+  hooks_missing: "hooks: חסרים %{names} (הריצו `ccn setup`)"
+  hooks_error: "hooks: %{error}"
+  hooks_stale: "ה-hooks מצביעים על קובץ ccn אחר; כדי לעדכן אותם הריצו `ccn setup`"
+  mac_app_hooks: "גם ה-hooks של אפליקציית ה-Mac מותקנים (הריצו `ccn setup --replace-mac-app`)"
+  presence: "נוכחות: לא פעיל כבר %{idle} שנ', סף %{threshold} שנ'"
+  presence_none: "נוכחות: לא ניתן לזהות כאן, ולכן כל בקשה מחכה לטלפון"
+  replies: "תשובות: אישורים ותשובות לשאלות מהטלפון עובדים בכל טרמינל; טקסט חופשי לסשן לא פעיל %{free_text}"
+  replies_tmux: "עובד (tmux)"
+  replies_no_tmux: "דורש tmux"
+  desktop: "התראות שולחן עבודה: %{line}"
+  log: "יומן: %{path}"
+
+test:
+  none_paired: "אין טלפונים מצומדים. הריצו `ccn pair <code>`."
+  sent: "התראת בדיקה נשלחה אל %{name} (%{platform})."
+  failed: "%{name}: %{error}"
+
+devices:
+  none: "אין טלפונים מצומדים. הריצו עם הקוד מהאפליקציה: `ccn pair <code>`"
+  # %{name} is padded to 24 columns and %{platform} to 8 before they are filled in
+  row: "%{name} %{platform} צומד %{since}%{off}"
+  notifications_off: "  (התראות כבויות)"
+  revoked: "הצימוד של %{name} בוטל."
+  no_such_phone: "אין טלפון מצומד בשם '%{device}'"
+
+config:
+  local_only: "(מקומי בלבד)"
+  last_changed: "(שונה לאחרונה %{when}; אפשר לערוך גם מהטלפון)"
+  credentials_moved: "פרטי הגישה נמצאים עכשיו ב%{store}."
+  credential_store_expects: "credential_store מקבל keychain או file"
+  auto_update_expects: "auto_update מקבל on או off"
+
+settings:
+  expects_on_off: "%{key} מקבל on או off"
+  expects_seconds: "%{key} מקבל מספר שניות"
+  seconds_range: "%{key} חייב להיות בין %{min} ל-%{max} שניות"
+  quiet_hours_format: "quiet_hours מקבל HH:MM-HH:MM או off"
+  quiet_hours_example: "quiet_hours מקבל HH:MM-HH:MM, למשל 22:00-08:00"
+  unknown: "הגדרה לא מוכרת '%{key}'. ההגדרות: notify_on_done, notify_on_permission, notify_on_question, sound, quiet_when_present, quiet_hours, hold_ceiling_seconds, presence_threshold_seconds, stop_hold_seconds, reminder_interval_seconds"
+
+forget:
+  needs_yes: "ccn forget דורש אישור מכם: הריצו אותו בטרמינל, או הוסיפו --yes"
+  warning: "זה מוחק את המחשב הזה ואת הצימודים שלו משרת Claude Code Notifier, ואז מסיר את ccn\nמ-Claude Code ומוחק את פרטי הגישה והקבצים שלו כאן, כמו `ccn uninstall`.\nטלפונים שמצומדים למחשב הזה יראו אותו נעלם.\nרישיון שנרכש באתר לא מבוטל: עשו זאת ב-claudecodenotifier.com/licence\nעם \"מחיקת הרישיון שלי\"."
+  # The word the user must type; `yes` is always accepted as well
+  yes_word: "כן"
+  prompt: "\nהקלידו %{yes} כדי להמשיך: "
+  nothing_erased: "שום דבר לא נמחק."
+  erased: "המחשב הזה והצימודים שלו נמחקו מהשרת."
+  already_forgotten: "השרת כבר שכח את המחשב הזה."
+  nothing_removed: "%{error}. שום דבר לא הוסר מהמחשב הזה, אז אפשר להריץ שוב `ccn forget`"
+  not_registered: "המחשב הזה לא רשום בשרת, ולכן אין שם מה למחוק."
+
+uninstall:
+  hooks_removed: "ה-hooks של ccn הוסרו מ-%{path}."
+  slot_freed: "מקום הרישיון של המחשב הזה שוחרר."
+  unpaired_all: "הצימוד של כל הטלפונים בוטל."
+  removed_dir: "%{path} הוסר."
+
+local:
+  finished_title: "Claude סיים"
+  finished_body: "Claude סיים ומחכה לכם."
+  permission_title: "Claude צריך הרשאה"
+  question_title: "ל-Claude יש שאלה"
+  first_nudge: "גם בטלפון: ccn pair"
+  milestone_nudge: "10 התראות עד עכשיו. קבלו אותן בטלפון, עם אישורים ממסך הנעילה: ccn pair"
+  pair_message: "Claude Code Notifier: אתם מקבלים התראות שולחן עבודה. כדי לקבל אותן גם בטלפון ולאשר או לענות משם, הריצו בטרמינל: `ccn pair`"
+
+hook:
+  licence_message: "Claude Code Notifier: התראות לטלפון לא פתוחות למחשב הזה. לפתיחה: ccn unlock"
+  unpaired_message: "Claude Code Notifier: המחשב הזה כבר לא מצומד, ולכן הטלפון לא יקבל התראות. לחיבור מחדש הריצו בטרמינל: `ccn pair`"
+  unpaired_notification: "המחשב הזה כבר לא מצומד. לחיבור מחדש הריצו בטרמינל: `ccn pair`"
+  paired_message: "Claude Code Notifier: מצומד עם %{phone}. ההתראות עוברות עכשיו לטלפון."
+  # The server writes title, body and command in the user's language; this only joins them
+  nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
+  needs_attention: "דורש את תשומת לבכם"
+
+licence:
+  already_licensed: "למחשב הזה כבר יש רישיון (%{licence})."
+  switch_to_lifetime: "להעברה לרישיון לכל החיים, עם אותו מפתח: ccn unlock --lifetime"
+  checkout_open: "  עמוד התשלום פתוח בדפדפן. כדי לשלם מהטלפון במקום, סרקו את זה:"
+  checkout_link: "  פתחו את הקישור הזה כדי לשלם, או סרקו אותו בטלפון:"
+  waiting_payment: "  מחכים לתשלום... (Ctrl+C כדי להפסיק; המפתח נשלח אליכם באימייל בכל מקרה)"
+  upgraded: "✓ הרישיון הועבר לרישיון לכל החיים. אותו מפתח, אותם מחשבים; החידוש השנתי בוטל."
+  licensed: "✓ למחשב הזה יש רישיון (%{licence})."
+  key: "  מפתח: %{key} (נשלח גם באימייל). השתמשו בו בעד 2 מחשבים נוספים: ccn activate %{key}"
+  phones_unlocked: "  כל טלפון שמצומד למחשב הזה פתוח."
+  activate_with_key: "  כדי להשתמש במפתח מהאימייל במחשב הזה, הריצו: `ccn activate <key>`"
+  no_payment: "עדיין אין תשלום אחרי 15 דקות. אם שילמתם, המפתח באימייל שלכם: ccn activate <key>"
+  replace_stale: "\"%{name}\" לא נראה יותר משבוע. זה המחשב הזה? להחליף אותו?"
+  yes_no: " [Y/n] "
+  # An answer starting with this letter (or n) means no
+  no_initial: "ל"
+  slots_full: "הרישיון הזה כבר בשימוש ב-%{count} מחשבים:"
+  free_one: "שחררו מקום עם `ccn deactivate` באותו מחשב, או החליפו אותו מכאן:"
+  replace_example: "  ccn activate %{key} --replace \"%{name}\""
+  old_laptop: "Old laptop"
+  no_free_slot: "אין מקום פנוי למחשב"
+  computers_on_licence: "מחשבים ברישיון הזה:"
+  activated: "✓ יש רישיון (%{licence}). %{count} מתוך 3 מחשבים בשימוש."
+  pair_to_unlock: "  צמדו טלפון עם `ccn pair` והוא ייפתח מיד."
+  none: "למחשב הזה אין רישיון."
+  freed: "שוחרר. ברישיון הזה עכשיו %{count} מתוך 3 מחשבים בשימוש."
+  none_buy: "אין רישיון במחשב הזה. לרכישה: ccn unlock"
+  none_short: "אין רישיון במחשב הזה."
+  buy_options: "  לרכישה:            ccn unlock (שנתי) או ccn unlock --lifetime"
+  have_key: "  כבר יש לכם מפתח:   ccn activate <key>"
+  show_licence: "רישיון:   %{licence}"
+  show_key: "מפתח:     CCN-…-%{last4}"
+  show_unlocks: "פותח:     %{value}"
+  unlocks_yes: "כן, כל טלפון שמצומד למחשב הזה"
+  unlocks_no: "לא"
+  show_computers: "מחשבים:   %{count} מתוך 3"
+  switch_lifetime_keep_key: "להעברה לרישיון לכל החיים, עם אותו מפתח: ccn unlock --lifetime"
+  status_licensed: "%{licence}, %{count} מתוך 3 מחשבים"
+  status_unlicensed: "%{licence}: ccn unlock"
+  status_none: "אין: ccn unlock"
+  describe_refunded: "הוחזר"
+  describe_lifetime: "לכל החיים"
+  describe_renews: "שנתי, מתחדש ב-%{date}"
+  describe_past_due: "שנתי, מנסים לגבות שוב"
+  describe_ends: "שנתי, מסתיים ב-%{date}"
+  describe_ended: "שנתי, הסתיים ב-%{date}"
+  describe_other: "%{plan}, %{status}"
+  unnamed_computer: "מחשב ללא שם"
+  last_seen: "נראה לאחרונה %{date}"
+  not_seen_recently: "לא נראה לאחרונה"
+  this_computer: "  (המחשב הזה)"
+  # %{name} is padded to 28 columns before it is filled in
+  computer_row: "  %{name} %{seen}%{current}"
+
+update:
+  latest: "ccn %{version} הוא העדכני ביותר."
+  available_check: "ccn %{version} זמין (אצלכם %{current})."
+  update_with: "  לעדכון: %{command}"
+  available_run: "ccn %{version} זמין: %{command}"
+  nothing_to_update: "אין מה לעדכן: %{path} לא מותקן%{npx}"
+  npx_note: " (npx מריץ בכל פעם את ccn העדכני)"
+  no_release_build: "אין גרסה עבור %{os}-%{arch}"
+  no_build_named: "ל-ccn %{version} אין build בשם %{asset}"
+  no_checksum: "ב-SHA256SUMS אין רשומה עבור %{asset}"
+  checksum_mismatch: "ה-checksum של %{asset} לא תואם: שום דבר לא שונה"
+  archive_empty: "בארכיון אין ccn"
+  zip_empty: "בקובץ ה-zip אין ccn.exe"
+  did_not_run: "ה-ccn שהורד לא רץ, ולכן הגרסה המותקנת נשמרה"
+  updated: "ccn עודכן %{from} → %{to}."
+  available_message: "Claude Code Notifier: ccn %{version} זמין: %{command}"
+
+notify:
+  registered_windows: "\"Claude Code Notifier\" נרשם להתראות של Windows."
+  icon_installed: "סמל ההתראות הותקן ב-%{path}."
+  doctor_applescript: "AppleScript (ל-build הזה אין אפליקציית התראות)"
+  doctor_allowed: "מאושר עבור \"%{app}\""
+  doctor_denied: "כבוי: הגדרות המערכת > עדכונים > %{app}"
+  doctor_not_allowed: "עדיין לא מאושר: הריצו `ccn setup`"
+  mac_denied: "התראות שולחן העבודה כבויות עבור \"%{app}\". הפעילו אותן בהגדרות המערכת > עדכונים."
+  mac_asking: "מבקשים מ-macOS לאשר התראות מ-\"%{app}\"..."
+  mac_allowed: "התראות שולחן העבודה מאושרות עבור \"%{app}\"."
+  mac_not_allowed: "התראות שולחן העבודה לא מאושרות. הפעילו אותן בהגדרות המערכת > עדכונים > %{app}."
+
+api:
+  rejected: "המחשב הזה כבר לא מצומד (השרת כבר לא מזהה אותו). לחיבור מחדש הריצו `ccn pair`"
+  server_returned: "השרת החזיר %{status}"
+  # What was being done when the server said no; the server's own message follows a colon
+  registering: "רישום המחשב הזה"
+  pairing: "צימוד"
+  requesting_code: "בקשת קוד צימוד"
+  reading_record: "קריאת הרשומה של המחשב הזה"
+  erasing: "מחיקת המחשב הזה"
+  listing_phones: "הצגת הטלפונים המצומדים"
+  revoking: "ביטול הצימוד"
+  health: "תקינות השרת"
+  reading_settings: "קריאת ההגדרות"
+  saving_settings: "שמירת ההגדרות"
+  sending_event: "שליחת האירוע"
+  waiting_response: "המתנה לתשובה: %{error}"
