@@ -9,12 +9,18 @@
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
+# Where the install line came from: web, app or link when the script is fetched from
+# claudecodenotifier.com/<source>/install.ps1 (the site rewrites the next line), direct otherwise.
+$sourceTag = if ($env:CCN_INSTALL_SOURCE) { $env:CCN_INSTALL_SOURCE } else { 'direct' }
+if ($sourceTag -notmatch '^[a-z0-9_-]+$') { $sourceTag = 'other' }
+
 # One anonymous event per step, so we can see where installs fail: the event name, the stage, the
 # processor. Nothing else. $env:CCN_NO_ANALYTICS = "1" (or DO_NOT_TRACK) turns it off.
 $stage = 'start'
 function Send-SetupEvent([string]$name, [hashtable]$properties = @{}) {
     if (($env:CCN_NO_ANALYTICS -and $env:CCN_NO_ANALYTICS -ne '0') -or ($env:DO_NOT_TRACK -and $env:DO_NOT_TRACK -ne '0')) { return }
     $properties['method'] = 'powershell'
+    $properties['source'] = $sourceTag
     $body = @{
         context = @{ platform = 'cli'; deviceModel = "windows-$arch"; environment = 'production' }
         events = @(@{ name = $name; properties = $properties })
@@ -74,6 +80,7 @@ if (-not (($env:Path -split ';') -contains $dir)) { $env:Path = "$env:Path;$dir"
 Send-SetupEvent 'cli_install_finished'
 # The install line runs `ccn pair` next in this same session
 $env:CCN_INSTALL_METHOD = 'powershell'
+$env:CCN_INSTALL_SOURCE = $sourceTag
 
 # Hooks and desktop notifications first, before any pairing: from here on every claude session is
 # covered, phone or no phone. A problem with settings.json doesn't stop the install.

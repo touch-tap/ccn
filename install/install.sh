@@ -11,6 +11,11 @@
 # CCN_NO_ANALYTICS=1 (or DO_NOT_TRACK=1) stops the anonymous install events.
 set -eu
 
+# Where the install line came from: web, app or link when the script is fetched from
+# claudecodenotifier.com/<source>/install.sh (the site rewrites the next line), direct otherwise.
+source_tag="${CCN_INSTALL_SOURCE:-direct}"
+case "$source_tag" in ""|*[!a-z0-9_-]*) source_tag="other" ;; esac
+
 repo="touch-tap/ccn"
 code=""
 licence=""
@@ -34,7 +39,7 @@ case "$(uname -s)" in Darwin) model="macos" ;; Linux) model="linux" ;; *) model=
 case "$(uname -m)" in arm64|aarch64) model="$model-aarch64" ;; x86_64|amd64) model="$model-x86_64" ;; *) model="$model-other" ;; esac
 track() {
   case "${CCN_NO_ANALYTICS:-}${DO_NOT_TRACK:-}" in ""|0|00) ;; *) return 0 ;; esac
-  body="{\"context\":{\"platform\":\"cli\",\"deviceModel\":\"$model\",\"environment\":\"production\"},\"events\":[{\"name\":\"$1\",\"properties\":{\"method\":\"script\"${2:+,$2}}}]}"
+  body="{\"context\":{\"platform\":\"cli\",\"deviceModel\":\"$model\",\"environment\":\"production\"},\"events\":[{\"name\":\"$1\",\"properties\":{\"method\":\"script\",\"source\":\"$source_tag\"${2:+,$2}}}]}"
   url="${CCN_SERVER_URL:-https://ccnotifier-api.touchtap.workers.dev}/api/events"
   if command -v curl >/dev/null 2>&1; then
     curl -fsS -m 3 -H 'Content-Type: application/json' -d "$body" "$url" >/dev/null 2>&1 || true
@@ -121,6 +126,7 @@ on_path=yes
 track cli_install_finished "\"pairing\":\"$([ -n "$code" ] && echo yes || echo no)\",\"on_path\":\"$on_path\""
 
 export CCN_INSTALL_METHOD=script
+export CCN_INSTALL_SOURCE="$source_tag"
 # Hooks and desktop notifications first, before any pairing: from here on every claude session is
 # covered, phone or no phone. A problem with settings.json doesn't stop the install.
 say ""
