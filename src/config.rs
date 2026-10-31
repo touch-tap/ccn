@@ -284,6 +284,9 @@ pub struct Config {
     pub phones: Option<u32>,
     /// When the first phone paired with this computer
     pub paired_at: Option<i64>,
+    /// Where the install line came from (web, app, link or direct), set by the install scripts'
+    /// CCN_INSTALL_SOURCE the first time `ccn setup` runs, and sent with the anonymous setup events
+    pub install_source: Option<String>,
     /// Claude Code has shown "paired with <phone>" once
     pub paired_message_shown: bool,
     /// Desktop notifications shown while no phone was paired
@@ -324,6 +327,7 @@ impl Default for Config {
             licence_nudge_last_at: None,
             phones: None,
             paired_at: None,
+            install_source: None,
             paired_message_shown: false,
             local_notifications: 0,
             pair_nudge_last_at: None,

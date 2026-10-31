@@ -44,6 +44,37 @@ pub fn install_method() -> &'static str {
     }
 }
 
+/// The install scripts' CCN_INSTALL_SOURCE, if it is one of the known values.
+pub fn install_source_from_env() -> Option<&'static str> {
+    match std::env::var("CCN_INSTALL_SOURCE").ok()?.as_str() {
+        "web" => Some("web"),
+        "app" => Some("app"),
+        "link" => Some("link"),
+        "direct" => Some("direct"),
+        _ => None,
+    }
+}
+
+/// Where this computer's install line was copied from: this run's environment first, then what
+/// `ccn setup` remembered. None for Homebrew, npm and npx installs, which have no install line.
+pub fn install_source(cfg: &Config) -> Option<String> {
+    install_source_from_env()
+        .map(str::to_string)
+        .or_else(|| cfg.install_source.clone())
+}
+
+/// Remembers the install source on the first run that carries one, so a later `ccn pair` typed by
+/// hand still reports it. Never overwrites: the first install line is the one that brought them.
+pub fn remember_install_source() {
+    if let Some(source) = install_source_from_env() {
+        let mut cfg = Config::load();
+        if cfg.install_source.is_none() {
+            cfg.install_source = Some(source.to_string());
+            let _ = cfg.save();
+        }
+    }
+}
+
 pub fn event(name: &str, properties: &[(&str, &str)]) {
     if !enabled() {
         return;
@@ -52,6 +83,11 @@ pub fn event(name: &str, properties: &[(&str, &str)]) {
     let mut props = Map::new();
     for (key, value) in properties {
         props.insert((*key).to_string(), Value::from(*value));
+    }
+    if let Some(source) = install_source(&cfg) {
+        props
+            .entry("source".to_string())
+            .or_insert(Value::from(source));
     }
     let custom_server = std::env::var("CCN_SERVER_URL").is_ok();
     let body = json!({
@@ -124,6 +160,18 @@ pub fn failure_reason(err: &anyhow::Error) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn install_source_falls_back_to_the_remembered_one() {
+        // The test runner doesn't set CCN_INSTALL_SOURCE, so only the config speaks
+        if std::env::var("CCN_INSTALL_SOURCE").is_ok() {
+            return;
+        }
+        let mut cfg = Config::default();
+        assert_eq!(install_source(&cfg), None);
+        cfg.install_source = Some("web".to_string());
+        assert_eq!(install_source(&cfg).as_deref(), Some("web"));
+    }
 
     #[test]
     fn reasons_are_recognised() {

@@ -488,6 +488,7 @@ pub fn setup(replace_mac_app: bool) -> Result<()> {
 /// Installs the hooks and registers desktop notifications. Idempotent, and silent when everything
 /// was already in place, so pairing and the install scripts can run it every time.
 pub fn ensure_setup(replace_mac_app: bool) -> Result<()> {
+    telemetry::remember_install_source();
     if let Some(copy) = hookcfg::install_self()? {
         println!("{}", t!("setup.installed_self", path = copy.display()));
     }
