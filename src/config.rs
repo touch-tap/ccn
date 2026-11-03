@@ -593,18 +593,43 @@ pub const LOCALES: &[&str] = &[
     "zh-Hans", "zh-Hant",
 ];
 
-/// The language to ask the server for: `CCN_LANG`, else the OS locale, mapped onto `LOCALES`.
+/// The language to ask the server for, mapped onto `LOCALES`: `CCN_LANG`, else the POSIX locale
+/// variables, else the first of the OS's preferred languages that ccn speaks, else English.
 pub fn locale() -> String {
-    let raw = std::env::var("CCN_LANG")
-        .ok()
-        .filter(|v| !v.trim().is_empty())
-        .or_else(sys_locale::get_locale)
-        .unwrap_or_default();
-    normalise_locale(&raw).to_string()
+    let env = |key: &str| std::env::var(key).ok();
+    let posix = [env("LC_ALL"), env("LC_MESSAGES"), env("LANG")];
+    let os = sys_locale::get_locales().collect::<Vec<_>>();
+    pick_locale(env("CCN_LANG").as_deref(), &posix, &os).to_string()
+}
+
+/// `locale` without the environment, so it can be tested. sys-locale reads CFLocale on macOS and
+/// ignores LANG there, so the POSIX variables are checked first everywhere (LC_ALL, then
+/// LC_MESSAGES, then LANG, as gettext does); "C", "POSIX" and empty say nothing. A language ccn
+/// doesn't speak falls through to the next choice: with macOS preferences [sv, de], German.
+fn pick_locale(ccn_lang: Option<&str>, posix: &[Option<String>], os: &[String]) -> &'static str {
+    if let Some(lang) = ccn_lang.filter(|v| !v.trim().is_empty()) {
+        return normalise_locale(lang);
+    }
+    let said_something = |v: &&String| {
+        let tag = v.split(['.', '@']).next().unwrap_or("").trim();
+        !tag.is_empty() && tag != "C" && tag != "POSIX"
+    };
+    // The first POSIX variable set decides, as it would for any other program
+    let from_env = posix.iter().flatten().find(said_something);
+    from_env
+        .into_iter()
+        .chain(os.iter())
+        .find_map(|raw| supported_locale(raw))
+        .unwrap_or("en")
 }
 
 /// Maps a BCP 47 or POSIX locale tag onto one of `LOCALES`; anything unknown is "en".
 pub fn normalise_locale(raw: &str) -> &'static str {
+    supported_locale(raw).unwrap_or("en")
+}
+
+/// Maps a BCP 47 or POSIX locale tag onto one of `LOCALES`, or None for a language ccn lacks.
+fn supported_locale(raw: &str) -> Option<&'static str> {
     // en_GB.UTF-8 → en-GB; drop the encoding and modifier
     let tag = raw.split(['.', '@']).next().unwrap_or("").replace('_', "-");
     let mut parts = tag.split('-').filter(|p| !p.is_empty());
@@ -615,21 +640,101 @@ pub fn normalise_locale(raw: &str) -> &'static str {
             let traditional = rest
                 .iter()
                 .any(|p| matches!(p.as_str(), "hant" | "tw" | "hk" | "mo"));
-            if traditional { "zh-Hant" } else { "zh-Hans" }
+            Some(if traditional { "zh-Hant" } else { "zh-Hans" })
         }
-        "pt" => "pt-BR",
-        "iw" | "he" => "he",
+        "pt" => Some("pt-BR"),
+        "iw" | "he" => Some("he"),
         other => LOCALES
             .iter()
             .find(|l| l.eq_ignore_ascii_case(other))
-            .copied()
-            .unwrap_or("en"),
+            .copied(),
     }
 }
 
 #[cfg(test)]
 mod locale_tests {
-    use super::normalise_locale;
+    use super::{normalise_locale, pick_locale};
+
+    fn os(tags: &[&str]) -> Vec<String> {
+        tags.iter().map(|t| t.to_string()).collect()
+    }
+
+    fn posix(
+        lc_all: Option<&str>,
+        lc_messages: Option<&str>,
+        lang: Option<&str>,
+    ) -> Vec<Option<String>> {
+        [lc_all, lc_messages, lang]
+            .iter()
+            .map(|v| v.map(str::to_string))
+            .collect()
+    }
+
+    #[test]
+    fn ccn_lang_wins_over_everything() {
+        let env = posix(Some("fr_FR.UTF-8"), None, Some("de_DE.UTF-8"));
+        assert_eq!(pick_locale(Some("ja"), &env, &os(&["ko"])), "ja");
+        // Even a language ccn lacks: the user asked for it by name
+        assert_eq!(pick_locale(Some("sv"), &env, &os(&["ko"])), "en");
+        // Blank is unset
+        assert_eq!(pick_locale(Some(" "), &env, &os(&["ko"])), "fr");
+    }
+
+    #[test]
+    fn posix_variables_come_before_the_os_preference_in_their_order() {
+        let prefs = os(&["ko-KR"]);
+        assert_eq!(
+            pick_locale(
+                None,
+                &posix(Some("fr_FR.UTF-8"), Some("it_IT"), Some("de_DE")),
+                &prefs
+            ),
+            "fr"
+        );
+        assert_eq!(
+            pick_locale(None, &posix(None, Some("it_IT"), Some("de_DE")), &prefs),
+            "it"
+        );
+        assert_eq!(
+            pick_locale(None, &posix(None, None, Some("de_DE.UTF-8")), &prefs),
+            "de"
+        );
+        // C, POSIX and empty say nothing, so the next variable or the OS decides
+        assert_eq!(
+            pick_locale(None, &posix(Some("C"), None, Some("de_DE")), &prefs),
+            "de"
+        );
+        assert_eq!(
+            pick_locale(
+                None,
+                &posix(Some(""), Some("POSIX"), Some("C.UTF-8")),
+                &prefs
+            ),
+            "ko"
+        );
+        assert_eq!(pick_locale(None, &posix(None, None, None), &prefs), "ko");
+    }
+
+    #[test]
+    fn walks_the_os_preferences_to_the_first_supported_language() {
+        let none = posix(None, None, None);
+        assert_eq!(pick_locale(None, &none, &os(&["sv", "de"])), "de");
+        assert_eq!(
+            pick_locale(None, &none, &os(&["sv-SE", "nb-NO", "zh-Hant-TW"])),
+            "zh-Hant"
+        );
+        assert_eq!(pick_locale(None, &none, &os(&["sv", "fi"])), "en");
+        assert_eq!(pick_locale(None, &none, &os(&[])), "en");
+        // A POSIX language ccn lacks falls through to the OS preferences too
+        assert_eq!(
+            pick_locale(
+                None,
+                &posix(None, None, Some("sv_SE.UTF-8")),
+                &os(&["sv", "nl"])
+            ),
+            "nl"
+        );
+    }
 
     #[test]
     fn maps_os_locales_onto_the_supported_set() {
