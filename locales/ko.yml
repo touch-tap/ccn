@@ -299,3 +299,6 @@ api:
 
 local_files:
   config_unreadable: "%{path} 파일을 읽을 수 없어요(%{error}). 그래서 ccn이 덮어쓰지 않아요. 파일을 고치거나, 삭제한 뒤 `ccn pair`를 다시 실행하세요."
+  slot_not_freed: "이 컴퓨터의 라이선스 자리를 비우지 못했어요(%{error}). 라이선스가 있다면 claudecodenotifier.com/licence에서 키로 자리를 비우세요."
+  kept_dir: "%{path}에서 ccn 파일을 제거했어요. 폴더에 다른 파일도 있어서 폴더는 그대로 두었어요."
+  remove_binary: "ccn 자체는 아직 설치되어 있어요. 제거하려면: %{command}"

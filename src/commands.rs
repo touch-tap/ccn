@@ -964,8 +964,17 @@ fn remove_local(revoke_on_server: bool) -> Result<()> {
     if revoke_on_server && cfg.is_paired() {
         let api = Api::new(&cfg);
         // Free the licence slot first, so a reinstall (which is a new computer) doesn't find it taken
-        if let Ok(true) = api.deactivate_licence() {
-            println!("{}", t!("uninstall.slot_freed"));
+        match api.deactivate_licence() {
+            Ok(true) => println!("{}", t!("uninstall.slot_freed")),
+            // No licence, or the server had already forgotten this computer: no slot to free
+            Ok(false) => {}
+            Err(err) if api::is_rejected(&err) => {}
+            // The token goes below, so this computer can't free the slot later: say how to
+            // do it from the licence page, and carry on (uninstall must work offline)
+            Err(err) => eprintln!(
+                "{}",
+                t!("local_files.slot_not_freed", error = format!("{err:#}"))
+            ),
         }
         if let Ok(devices) = api.pairings() {
             for d in devices {
@@ -975,12 +984,51 @@ fn remove_local(revoke_on_server: bool) -> Result<()> {
         }
     }
     config::delete_token();
-    let _ = std::fs::remove_dir_all(config::ccn_dir());
-    println!(
-        "{}",
-        t!("uninstall.removed_dir", path = config::ccn_dir().display())
-    );
+    // ccn's own files only: CCN_HOME may point at a folder that holds other things
+    let path = config::ccn_dir();
+    if config::remove_local_files() {
+        println!("{}", t!("uninstall.removed_dir", path = path.display()));
+    } else {
+        println!("{}", t!("local_files.kept_dir", path = path.display()));
+    }
+    // Package managers own the binary, and the install scripts' copy may be in use: say how
+    if let Some(command) = binary_removal_command() {
+        println!("{}", t!("local_files.remove_binary", command = command));
+    }
     Ok(())
+}
+
+/// The command that removes the ccn binary, for the way it was installed. Uninstall leaves the
+/// binary to its owner: Homebrew, npm, scoop and winget would otherwise still list it.
+fn binary_removal_command() -> Option<String> {
+    let running = std::env::current_exe().ok()?;
+    let lower = running
+        .to_string_lossy()
+        .replace('\\', "/")
+        .to_ascii_lowercase();
+    let method = if lower.contains("/scoop/apps/ccn/") {
+        "scoop"
+    } else if lower.contains("/winget/packages/") {
+        "winget"
+    } else {
+        telemetry::install_method()
+    };
+    Some(match method {
+        "homebrew" => "brew uninstall touch-tap/tap/ccn".to_string(),
+        "npm" => "npm uninstall -g @touchtap/ccn".to_string(),
+        "scoop" => "scoop uninstall ccn".to_string(),
+        "winget" => "winget uninstall TouchTap.ccn".to_string(),
+        // The install scripts, npx (whose copy went into the user's bin directory) and anything
+        // else: the file the hooks ran
+        _ => {
+            let exe = hookcfg::exe_path().ok()?;
+            if cfg!(windows) {
+                format!("Remove-Item \"{}\"", exe.display())
+            } else {
+                format!("rm \"{}\"", exe.display())
+            }
+        }
+    })
 }
 
 #[cfg(test)]

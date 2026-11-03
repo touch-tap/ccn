@@ -299,3 +299,6 @@ api:
 
 local_files:
   config_unreadable: "%{path} を読み込めません（%{error}）。そのため ccn は上書きしません。ファイルを修正するか、削除してから `ccn pair` をもう一度実行してください。"
+  slot_not_freed: "このコンピュータのライセンス枠を空けられませんでした（%{error}）。ライセンスがある場合は、claudecodenotifier.com/licence でキーを使って枠を空けてください。"
+  kept_dir: "%{path} から ccn のファイルを削除しました。フォルダにはほかのファイルもあるため、フォルダ自体は残しています。"
+  remove_binary: "ccn 本体はまだインストールされています。削除するには: %{command}"

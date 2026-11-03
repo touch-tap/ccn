@@ -701,13 +701,74 @@ pub fn delete_token() {
         file_only,
         keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER),
     ) {
-        // On macOS only the build that created the item may delete it; a later version (same
-        // signature) may still change it, so it empties the item instead
-        if entry.delete_credential().is_err() {
+        // On macOS only the build that created the item may delete it through the API; Apple's
+        // `security` tool usually may. Failing both, a later version (same signature) may still
+        // change the item, so it is emptied, which load_token reads as no token
+        if entry.delete_credential().is_err() && !delete_with_security_tool() {
             let _ = entry.set_password("");
         }
     }
     let _ = fs::remove_file(credentials_path());
+}
+
+#[cfg(target_os = "macos")]
+fn delete_with_security_tool() -> bool {
+    std::process::Command::new("/usr/bin/security")
+        .args([
+            "delete-generic-password",
+            "-s",
+            KEYRING_SERVICE,
+            "-a",
+            KEYRING_USER,
+        ])
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn delete_with_security_tool() -> bool {
+    false
+}
+
+/// What ccn writes in its directory, by name. Uninstall deletes these and nothing else, since
+/// `CCN_HOME` may point at a folder that holds other things.
+const OWN_FILES: &[&str] = &[
+    "config.toml",
+    "config.lock",
+    "credentials",
+    "ccn.log",
+    "unpaired.json",
+    "icon.png",
+];
+
+/// Deletes ccn's own files from its directory (the list above, the session files, the macOS
+/// notifier app and any temp file a crash left), then the directory if that leaves it empty.
+/// Returns whether the directory itself went.
+pub fn remove_local_files() -> bool {
+    let dir = ccn_dir();
+    for name in OWN_FILES {
+        let _ = fs::remove_file(dir.join(name));
+    }
+    crate::session::remove_all();
+    let app = format!("{}.app", crate::notify::APP_NAME);
+    // notify.rs builds the app as "<name>.tmp-<pid>" beside it, then renames it into place
+    let app_tmp = format!("{}.tmp-", crate::notify::APP_NAME);
+    if let Ok(entries) = fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if name == app || name.starts_with(&app_tmp) {
+                let _ = fs::remove_dir_all(entry.path());
+            } else if OWN_FILES.iter().any(|own| is_temp_file(&name, own)) {
+                let _ = fs::remove_file(entry.path());
+            }
+        }
+    }
+    // Only succeeds when empty
+    let _ = fs::remove_dir(&dir);
+    !dir.exists()
 }
 
 // ============================================

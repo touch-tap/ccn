@@ -297,3 +297,6 @@ api:
 
 local_files:
   config_unreadable: "%{path} kan niet worden gelezen (%{error}), dus ccn overschrijft het niet. Herstel het bestand, of verwijder het en voer `ccn pair` opnieuw uit."
+  slot_not_freed: "De licentieplek van deze computer kon niet worden vrijgemaakt (%{error}). Als hij een licentie heeft, maak de plek dan vrij op claudecodenotifier.com/licence met je sleutel."
+  kept_dir: "De bestanden van ccn zijn uit %{path} verwijderd. De map bevat ook andere bestanden en is daarom blijven staan."
+  remove_binary: "ccn zelf is nog geïnstalleerd. Zo verwijder je het: %{command}"

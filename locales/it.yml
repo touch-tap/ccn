@@ -298,3 +298,6 @@ api:
 
 local_files:
   config_unreadable: "Impossibile leggere %{path} (%{error}), quindi ccn non lo sovrascriverà. Correggi il file, oppure eliminalo ed esegui di nuovo `ccn pair`."
+  slot_not_freed: "Impossibile liberare il posto di questo computer sulla licenza (%{error}). Se ha una licenza, libera il posto su claudecodenotifier.com/licence con la tua chiave."
+  kept_dir: "Rimossi i file di ccn da %{path}. La cartella contiene anche altri file, quindi è stata lasciata al suo posto."
+  remove_binary: "ccn è ancora installato. Per rimuoverlo: %{command}"

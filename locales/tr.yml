@@ -300,3 +300,6 @@ api:
 
 local_files:
   config_unreadable: "%{path} okunamıyor (%{error}), bu yüzden ccn üzerine yazmayacak. Dosyayı düzeltin ya da silip `ccn pair` komutunu yeniden çalıştırın."
+  slot_not_freed: "Bu bilgisayarın lisans yeri boşaltılamadı (%{error}). Lisansı varsa, anahtarınızla claudecodenotifier.com/licence adresinden yeri boşaltın."
+  kept_dir: "ccn dosyaları %{path} konumundan kaldırıldı. Klasörde başka dosyalar da olduğu için klasör yerinde bırakıldı."
+  remove_binary: "ccn'in kendisi hâlâ yüklü. Kaldırmak için: %{command}"

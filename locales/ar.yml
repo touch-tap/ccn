@@ -301,3 +301,6 @@ api:
 
 local_files:
   config_unreadable: "تعذّرت قراءة %{path} (%{error})، لذا لن يكتب ccn فوقه. أصلِح الملف، أو احذفه ثم شغّل `ccn pair` من جديد."
+  slot_not_freed: "تعذّر إفراغ مكان هذا الكمبيوتر على الترخيص (%{error}). إن كان له ترخيص، فأفرغ مكانه من claudecodenotifier.com/licence باستخدام مفتاحك."
+  kept_dir: "أُزيلت ملفات ccn من %{path}. يحتوي المجلد على ملفات أخرى أيضًا، لذا تُرك في مكانه."
+  remove_binary: "ما زال ccn نفسه مثبّتًا. لإزالته: %{command}"
