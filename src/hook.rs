@@ -572,9 +572,13 @@ impl Ctx {
             return Ok(None);
         }
         let threshold = self.cfg.settings.presence_threshold();
-        if ceiling == 0 || presence::user_present(threshold) {
-            // At the keyboard: nothing waits. The phone gets a note, unless the user is looking at
-            // this very terminal and has asked for quiet then
+        let idle = presence::idle_seconds();
+        if ceiling == 0
+            || !presence::hold_allowed(idle, threshold, self.cfg.hold_without_presence())
+        {
+            // At the keyboard, or no way to tell (ssh, WSL, a desktop without an idle API): nothing
+            // waits. The phone gets a note, unless the user is looking at this very terminal and
+            // has asked for quiet then
             if present_sends_info && !self.quiet_at_terminal() {
                 self.send_card(kind, key, card, false)?;
             }

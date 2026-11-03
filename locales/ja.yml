@@ -126,7 +126,6 @@ doctor:
   hooks_stale: "フックが別の ccn バイナリを指しています。`ccn setup` で更新してください"
   mac_app_hooks: "Mac アプリのフックもインストールされています（`ccn setup --replace-mac-app` を実行）"
   presence: "在席検出: 現在 %{idle} 秒間操作なし、しきい値 %{threshold} 秒"
-  presence_none: "在席検出: この環境では検出できないため、すべてのリクエストがスマートフォンを待ちます"
   replies: "返答: スマートフォンからの承認と質問への回答はどのターミナルでも動作します。待機中のセッションへの自由入力: %{free_text}"
   replies_tmux: "tmux で動作します"
   replies_no_tmux: "tmux が必要です"
@@ -196,6 +195,10 @@ hook:
   # タイトル、本文、コマンドはサーバーがユーザーの言語で書く。ここではつなげるだけ
   nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
   needs_attention: "確認が必要です"
+
+hooks:
+  doctor_presence_none: "在席検出: ここでは検出できないため、スマートフォンの応答は待ちません。スマートフォンには通知が届き、ターミナルで応答します（それでも待つには `ccn config set hold_without_presence on`）"
+  doctor_presence_none_hold: "在席検出: ここでは検出できず、hold_without_presence がオンのため、各リクエストはスマートフォンが応答するか上限時間が過ぎるまで待ちます"
 
 licence:
   already_licensed: "このコンピュータにはすでにライセンスがあります（%{licence}）。"

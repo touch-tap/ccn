@@ -127,7 +127,6 @@ doctor:
   hooks_stale: "hook đang trỏ tới một tệp ccn khác; chạy `ccn setup` để cập nhật"
   mac_app_hooks: "hook của ứng dụng Mac cũng đang được cài (chạy `ccn setup --replace-mac-app`)"
   presence: "hiện diện: đã rảnh %{idle}s, ngưỡng %{threshold}s"
-  presence_none: "hiện diện: không phát hiện được ở đây, nên mọi yêu cầu đều chờ điện thoại"
   replies: "trả lời: phê duyệt và trả lời câu hỏi từ điện thoại hoạt động trong mọi terminal; văn bản tự do vào một phiên đang rảnh %{free_text}"
   replies_tmux: "hoạt động (tmux)"
   replies_no_tmux: "cần tmux"
@@ -197,6 +196,10 @@ hook:
   # The server writes title, body and command in the user's language; this only joins them
   nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
   needs_attention: "Cần bạn chú ý"
+
+hooks:
+  doctor_presence_none: "hiện diện: không phát hiện được ở đây, nên không có gì chờ điện thoại: điện thoại nhận một thông báo và bạn trả lời trong terminal (`ccn config set hold_without_presence on` để vẫn chờ)"
+  doctor_presence_none_hold: "hiện diện: không phát hiện được ở đây và hold_without_presence đang bật, nên mọi yêu cầu chờ điện thoại cho đến khi nó trả lời hoặc hết thời gian chờ tối đa"
 
 licence:
   already_licensed: "Máy tính này đã có giấy phép (%{licence})."

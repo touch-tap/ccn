@@ -128,7 +128,6 @@ doctor:
   hooks_stale: "hooks تشير إلى ملف ccn مختلف؛ لتحديثها شغّل `ccn setup`"
   mac_app_hooks: "hooks الخاصة بتطبيق Mac مثبتة أيضًا (شغّل `ccn setup --replace-mac-app`)"
   presence: "الحضور: خامل منذ %{idle} ث، الحد %{threshold} ث"
-  presence_none: "الحضور: لا يمكن رصده هنا، لذا ينتظر كل طلب الهاتف"
   replies: "الردود: الموافقات وإجابات الأسئلة من الهاتف تعمل في أي طرفية؛ النص الحر إلى جلسة خاملة %{free_text}"
   replies_tmux: "يعمل (tmux)"
   replies_no_tmux: "يحتاج tmux"
@@ -198,6 +197,10 @@ hook:
   # The server writes title, body and command in the user's language; this only joins them
   nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
   needs_attention: "يحتاج إلى انتباهك"
+
+hooks:
+  doctor_presence_none: "الحضور: لا يمكن رصده هنا، لذا لا شيء ينتظر الهاتف: يصله تنبيه وتجيب أنت في الطرفية (`ccn config set hold_without_presence on` للانتظار رغم ذلك)"
+  doctor_presence_none_hold: "الحضور: لا يمكن رصده هنا، وhold_without_presence مفعّل، لذا ينتظر كل طلب الهاتف حتى يجيب أو تنقضي المدة القصوى"
 
 licence:
   already_licensed: "هذا الكمبيوتر مرخّص بالفعل (%{licence})."

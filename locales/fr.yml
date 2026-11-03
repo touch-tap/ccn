@@ -125,7 +125,6 @@ doctor:
   hooks_stale: "les hooks pointent vers un autre binaire ccn ; lance `ccn setup` pour les mettre à jour"
   mac_app_hooks: "les hooks de l'app Mac sont aussi installés (lance `ccn setup --replace-mac-app`)"
   presence: "présence : inactif depuis %{idle}s, seuil %{threshold}s"
-  presence_none: "présence : indétectable ici, chaque demande attend donc le téléphone"
   replies: "réponses : les autorisations et les réponses aux questions depuis le téléphone marchent dans tout terminal ; le texte libre vers une session inactive %{free_text}"
   replies_tmux: "marche (tmux)"
   replies_no_tmux: "demande tmux"
@@ -195,6 +194,10 @@ hook:
   # Le serveur écrit le titre, le corps et la commande dans la langue de l'utilisateur ; ceci ne fait que les assembler
   nudge_message: "Claude Code Notifier : %{title} %{body} %{command}"
   needs_attention: "Demande ton attention"
+
+hooks:
+  doctor_presence_none: "présence : non détectable ici, donc rien n'attend le téléphone : il reçoit une note et vous répondez dans le terminal (`ccn config set hold_without_presence on` pour attendre quand même)"
+  doctor_presence_none_hold: "présence : non détectable ici, et hold_without_presence est activé, donc chaque demande attend le téléphone jusqu'à sa réponse ou la fin du délai maximal"
 
 licence:
   already_licensed: "Cet ordinateur a déjà une licence (%{licence})."

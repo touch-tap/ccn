@@ -1,5 +1,15 @@
 //! Is anyone at the keyboard? Decides whether a blocking hook waits for the phone.
-//! `None` means the platform cannot tell, which counts as away.
+//! `None` means the platform cannot tell. A hook then does not hold (see `hold_allowed`): holding
+//! blind would stall someone who is sitting right at an ssh terminal for the whole ceiling.
+
+use std::io::Read;
+use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
+
+/// Each idle probe that runs another program gets this long. A hook polls presence every second
+/// while it holds, so a probe that hangs (a D-Bus call to a session bus that never answers) must
+/// not hang the hook with it.
+const PROBE_TIMEOUT: Duration = Duration::from_millis(500);
 
 pub fn idle_seconds() -> Option<f64> {
     // Test hook: CCN_PRESENCE=away|present pins the answer; file:<path> reads it from a file each time
@@ -40,6 +50,50 @@ pub fn user_present(threshold: f64) -> bool {
     idle_seconds().map(|idle| idle < threshold).unwrap_or(false)
 }
 
+/// Whether a blocking hook may hold Claude for the phone, given what presence detection said.
+/// Unknown presence holds only when the user asked for it (`ccn config set hold_without_presence
+/// on`, or `CCN_HOLD_WITHOUT_PRESENCE=1`): typing can't release a hold that can't see typing.
+pub fn hold_allowed(idle: Option<f64>, threshold: f64, hold_without_presence: bool) -> bool {
+    match idle {
+        Some(idle) => idle >= threshold,
+        None => hold_without_presence,
+    }
+}
+
+/// Runs a probe command with a deadline, returning its stdout when it exits successfully in time.
+/// Kills it otherwise. A missing program is just None.
+#[cfg_attr(not(any(target_os = "macos", target_os = "linux")), allow(dead_code))]
+fn run_bounded(program: &str, args: &[&str], timeout: Duration) -> Option<String> {
+    let mut child = Command::new(program)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()?;
+    // Read on a thread, so a probe with more output than a pipe holds can't block on the write
+    let mut stdout = child.stdout.take()?;
+    let reader = std::thread::spawn(move || {
+        let mut out = String::new();
+        stdout.read_to_string(&mut out).ok().map(|_| out)
+    });
+    let deadline = Instant::now() + timeout;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                let out = reader.join().ok().flatten()?;
+                return status.success().then_some(out);
+            }
+            Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(10)),
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+        }
+    }
+}
+
 /// True when the user is at the terminal Claude runs in: active within `threshold` seconds and,
 /// on macOS, with that terminal the frontmost app. Someone typing in a browser is not at the
 /// terminal. Where the terminal can't be identified (Linux, Windows, ssh), activity alone decides.
@@ -60,19 +114,17 @@ fn terminal_frontmost() -> Option<bool> {
         let host = std::env::var("__CFBundleIdentifier")
             .ok()
             .filter(|s| !s.is_empty())?;
-        let asn = std::process::Command::new("lsappinfo")
-            .arg("front")
-            .output()
-            .ok()?;
-        let asn = String::from_utf8_lossy(&asn.stdout).trim().to_string();
+        let asn = run_bounded("lsappinfo", &["front"], PROBE_TIMEOUT)?;
+        let asn = asn.trim();
         if asn.is_empty() {
             return None;
         }
-        let info = std::process::Command::new("lsappinfo")
-            .args(["info", "-only", "bundleid", &asn])
-            .output()
-            .ok()?;
-        let front = front_bundle_id(&String::from_utf8_lossy(&info.stdout))?;
+        let info = run_bounded(
+            "lsappinfo",
+            &["info", "-only", "bundleid", asn],
+            PROBE_TIMEOUT,
+        )?;
+        let front = front_bundle_id(&info)?;
         Some(front.eq_ignore_ascii_case(&host))
     }
     #[cfg(not(target_os = "macos"))]
@@ -113,19 +165,58 @@ mod tests {
         );
         assert_eq!(super::front_bundle_id("nothing"), None);
     }
-}
 
-pub fn detection_available() -> bool {
-    idle_seconds().is_some()
+    #[test]
+    fn unknown_presence_holds_only_when_asked() {
+        use super::hold_allowed;
+        // Known: away holds, present does not, whatever the opt-in says
+        assert!(hold_allowed(Some(120.0), 30.0, false));
+        assert!(!hold_allowed(Some(3.0), 30.0, true));
+        // Unknown: never by default
+        assert!(!hold_allowed(None, 30.0, false));
+        assert!(hold_allowed(None, 30.0, true));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn a_probe_that_hangs_is_cut_short() {
+        let start = std::time::Instant::now();
+        assert_eq!(
+            super::run_bounded("sleep", &["5"], std::time::Duration::from_millis(200)),
+            None
+        );
+        assert!(start.elapsed() < std::time::Duration::from_secs(2));
+        assert_eq!(
+            super::run_bounded("echo", &["42"], super::PROBE_TIMEOUT).as_deref(),
+            Some("42\n")
+        );
+        assert_eq!(
+            super::run_bounded("ccn-no-such-program", &[], super::PROBE_TIMEOUT),
+            None
+        );
+    }
+
+    #[test]
+    fn reads_stat_and_dbus_replies() {
+        // A command name may hold spaces and parentheses; the parent pid follows the last ')'
+        assert_eq!(
+            super::ppid_from_stat("1234 (node (x) y) S 987 1234 1234 34816"),
+            Some(987)
+        );
+        assert_eq!(super::ppid_from_stat("garbage"), None);
+        assert_eq!(super::millis_from_reply("(uint64 4521,)\n"), Some(4521));
+        assert_eq!(super::millis_from_reply("4521\n"), Some(4521));
+        assert_eq!(super::millis_from_reply("Error: no such method"), None);
+    }
 }
 
 #[cfg(target_os = "macos")]
 fn macos() -> Option<f64> {
-    let out = std::process::Command::new("ioreg")
-        .args(["-c", "IOHIDSystem", "-d", "4", "-r", "-k", "HIDIdleTime"])
-        .output()
-        .ok()?;
-    let text = String::from_utf8_lossy(&out.stdout);
+    let text = run_bounded(
+        "ioreg",
+        &["-c", "IOHIDSystem", "-d", "4", "-r", "-k", "HIDIdleTime"],
+        PROBE_TIMEOUT,
+    )?;
     for line in text.lines() {
         if let Some(idx) = line.find("HIDIdleTime") {
             let digits: String = line[idx..].chars().filter(|c| c.is_ascii_digit()).collect();
@@ -137,43 +228,111 @@ fn macos() -> Option<f64> {
     None
 }
 
+/// Linux: the desktop's idle time where there is one (X11 via xprintidle, GNOME's Mutter, KDE and
+/// others via the freedesktop ScreenSaver interface), and otherwise the terminal's: when Claude
+/// runs over ssh, in WSL or on a console, the last keypress is the last read from its terminal.
 #[cfg(target_os = "linux")]
 fn linux() -> Option<f64> {
-    let has_display = std::env::var("DISPLAY")
-        .map(|v| !v.is_empty())
-        .unwrap_or(false)
-        || std::env::var("WAYLAND_DISPLAY")
-            .map(|v| !v.is_empty())
-            .unwrap_or(false);
-    if !has_display {
-        return None;
-    }
-    if let Ok(out) = std::process::Command::new("xprintidle").output() {
-        if out.status.success() {
-            if let Ok(ms) = String::from_utf8_lossy(&out.stdout).trim().parse::<u64>() {
+    let has_display = ["DISPLAY", "WAYLAND_DISPLAY"]
+        .iter()
+        .any(|name| std::env::var(name).is_ok_and(|v| !v.is_empty()));
+    if has_display {
+        let probes: &[(&str, &[&str])] = &[
+            ("xprintidle", &[]),
+            (
+                "gdbus",
+                &[
+                    "call",
+                    "--session",
+                    "--dest",
+                    "org.gnome.Mutter.IdleMonitor",
+                    "--object-path",
+                    "/org/gnome/Mutter/IdleMonitor/Core",
+                    "--method",
+                    "org.gnome.Mutter.IdleMonitor.GetIdletime",
+                ],
+            ),
+            (
+                "gdbus",
+                &[
+                    "call",
+                    "--session",
+                    "--dest",
+                    "org.freedesktop.ScreenSaver",
+                    "--object-path",
+                    "/org/freedesktop/ScreenSaver",
+                    "--method",
+                    "org.freedesktop.ScreenSaver.GetSessionIdleTime",
+                ],
+            ),
+            (
+                "qdbus",
+                &[
+                    "org.freedesktop.ScreenSaver",
+                    "/ScreenSaver",
+                    "GetSessionIdleTime",
+                ],
+            ),
+        ];
+        for (program, args) in probes {
+            if let Some(ms) = run_bounded(program, args, PROBE_TIMEOUT)
+                .as_deref()
+                .and_then(millis_from_reply)
+            {
                 return Some(ms as f64 / 1000.0);
             }
         }
     }
-    let out = std::process::Command::new("gdbus")
-        .args([
-            "call",
-            "--session",
-            "--dest",
-            "org.gnome.Mutter.IdleMonitor",
-            "--object-path",
-            "/org/gnome/Mutter/IdleMonitor/Core",
-            "--method",
-            "org.gnome.Mutter.IdleMonitor.GetIdletime",
-        ])
-        .output()
-        .ok()?;
-    if !out.status.success() {
-        return None;
+    terminal_idle()
+}
+
+/// Milliseconds from `xprintidle` (`4521`) or a gdbus/qdbus reply (`(uint64 4521,)`, `(uint32
+/// 4521,)`, `4521`). Errors carry no digits after the type, so they come out as None.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn millis_from_reply(text: &str) -> Option<u64> {
+    let text = text.trim();
+    let text = text
+        .strip_prefix('(')
+        .and_then(|t| t.strip_suffix(",)"))
+        .map(|t| t.rsplit(' ').next().unwrap_or(t))
+        .unwrap_or(text);
+    text.parse().ok()
+}
+
+/// The parent pid from `/proc/<pid>/stat`. The command name is in parentheses and may contain
+/// spaces or parentheses itself, so the fields are counted from the last `)`.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn ppid_from_stat(stat: &str) -> Option<u32> {
+    let rest = &stat[stat.rfind(')')? + 1..];
+    rest.split_whitespace().nth(1)?.parse().ok()
+}
+
+/// Seconds since the terminal Claude runs in was last read from, which is the last keypress (as
+/// `w` reports it). The hook's own stdin is a pipe, so this walks up to the first ancestor whose
+/// stdin is a terminal: Claude Code itself, or the shell around it. The kernel updates a
+/// terminal's read time in 8-second steps, well inside the presence threshold.
+#[cfg(target_os = "linux")]
+fn terminal_idle() -> Option<f64> {
+    let mut pid = std::process::id();
+    for _ in 0..6 {
+        let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
+        pid = ppid_from_stat(&stat)?;
+        if pid <= 1 {
+            return None;
+        }
+        let Ok(target) = std::fs::read_link(format!("/proc/{pid}/fd/0")) else {
+            continue;
+        };
+        let name = target.to_string_lossy();
+        if name.starts_with("/dev/pts/") || name.starts_with("/dev/tty") {
+            let read_at = std::fs::metadata(&target).ok()?.accessed().ok()?;
+            let idle = std::time::SystemTime::now()
+                .duration_since(read_at)
+                .unwrap_or_default();
+            return Some(idle.as_secs_f64());
+        }
     }
-    let text = String::from_utf8_lossy(&out.stdout);
-    let digits: String = text.chars().filter(|c| c.is_ascii_digit()).collect();
-    digits.parse::<u64>().ok().map(|ms| ms as f64 / 1000.0)
+    None
 }
 
 #[cfg(windows)]

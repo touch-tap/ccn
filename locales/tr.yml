@@ -127,7 +127,6 @@ doctor:
   hooks_stale: "hook'lar farklı bir ccn dosyasına işaret ediyor; güncellemek için `ccn setup` çalıştırın"
   mac_app_hooks: "Mac uygulamasının hook'ları da kurulu (`ccn setup --replace-mac-app` çalıştırın)"
   presence: "varlık: şu an %{idle} sn boşta, eşik %{threshold} sn"
-  presence_none: "varlık: burada algılanamıyor, bu yüzden her istek telefonu bekler"
   replies: "yanıtlar: telefondan onaylar ve soru yanıtları her terminalde çalışır; boşta bir oturuma serbest metin %{free_text}"
   replies_tmux: "çalışır (tmux)"
   replies_no_tmux: "tmux gerektirir"
@@ -197,6 +196,10 @@ hook:
   # The server writes title, body and command in the user's language; this only joins them
   nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
   needs_attention: "İlginizi bekliyor"
+
+hooks:
+  doctor_presence_none: "varlık: burada algılanamıyor, bu yüzden hiçbir şey telefonu beklemiyor: telefona bir not gider, sen terminalde yanıtlarsın (yine de beklemek için `ccn config set hold_without_presence on`)"
+  doctor_presence_none_hold: "varlık: burada algılanamıyor ve hold_without_presence açık, bu yüzden her istek telefon yanıtlayana ya da azami süre dolana kadar bekler"
 
 licence:
   already_licensed: "Bu bilgisayar zaten lisanslı (%{licence})."
