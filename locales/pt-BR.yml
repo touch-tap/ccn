@@ -49,7 +49,7 @@ cli:
 common:
   your_phone: "seu celular"
   not_paired: "este computador ainda não está pareado. Rode `ccn pair <code>` com o código do app."
-  store_keychain: "keychain"
+  store_keychain: "chaveiro"
   store_file: "arquivo"
   date_format: "%d/%m/%Y"
 
@@ -106,7 +106,7 @@ sync:
 
 doctor:
   header: "ccn %{version} em %{platform}"
-  config: "config: %{path}"
+  config: "configuração: %{path}"
   credentials_present: "credenciais: presentes (%{store})"
   credentials_missing: "credenciais: ausentes: rode `ccn pair <code>`"
   server_reachable: "servidor: %{url} acessível"
@@ -124,7 +124,6 @@ doctor:
   hooks_stale: "os hooks apontam para outro binário do ccn; rode `ccn setup` para atualizá-los"
   mac_app_hooks: "os hooks do app do Mac também estão instalados (rode `ccn setup --replace-mac-app`)"
   presence: "presença: ocioso há %{idle}s, limite %{threshold}s"
-  presence_none: "presença: não detectável aqui, então todo pedido espera pelo celular"
   replies: "respostas: aprovações e respostas a perguntas pelo celular funcionam em qualquer terminal; texto livre em uma sessão ociosa %{free_text}"
   replies_tmux: "funciona (tmux)"
   replies_no_tmux: "precisa de tmux"
@@ -194,6 +193,11 @@ hook:
   # O servidor escreve título, corpo e comando no idioma do usuário; isto só os junta
   nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
   needs_attention: "Precisa da sua atenção"
+
+hooks:
+  doctor_presence_none: "presença: não detectável aqui, então nada espera pelo celular: ele recebe um aviso e você responde no terminal (`ccn config set hold_without_presence on` para esperar mesmo assim)"
+  doctor_presence_none_hold: "presença: não detectável aqui, e hold_without_presence está ativado, então cada pedido espera pelo celular até ele responder ou o tempo máximo passar"
+  doctor_duplicate_hooks: "Os hooks do ccn estão em mais de um arquivo de configurações (%{paths}): o Claude Code executa as duas cópias quando os comandos diferem, e `ccn uninstall` só remove as das suas configurações de usuário. Mantenha-os em um só"
 
 licence:
   already_licensed: "Este computador já está licenciado (%{licence})."
@@ -294,3 +298,48 @@ api:
   saving_settings: "gravação das configurações"
   sending_event: "envio do evento"
   waiting_response: "espera por uma resposta: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "outra atualização do ccn já está em andamento. Tente novamente em alguns minutos"
+
+local_files:
+  config_unreadable: "Não dá para ler %{path} (%{error}), então o ccn não vai sobrescrevê-lo. Corrija o arquivo, ou apague-o e rode `ccn pair` de novo."
+  slot_not_freed: "Não foi possível liberar a vaga de licença deste computador (%{error}). Se ele tiver licença, libere a vaga em claudecodenotifier.com/licence com a sua chave."
+  kept_dir: "Os arquivos do ccn foram removidos de %{path}. A pasta tem outros arquivos também, então ela foi mantida."
+  remove_binary: "O ccn em si continua instalado. Para removê-lo: %{command}"
+
+payload:
+  plan_waiting: "O Claude criou um plano e está esperando sua aprovação."
+  plan_ready: "Plano pronto para aprovação"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "Sim, aceitar as edições automaticamente"
+  plan_manual_edits: "Sim, aprovar cada edição manualmente"
+  plan_keep_planning: "Não, continuar planejando"
+  needs_permission: "%{tool} precisa de permissão"
+  permission_required: "Permissão necessária"
+  has_questions: "O Claude tem perguntas"
+  finished_prompt: "Concluído: %{prompt}"
+  question_header: "Pergunta"
+  approve_plan: "Aprovar o plano"
+  pattern: "Padrão: %{pattern}"
+  search: "Busca: %{pattern}"
+
+net:
+  unreachable: "Não foi possível acessar o servidor do Claude Code Notifier. Verifique sua conexão com a internet e tente de novo."
+  doctor_unreachable: "servidor: não foi possível acessar %{url}. Verifique sua conexão com a internet, o proxy ou o firewall"
+
+clap:
+  usage: "Uso:"
+  commands: "Comandos:"
+  arguments: "Argumentos:"
+  options: "Opções:"
+  help: "Mostrar a ajuda"
+  version: "Mostrar a versão"
+  help_command: "Mostrar a ajuda do ccn ou de um dos comandos dele"
+  help_command_arg: "O comando cuja ajuda será mostrada"
+  error_hint: "Execute `ccn --help` para ver os comandos e as opções."
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "a assinatura da versão não é válida, então nada foi alterado. Tente mais tarde ou reinstale em claudecodenotifier.com/cli"

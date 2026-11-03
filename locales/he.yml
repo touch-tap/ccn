@@ -128,7 +128,6 @@ doctor:
   hooks_stale: "ה-hooks מצביעים על קובץ ccn אחר; כדי לעדכן אותם הריצו `ccn setup`"
   mac_app_hooks: "גם ה-hooks של אפליקציית ה-Mac מותקנים (הריצו `ccn setup --replace-mac-app`)"
   presence: "נוכחות: לא פעיל כבר %{idle} שנ', סף %{threshold} שנ'"
-  presence_none: "נוכחות: לא ניתן לזהות כאן, ולכן כל בקשה מחכה לטלפון"
   replies: "תשובות: אישורים ותשובות לשאלות מהטלפון עובדים בכל טרמינל; טקסט חופשי לסשן לא פעיל %{free_text}"
   replies_tmux: "עובד (tmux)"
   replies_no_tmux: "דורש tmux"
@@ -199,6 +198,11 @@ hook:
   nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
   needs_attention: "דורש את תשומת לבכם"
 
+hooks:
+  doctor_presence_none: "נוכחות: לא ניתנת לזיהוי כאן, ולכן שום דבר לא ממתין לטלפון: הוא מקבל הודעה ואתה עונה בטרמינל (`ccn config set hold_without_presence on` כדי להמתין בכל זאת)"
+  doctor_presence_none_hold: "נוכחות: לא ניתנת לזיהוי כאן, ו-hold_without_presence פעיל, ולכן כל בקשה ממתינה לטלפון עד שיענה או עד שיעבור זמן ההמתנה המרבי"
+  doctor_duplicate_hooks: "ה-hooks של ccn נמצאים ביותר מקובץ הגדרות אחד (%{paths}): Claude Code מריץ את שני העותקים כשהפקודות שונות, ו-`ccn uninstall` מסיר רק את אלה שבהגדרות המשתמש שלך. השאר אותם בקובץ אחד"
+
 licence:
   already_licensed: "למחשב הזה כבר יש רישיון (%{licence})."
   switch_to_lifetime: "להעברה לרישיון לכל החיים, עם אותו מפתח: ccn unlock --lifetime"
@@ -218,7 +222,7 @@ licence:
   slots_full: "הרישיון הזה כבר בשימוש ב-%{count} מחשבים:"
   free_one: "שחררו מקום עם `ccn deactivate` באותו מחשב, או החליפו אותו מכאן:"
   replace_example: "  ccn activate %{key} --replace \"%{name}\""
-  old_laptop: "Old laptop"
+  old_laptop: "מחשב נייד ישן"
   no_free_slot: "אין מקום פנוי למחשב"
   computers_on_licence: "מחשבים ברישיון הזה:"
   activated: "✓ יש רישיון (%{licence}). %{count} מתוך 3 מחשבים בשימוש."
@@ -298,3 +302,48 @@ api:
   saving_settings: "שמירת ההגדרות"
   sending_event: "שליחת האירוע"
   waiting_response: "המתנה לתשובה: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "עדכון אחר של ccn כבר פועל. נסו שוב בעוד כמה דקות"
+
+local_files:
+  config_unreadable: "אי אפשר לקרוא את %{path} (%{error}), ולכן ccn לא יכתוב מעליו. תקנו את הקובץ, או מחקו אותו והריצו שוב `ccn pair`."
+  slot_not_freed: "לא ניתן היה לשחרר את מקום הרישיון של המחשב הזה (%{error}). אם יש לו רישיון, שחררו את המקום ב-claudecodenotifier.com/licence בעזרת המפתח שלכם."
+  kept_dir: "הקבצים של ccn הוסרו מ-%{path}. בתיקייה יש גם קבצים אחרים, ולכן היא נשארה במקומה."
+  remove_binary: "ccn עצמו עדיין מותקן. כדי להסיר אותו: %{command}"
+
+payload:
+  plan_waiting: "Claude יצר תוכנית ומחכה לאישור שלכם."
+  plan_ready: "תוכנית מוכנה לאישור"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "כן, לאשר עריכות אוטומטית"
+  plan_manual_edits: "כן, לאשר כל עריכה ידנית"
+  plan_keep_planning: "לא, להמשיך לתכנן"
+  needs_permission: "%{tool} צריך הרשאה"
+  permission_required: "נדרשת הרשאה"
+  has_questions: "ל-Claude יש שאלות"
+  finished_prompt: "הסתיים: %{prompt}"
+  question_header: "שאלה"
+  approve_plan: "אישור התוכנית"
+  pattern: "תבנית: %{pattern}"
+  search: "חיפוש: %{pattern}"
+
+net:
+  unreachable: "לא הצלחנו להתחבר לשרת של Claude Code Notifier. בדקו את החיבור לאינטרנט ונסו שוב."
+  doctor_unreachable: "שרת: אין גישה אל %{url}. בדקו את החיבור לאינטרנט, את ה-proxy או את חומת האש"
+
+clap:
+  usage: "שימוש:"
+  commands: "פקודות:"
+  arguments: "ארגומנטים:"
+  options: "אפשרויות:"
+  help: "הצגת העזרה"
+  version: "הצגת הגרסה"
+  help_command: "הצגת העזרה של ccn או של אחת הפקודות שלו"
+  help_command_arg: "הפקודה שאת העזרה שלה רוצים להציג"
+  error_hint: "הריצו `ccn --help` כדי לראות את הפקודות והאפשרויות."
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "לא ניתן לאמת את החתימה של הגרסה, ולכן שום דבר לא שונה. נסה שוב מאוחר יותר, או התקן מחדש מ-claudecodenotifier.com/cli"

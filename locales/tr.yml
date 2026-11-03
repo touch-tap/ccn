@@ -127,7 +127,6 @@ doctor:
   hooks_stale: "hook'lar farklı bir ccn dosyasına işaret ediyor; güncellemek için `ccn setup` çalıştırın"
   mac_app_hooks: "Mac uygulamasının hook'ları da kurulu (`ccn setup --replace-mac-app` çalıştırın)"
   presence: "varlık: şu an %{idle} sn boşta, eşik %{threshold} sn"
-  presence_none: "varlık: burada algılanamıyor, bu yüzden her istek telefonu bekler"
   replies: "yanıtlar: telefondan onaylar ve soru yanıtları her terminalde çalışır; boşta bir oturuma serbest metin %{free_text}"
   replies_tmux: "çalışır (tmux)"
   replies_no_tmux: "tmux gerektirir"
@@ -197,6 +196,11 @@ hook:
   # The server writes title, body and command in the user's language; this only joins them
   nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
   needs_attention: "İlginizi bekliyor"
+
+hooks:
+  doctor_presence_none: "varlık: burada algılanamıyor, bu yüzden hiçbir şey telefonu beklemiyor: telefona bir not gider, sen terminalde yanıtlarsın (yine de beklemek için `ccn config set hold_without_presence on`)"
+  doctor_presence_none_hold: "varlık: burada algılanamıyor ve hold_without_presence açık, bu yüzden her istek telefon yanıtlayana ya da azami süre dolana kadar bekler"
+  doctor_duplicate_hooks: "ccn'in hook'ları birden fazla ayar dosyasında (%{paths}): komutları farklıysa Claude Code iki kopyayı da çalıştırır ve `ccn uninstall` yalnızca kullanıcı ayarlarındakileri kaldırır. Tek bir dosyada tut"
 
 licence:
   already_licensed: "Bu bilgisayar zaten lisanslı (%{licence})."
@@ -297,3 +301,48 @@ api:
   saving_settings: "ayarlar kaydedilirken"
   sending_event: "olay gönderilirken"
   waiting_response: "yanıt beklenirken: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "başka bir ccn yükseltmesi zaten çalışıyor. Birkaç dakika sonra yeniden deneyin"
+
+local_files:
+  config_unreadable: "%{path} okunamıyor (%{error}), bu yüzden ccn üzerine yazmayacak. Dosyayı düzeltin ya da silip `ccn pair` komutunu yeniden çalıştırın."
+  slot_not_freed: "Bu bilgisayarın lisans yeri boşaltılamadı (%{error}). Lisansı varsa, anahtarınızla claudecodenotifier.com/licence adresinden yeri boşaltın."
+  kept_dir: "ccn dosyaları %{path} konumundan kaldırıldı. Klasörde başka dosyalar da olduğu için klasör yerinde bırakıldı."
+  remove_binary: "ccn'in kendisi hâlâ yüklü. Kaldırmak için: %{command}"
+
+payload:
+  plan_waiting: "Claude bir plan hazırladı ve onayınızı bekliyor."
+  plan_ready: "Plan onay bekliyor"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "Evet, düzenlemeleri otomatik kabul et"
+  plan_manual_edits: "Evet, düzenlemeleri tek tek onayla"
+  plan_keep_planning: "Hayır, planlamaya devam et"
+  needs_permission: "%{tool} için izin gerekiyor"
+  permission_required: "İzin gerekiyor"
+  has_questions: "Claude'un soruları var"
+  finished_prompt: "Bitti: %{prompt}"
+  question_header: "Soru"
+  approve_plan: "Planı onaylayın"
+  pattern: "Desen: %{pattern}"
+  search: "Arama: %{pattern}"
+
+net:
+  unreachable: "Claude Code Notifier sunucusuna ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin."
+  doctor_unreachable: "sunucu: %{url} adresine ulaşılamıyor. İnternet bağlantınızı, proxy'yi veya güvenlik duvarını kontrol edin"
+
+clap:
+  usage: "Kullanım:"
+  commands: "Komutlar:"
+  arguments: "Argümanlar:"
+  options: "Seçenekler:"
+  help: "Yardımı göster"
+  version: "Sürümü göster"
+  help_command: "ccn'nin veya komutlarından birinin yardımını göster"
+  help_command_arg: "Yardımı gösterilecek komut"
+  error_hint: "Komutları ve seçenekleri görmek için `ccn --help` çalıştırın."
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "sürümün imzası doğrulanamadı, bu yüzden hiçbir şey değiştirilmedi. Daha sonra yeniden dene veya claudecodenotifier.com/cli adresinden yeniden yükle"

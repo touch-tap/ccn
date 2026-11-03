@@ -5,7 +5,8 @@
    creates a **draft** GitHub release with it, and pushes the tag. The Release workflow then builds
    six targets and adds the archives, `SHA256SUMS` and `ccn.rb` to that draft. The script waits for
    it, then signs the two macOS binaries with the Developer ID (identifier `com.touchtap.ccn`,
-   hardened runtime), notarizes them, and replaces them, `SHA256SUMS` and `ccn.rb` in the draft.
+   hardened runtime), notarizes them, and replaces them, `SHA256SUMS` and `ccn.rb` in the draft. Last it signs
+   `SHA256SUMS` with the update signing key and uploads `SHA256SUMS.sig` (see below).
    The stable signature is what lets each version read the keychain token without a prompt. If the
    wait fails (a GitHub API error, or the workflow failed and was re-run), `scripts/release.sh
    0.2.0 --resume` skips straight to waiting and signing, without notarizing the app again. Never
@@ -15,7 +16,11 @@
    `releases/latest/download/…`, so they serve the new version the moment it is published, and
    `ccn upgrade` (and the daily background check behind it) picks it up the same way: it asks the
    server's `GET /api/cli/latest`, or GitHub's releases API, for the latest published release and
-   verifies the download against its `SHA256SUMS`. A draft is invisible to both.
+   verifies the download against its `SHA256SUMS`. A draft is invisible to both. The server only
+   names the version: `ccn upgrade` always downloads from
+   `https://github.com/touch-tap/ccn/releases/download/<tag>/` and ignores any other
+   `downloadBase` (`CCN_DOWNLOAD_BASE` overrides it for tests and CI only), so the release assets
+   must stay at that path. `SHA256SUMS` lines may be `<hash>  <name>` or `<hash> *<name>`.
    The repository must be public for the scripts, Homebrew and npm to reach the assets.
 4. Homebrew: copy `ccn.rb` from the release to `touch-tap/homebrew-tap` as `Formula/ccn.rb`, push.
 5. winget: `scripts/winget-manifests.sh 0.2.0` downloads the release's `SHA256SUMS` and writes the
@@ -39,7 +44,9 @@
    `touchtap` org; npm asks for the passkey in the browser). It skips versions already on npm, so
    an interrupted run can be repeated.
 8. Website: `install/install.sh` and `install/install.ps1` are served from claudecodenotifier.com.
-   Copy them to the CCNotifier_Website repo root when they change.
+   Copy them to the CCNotifier_Website repo root when they change, byte for byte: the site's
+   `functions/_install-source.js` rewrites one marker line in each (`source_tag="${CCN_INSTALL_SOURCE:-direct}"`
+   and the `$sourceTag = if ($env:CCN_INSTALL_SOURCE) ...` line), so keep those exactly as they are.
 
 The phone apps read the install lines from `GET /api/cli/install` on the server
 (`CCNotifier_Server/src/routes/install.ts`), so a change of install method needs no app release.
@@ -55,6 +62,23 @@ Its icon is the phone apps' `AppIcon.icon` copied from the iOS repo; copy it aga
 
 It is signed and notarized on the release Mac, never in CI, so the Developer ID private key stays
 in that Mac's keychain. The Release workflow refuses an app that isn't notarized Developer ID.
+
+### The update signing key
+
+`ccn upgrade` installs a release only if its `SHA256SUMS.sig` is an ed25519 signature of
+`SHA256SUMS` by a key listed in `RELEASE_KEYS` (src/update.rs). The private key lives only in the
+release Mac's login keychain, as the generic password `ccn-release-signing` (account `touchtap`),
+and `scripts/release.sh` refuses to start without it. It was created on 3 Nov 2026 with
+`cargo run --release --example release-sign -- keygen`.
+
+Keep a copy in the company password manager: without it no later release can be signed, and every
+installed ccn would stop updating itself (users would need to reinstall). To copy it:
+`security find-generic-password -s ccn-release-signing -a touchtap -w | pbcopy`. On a new release
+Mac, put it back with `security add-generic-password -s ccn-release-signing -a touchtap -w`
+(it prompts for the value).
+
+To replace the key: generate a new one, ship a release with both public keys in `RELEASE_KEYS`
+(signed with the old key), then sign later releases with the new key and drop the old one.
 
 ### Setting up a release Mac (once per Mac)
 

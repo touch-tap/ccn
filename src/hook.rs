@@ -18,6 +18,15 @@ use crate::{live, local, notify, presence, respond};
 
 const EVENT_TIMEOUT: Duration = Duration::from_secs(3);
 const QUICK_TIMEOUT: Duration = Duration::from_secs(2);
+
+/// Best-effort updates (the lock-screen card, settling a card answered at the keyboard) run on
+/// every prompt and tool call, so a slow server would slow every one of them. Each gets this
+/// long, and all of them in one hook together get `BEST_EFFORT_BUDGET`.
+const BEST_EFFORT_TIMEOUT: Duration = Duration::from_millis(1000);
+const BEST_EFFORT_BUDGET: Duration = Duration::from_millis(1500);
+/// After a best-effort update fails, the next ones are skipped for this long, so an unreachable
+/// server costs one timeout a minute rather than one per tool call
+const BEST_EFFORT_BACKOFF: i64 = 60;
 const SETTINGS_MAX_AGE: i64 = 60 * 60;
 const REGISTER_MAX_AGE: i64 = 24 * 60 * 60;
 
@@ -50,8 +59,8 @@ fn paired_system_message(phone: &str) -> String {
     t!("hook.paired_message", phone = phone).into_owned()
 }
 
-pub fn run() -> Result<()> {
-    match std::panic::catch_unwind(run_inner) {
+pub fn run(plugin: bool) -> Result<()> {
+    match std::panic::catch_unwind(|| run_inner(plugin)) {
         Ok(Ok(Some(output))) => println!("{output}"),
         Ok(Ok(None)) => {}
         Ok(Err(err)) => log(&format!("hook error: {err:#}")),
@@ -65,12 +74,37 @@ struct Ctx {
     api: Api,
     input: Value,
     state: SessionState,
+    started: Instant,
 }
 
-fn run_inner() -> Result<Option<Value>> {
+/// The Claude Code plugin calls `ccn hook --plugin` for every event. It stands aside:
+/// - when a settings file Claude Code reads for this session already has ccn's hooks or the Mac
+///   app's (the user's, or the project's `.claude/settings.json` / `settings.local.json`), so no
+///   event is handled twice;
+/// - when ccn has no config file. That is before `ccn pair` (the plugin says ccn stays quiet
+///   until then; `ccn setup` puts hooks in the user's settings, which take over anyway) and after
+///   `ccn uninstall`, which deletes it: the plugin outlives an uninstall and still finds the
+///   binary, and notifications must not come back. `ccn pair` writes it again.
+fn plugin_stands_aside(input: &Value) -> bool {
+    if !config::config_path().exists() {
+        return true;
+    }
+    // Claude Code tells hooks the project's root; the event's cwd can be a folder inside it
+    let project = std::env::var_os("CLAUDE_PROJECT_DIR")
+        .filter(|dir| !dir.is_empty())
+        .map(std::path::PathBuf::from)
+        .or_else(|| Input(input).str("cwd").map(std::path::PathBuf::from));
+    crate::hookcfg::settings_has_hooks(project.as_deref())
+}
+
+fn run_inner(plugin: bool) -> Result<Option<Value>> {
     let mut raw = String::new();
     std::io::stdin().read_to_string(&mut raw)?;
     let input: Value = serde_json::from_str(&raw).context("hook input is not JSON")?;
+    if plugin && plugin_stands_aside(&input) {
+        return Ok(None);
+    }
+    let started = Instant::now();
     let event = input["hook_event_name"].as_str().unwrap_or("").to_string();
     let session_id = Input(&input).session_id();
 
@@ -117,6 +151,7 @@ fn run_inner() -> Result<Option<Value>> {
         api,
         input,
         state,
+        started,
     };
     let result = ctx.dispatch(&event);
     if ctx.api.was_rejected() {
@@ -393,6 +428,12 @@ impl Ctx {
         if !self.cfg.settings.notify_on_permission() {
             return Ok(None);
         }
+        // Claude Code runs every matching PermissionRequest hook in parallel, ours alongside any
+        // other tool's (a policy hook, another notifier). The docs give no precedence between
+        // their decisions, and the request waits for the slowest hook, so while we hold, another
+        // hook's instant allow or deny waits too, up to the hold ceiling. Holding only when the
+        // user is away (and, since Nov 2026, never when presence is unknown) keeps that rare;
+        // there is no way to see the other hooks' answers from here.
         let (card, kind, key) = payload::permission_card(&self.input(), false);
         let ceiling = self.cfg.settings.hold_ceiling();
         // When the user is present we send nothing here: Claude Code shows its prompt and the
@@ -402,7 +443,7 @@ impl Ctx {
             self.state.turn.record_approval();
             let _ = self.state.save();
         }
-        Ok(answer.map(|text| respond::permission_output(&text)))
+        Ok(answer.map(|text| respond::permission_output(&text, &self.input)))
     }
 
     fn notification(&mut self) -> Result<Option<Value>> {
@@ -457,10 +498,18 @@ impl Ctx {
                 &self.state.turn,
                 config::now(),
             );
-            if let Err(err) = self.api.post_event(&update, QUICK_TIMEOUT) {
+            if let Err(err) = self.best_effort(&update) {
                 log(&format!("could not send the done update: {err:#}"));
             }
         }
+        // `stop_hook_active` is true when Claude is running on because a Stop hook blocked: here,
+        // a reply typed on the phone. Each new stop holds again, so a conversation from the phone
+        // can go on, but Claude Code caps a run of Stop blocks at 8 with no tool call between
+        // them (CLAUDE_CODE_STOP_HOOK_BLOCK_CAP) and then ends the turn whatever the hook says.
+        // So a 9th reply in a row with no tool use in between is shown as answered on the phone
+        // but not acted on. Rare enough not to count blocks for; a tool call resets the count.
+        // A stop within 5s of a done card we just sent (another Stop hook blocked right after it)
+        // gets no second card.
         if stop_hook_active {
             if let Some(card) = &self.state.last_card {
                 if card.kind == "done" && config::now() - card.sent_at < 5 {
@@ -477,10 +526,7 @@ impl Ctx {
 
     fn session_end(&mut self) -> Result<Option<Value>> {
         let session_id = self.input().session_id();
-        let _ = self.api.post_event(
-            &payload::session_update(&session_id, "ended"),
-            QUICK_TIMEOUT,
-        );
+        let _ = self.best_effort(&payload::session_update(&session_id, "ended"));
         SessionState::remove(&session_id);
         Ok(None)
     }
@@ -506,25 +552,35 @@ impl Ctx {
             self.state.turn.progress,
             self.state.turn.started_at,
         );
-        if let Err(err) = self.api.post_event(&update, QUICK_TIMEOUT) {
+        if let Err(err) = self.best_effort(&update) {
             log(&format!("could not send the working update: {err:#}"));
         }
     }
 
     /// Tells the server the previous request in this session was answered at the keyboard.
     fn settle_last_card(&mut self) {
-        let Some(card) = &mut self.state.last_card else {
-            return;
-        };
-        if card.settled {
+        if self
+            .state
+            .last_card
+            .as_ref()
+            .is_none_or(|card| card.settled)
+        {
             return;
         }
         let update = payload::session_update(&self.state.session_id, "responded");
-        match self.api.post_event(&update, QUICK_TIMEOUT) {
+        let result = best_effort_post(&self.api, &update, self.started);
+        let Some(card) = &mut self.state.last_card else {
+            return;
+        };
+        match result {
             Ok(_) => card.settled = true,
             Err(err) => log(&format!("could not settle card: {err:#}")),
         }
         let _ = self.state.save();
+    }
+
+    fn best_effort(&self, update: &Value) -> Result<Option<String>> {
+        best_effort_post(&self.api, update, self.started)
     }
 
     fn send_card(
@@ -572,9 +628,13 @@ impl Ctx {
             return Ok(None);
         }
         let threshold = self.cfg.settings.presence_threshold();
-        if ceiling == 0 || presence::user_present(threshold) {
-            // At the keyboard: nothing waits. The phone gets a note, unless the user is looking at
-            // this very terminal and has asked for quiet then
+        let idle = presence::idle_seconds();
+        if ceiling == 0
+            || !presence::hold_allowed(idle, threshold, self.cfg.hold_without_presence())
+        {
+            // At the keyboard, or no way to tell (ssh, WSL, a desktop without an idle API): nothing
+            // waits. The phone gets a note, unless the user is looking at this very terminal and
+            // has asked for quiet then
             if present_sends_info && !self.quiet_at_terminal() {
                 self.send_card(kind, key, card, false)?;
             }
@@ -647,9 +707,74 @@ impl Ctx {
     }
 }
 
+/// Where the time of the last failed best-effort update is kept. One file for every session,
+/// since a server that is down is down for all of them.
+fn backoff_path() -> std::path::PathBuf {
+    config::ccn_dir().join("offline_at")
+}
+
+/// How long a best-effort update may take, given when the hook started and when the last one
+/// failed. None skips it.
+fn best_effort_timeout(elapsed: Duration, failed_at: Option<i64>, now: i64) -> Option<Duration> {
+    if failed_at.is_some_and(|at| (0..BEST_EFFORT_BACKOFF).contains(&(now - at))) {
+        return None;
+    }
+    let left = BEST_EFFORT_BUDGET.saturating_sub(elapsed);
+    (left >= Duration::from_millis(100)).then(|| left.min(BEST_EFFORT_TIMEOUT))
+}
+
+/// Posts an update nothing waits on, within the budget, and remembers a failure so the next
+/// hooks skip theirs for a while. A rejection still reaches `Api::was_rejected`.
+fn best_effort_post(api: &Api, update: &Value, started: Instant) -> Result<Option<String>> {
+    let path = backoff_path();
+    let failed_at = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|s| s.trim().parse().ok());
+    let Some(timeout) = best_effort_timeout(started.elapsed(), failed_at, config::now()) else {
+        anyhow::bail!("skipped: the server was slow or unreachable a moment ago");
+    };
+    let result = api.post_event(update, timeout);
+    match &result {
+        Ok(_) if failed_at.is_some() => {
+            let _ = std::fs::remove_file(&path);
+        }
+        Err(err) if !api::is_rejected(err) => {
+            let _ = std::fs::write(&path, config::now().to_string());
+        }
+        _ => {}
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn best_effort_updates_share_a_budget_and_back_off() {
+        let now = 1_700_000_000;
+        let ms = Duration::from_millis;
+        // Fresh hook, no recent failure: the per-update timeout
+        assert_eq!(
+            best_effort_timeout(ms(0), None, now),
+            Some(BEST_EFFORT_TIMEOUT)
+        );
+        // A second update gets what is left of the budget
+        assert_eq!(best_effort_timeout(ms(1100), None, now), Some(ms(400)));
+        // Too little left: skip
+        assert_eq!(best_effort_timeout(ms(1450), None, now), None);
+        // A failure a moment ago skips, one over a minute ago doesn't
+        assert_eq!(best_effort_timeout(ms(0), Some(now - 10), now), None);
+        assert_eq!(
+            best_effort_timeout(ms(0), Some(now - BEST_EFFORT_BACKOFF), now),
+            Some(BEST_EFFORT_TIMEOUT)
+        );
+        // A clock that went backwards doesn't block updates for good
+        assert_eq!(
+            best_effort_timeout(ms(0), Some(now + 3600), now),
+            Some(BEST_EFFORT_TIMEOUT)
+        );
+    }
 
     #[test]
     fn licence_nudges_on_day_two_and_six_then_weekly() {

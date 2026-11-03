@@ -1,6 +1,8 @@
 #!/bin/sh
 # The plugin's hooks hand each Claude Code event (JSON on stdin) to ccn. ccn stands aside when
-# settings.json already has its own hooks or the Mac app's, so nothing is sent twice.
+# the user's or the project's settings already have its own hooks or the Mac app's, so nothing is
+# sent twice, and when it has no config (not paired yet, or `ccn uninstall` has been run), so an
+# uninstall stays an uninstall while the plugin is still enabled.
 # Until ccn is installed, the only output is a one-line pointer at the start of a session.
 event="$1"
 

@@ -128,7 +128,6 @@ doctor:
   hooks_stale: "hooks point at a different ccn binary; run `ccn setup` to update them"
   mac_app_hooks: "the Mac app's hooks are also installed (run `ccn setup --replace-mac-app`)"
   presence: "presence: idle %{idle}s now, threshold %{threshold}s"
-  presence_none: "presence: not detectable here, so every request waits for the phone"
   replies: "replies: approvals and question answers from the phone work in any terminal; free text into an idle session %{free_text}"
   replies_tmux: "works (tmux)"
   replies_no_tmux: "needs tmux"
@@ -198,6 +197,11 @@ hook:
   # The server writes title, body and command in the user's language; this only joins them
   nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
   needs_attention: "Needs your attention"
+
+hooks:
+  doctor_presence_none: "presence: not detectable here, so nothing waits for the phone: it gets a note and you answer in the terminal (`ccn config set hold_without_presence on` to wait anyway)"
+  doctor_presence_none_hold: "presence: not detectable here, and hold_without_presence is on, so every request waits for the phone until it answers or the hold ceiling passes"
+  doctor_duplicate_hooks: "ccn's hooks are in more than one settings file (%{paths}): Claude Code runs both copies when their commands differ, and `ccn uninstall` only removes the ones in your user settings. Keep them in one"
 
 licence:
   already_licensed: "This computer is already licensed (%{licence})."
@@ -298,3 +302,60 @@ api:
   saving_settings: "saving settings"
   sending_event: "sending the event"
   waiting_response: "waiting for a response: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "another ccn upgrade is already running. Try again in a few minutes"
+
+local_files:
+  config_unreadable: "%{path} can't be read (%{error}), so ccn won't write over it. Fix the file, or delete it and run `ccn pair` again."
+  slot_not_freed: "Couldn't free this computer's licence slot (%{error}). If it has a licence, free the slot at claudecodenotifier.com/licence with your key."
+  kept_dir: "Removed ccn's files from %{path}. The folder holds other files too, so it was left in place."
+  remove_binary: "ccn itself is still installed. To remove it: %{command}"
+
+# What the phone shows, and the desktop notification repeats, when Claude gives no text of its
+# own. The apps display it as sent, so it is in the computer's language.
+payload:
+  plan_waiting: "Claude has created a plan and is waiting for your approval."
+  plan_ready: "Plan ready for approval"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "Yes, auto-accept edits"
+  plan_manual_edits: "Yes, manually approve edits"
+  plan_keep_planning: "No, keep planning"
+  # %{tool} is Claude Code's tool name: Bash, Edit, WebFetch...
+  needs_permission: "%{tool} needs permission"
+  permission_required: "Permission required"
+  has_questions: "Claude has questions"
+  # %{prompt} is what the user asked Claude to do
+  finished_prompt: "Finished: %{prompt}"
+  question_header: "Question"
+  approve_plan: "Approve the plan"
+  # A file pattern such as src/**/*.rs
+  pattern: "Pattern: %{pattern}"
+  # A search pattern for file contents
+  search: "Search: %{pattern}"
+
+# When the server can't be reached at all (no connection, DNS, timeout). The raw error follows
+# on the next line.
+net:
+  unreachable: "Couldn't reach the Claude Code Notifier server. Check your internet connection and try again."
+  # A `ccn doctor` line, in the same label: text style as the doctor.* lines
+  doctor_unreachable: "server: couldn't reach %{url}. Check your internet connection, proxy or firewall"
+
+# The frame around the cli.* descriptions: `ccn --help` headings and the -h / -V flags
+clap:
+  # Headings: a word and a colon, as other command-line tools in your language write them
+  usage: "Usage:"
+  commands: "Commands:"
+  arguments: "Arguments:"
+  options: "Options:"
+  help: "Print help"
+  version: "Print version"
+  help_command: "Show the help for ccn or for one of its commands"
+  help_command_arg: "The command to show the help for"
+  # Printed under clap's own (English) message when a command line can't be parsed
+  error_hint: "Run `ccn --help` to see the commands and options."
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "the release's signature doesn't check out, so nothing was changed. Try again later, or reinstall from claudecodenotifier.com/cli"

@@ -126,7 +126,6 @@ doctor:
   hooks_stale: "フックが別の ccn バイナリを指しています。`ccn setup` で更新してください"
   mac_app_hooks: "Mac アプリのフックもインストールされています（`ccn setup --replace-mac-app` を実行）"
   presence: "在席検出: 現在 %{idle} 秒間操作なし、しきい値 %{threshold} 秒"
-  presence_none: "在席検出: この環境では検出できないため、すべてのリクエストがスマートフォンを待ちます"
   replies: "返答: スマートフォンからの承認と質問への回答はどのターミナルでも動作します。待機中のセッションへの自由入力: %{free_text}"
   replies_tmux: "tmux で動作します"
   replies_no_tmux: "tmux が必要です"
@@ -196,6 +195,11 @@ hook:
   # タイトル、本文、コマンドはサーバーがユーザーの言語で書く。ここではつなげるだけ
   nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
   needs_attention: "確認が必要です"
+
+hooks:
+  doctor_presence_none: "在席検出: ここでは検出できないため、スマートフォンの応答は待ちません。スマートフォンには通知が届き、ターミナルで応答します（それでも待つには `ccn config set hold_without_presence on`）"
+  doctor_presence_none_hold: "在席検出: ここでは検出できず、hold_without_presence がオンのため、各リクエストはスマートフォンが応答するか上限時間が過ぎるまで待ちます"
+  doctor_duplicate_hooks: "ccn のフックが複数の設定ファイル（%{paths}）にあります。コマンドが異なる場合、Claude Code は両方を実行し、`ccn uninstall` はユーザー設定にあるものしか削除しません。1 つのファイルだけに残してください"
 
 licence:
   already_licensed: "このコンピュータにはすでにライセンスがあります（%{licence}）。"
@@ -296,3 +300,48 @@ api:
   saving_settings: "設定の保存"
   sending_event: "イベントの送信"
   waiting_response: "応答の待機: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "別の ccn のアップグレードがすでに実行中です。数分後にもう一度お試しください"
+
+local_files:
+  config_unreadable: "%{path} を読み込めません（%{error}）。そのため ccn は上書きしません。ファイルを修正するか、削除してから `ccn pair` をもう一度実行してください。"
+  slot_not_freed: "このコンピュータのライセンス枠を空けられませんでした（%{error}）。ライセンスがある場合は、claudecodenotifier.com/licence でキーを使って枠を空けてください。"
+  kept_dir: "%{path} から ccn のファイルを削除しました。フォルダにはほかのファイルもあるため、フォルダ自体は残しています。"
+  remove_binary: "ccn 本体はまだインストールされています。削除するには: %{command}"
+
+payload:
+  plan_waiting: "Claude がプランを作成し、承認を待っています。"
+  plan_ready: "プランの承認待ち"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "はい、編集を自動で承認"
+  plan_manual_edits: "はい、編集を手動で承認"
+  plan_keep_planning: "いいえ、計画を続ける"
+  needs_permission: "%{tool} の許可が必要です"
+  permission_required: "許可が必要です"
+  has_questions: "Claude から質問があります"
+  finished_prompt: "完了: %{prompt}"
+  question_header: "質問"
+  approve_plan: "プランを承認"
+  pattern: "パターン: %{pattern}"
+  search: "検索: %{pattern}"
+
+net:
+  unreachable: "Claude Code Notifier のサーバーに接続できませんでした。インターネット接続を確認して、もう一度お試しください。"
+  doctor_unreachable: "サーバー: %{url} に接続できません。インターネット接続、プロキシ、ファイアウォールを確認してください"
+
+clap:
+  usage: "使い方:"
+  commands: "コマンド:"
+  arguments: "引数:"
+  options: "オプション:"
+  help: "ヘルプを表示"
+  version: "バージョンを表示"
+  help_command: "ccn またはそのコマンドのヘルプを表示"
+  help_command_arg: "ヘルプを表示するコマンド"
+  error_hint: "`ccn --help` でコマンドとオプションの一覧を確認できます。"
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "リリースの署名を確認できなかったため、何も変更していません。しばらくしてからもう一度試すか、claudecodenotifier.com/cli から再インストールしてください"

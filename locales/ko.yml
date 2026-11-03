@@ -126,7 +126,6 @@ doctor:
   hooks_stale: "훅이 다른 ccn 바이너리를 가리키고 있어요. `ccn setup`으로 업데이트하세요"
   mac_app_hooks: "Mac 앱의 훅도 설치되어 있어요 (`ccn setup --replace-mac-app` 실행)"
   presence: "자리 감지: 현재 %{idle}초 동안 입력 없음, 기준 %{threshold}초"
-  presence_none: "자리 감지: 여기서는 감지할 수 없어서 모든 요청이 휴대폰을 기다려요"
   replies: "답장: 휴대폰에서 보낸 승인과 질문 답변은 어떤 터미널에서도 동작해요. 대기 중인 세션에 자유 입력: %{free_text}"
   replies_tmux: "tmux로 동작해요"
   replies_no_tmux: "tmux가 필요해요"
@@ -196,6 +195,11 @@ hook:
   # 제목, 본문, 명령은 서버가 사용자 언어로 써요. 여기서는 이어 붙이기만 해요
   nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
   needs_attention: "확인이 필요해요"
+
+hooks:
+  doctor_presence_none: "자리 감지: 여기서는 감지할 수 없어 휴대폰을 기다리지 않습니다. 휴대폰에는 알림이 가고 터미널에서 응답합니다(그래도 기다리려면 `ccn config set hold_without_presence on`)"
+  doctor_presence_none_hold: "자리 감지: 여기서는 감지할 수 없고 hold_without_presence가 켜져 있어, 모든 요청이 휴대폰이 응답하거나 최대 대기 시간이 지날 때까지 기다립니다"
+  doctor_duplicate_hooks: "ccn의 훅이 둘 이상의 설정 파일(%{paths})에 있습니다. 명령이 다르면 Claude Code가 두 사본을 모두 실행하고, `ccn uninstall`은 사용자 설정에 있는 것만 제거합니다. 한 파일에만 두세요"
 
 licence:
   already_licensed: "이 컴퓨터에는 이미 라이선스가 있어요 (%{licence})."
@@ -296,3 +300,48 @@ api:
   saving_settings: "설정 저장"
   sending_event: "이벤트 전송"
   waiting_response: "응답 대기: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "다른 ccn 업그레이드가 이미 실행 중입니다. 몇 분 후에 다시 시도하세요"
+
+local_files:
+  config_unreadable: "%{path} 파일을 읽을 수 없어요(%{error}). 그래서 ccn이 덮어쓰지 않아요. 파일을 고치거나, 삭제한 뒤 `ccn pair`를 다시 실행하세요."
+  slot_not_freed: "이 컴퓨터의 라이선스 자리를 비우지 못했어요(%{error}). 라이선스가 있다면 claudecodenotifier.com/licence에서 키로 자리를 비우세요."
+  kept_dir: "%{path}에서 ccn 파일을 제거했어요. 폴더에 다른 파일도 있어서 폴더는 그대로 두었어요."
+  remove_binary: "ccn 자체는 아직 설치되어 있어요. 제거하려면: %{command}"
+
+payload:
+  plan_waiting: "Claude가 계획을 세우고 승인을 기다리고 있어요."
+  plan_ready: "승인을 기다리는 계획"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "예, 편집 자동 승인"
+  plan_manual_edits: "예, 편집을 직접 승인"
+  plan_keep_planning: "아니요, 계속 계획하기"
+  needs_permission: "%{tool} 권한이 필요해요"
+  permission_required: "권한이 필요해요"
+  has_questions: "Claude가 질문이 있어요"
+  finished_prompt: "완료: %{prompt}"
+  question_header: "질문"
+  approve_plan: "계획 승인"
+  pattern: "패턴: %{pattern}"
+  search: "검색: %{pattern}"
+
+net:
+  unreachable: "Claude Code Notifier 서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요."
+  doctor_unreachable: "서버: %{url}에 연결할 수 없어요. 인터넷 연결, 프록시, 방화벽을 확인해 주세요"
+
+clap:
+  usage: "사용법:"
+  commands: "명령:"
+  arguments: "인수:"
+  options: "옵션:"
+  help: "도움말 보기"
+  version: "버전 보기"
+  help_command: "ccn 또는 명령의 도움말 보기"
+  help_command_arg: "도움말을 볼 명령"
+  error_hint: "`ccn --help`를 실행하면 명령과 옵션을 볼 수 있어요."
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "릴리스 서명을 확인할 수 없어 아무것도 변경하지 않았습니다. 나중에 다시 시도하거나 claudecodenotifier.com/cli에서 다시 설치하세요"

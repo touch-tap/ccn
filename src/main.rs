@@ -23,14 +23,15 @@ mod session;
 mod telemetry;
 mod update;
 
-use clap::{Parser, Subcommand};
+use clap::{Arg, ArgAction, CommandFactory, FromArgMatches, Parser, Subcommand};
 use rust_i18n::t;
 
 // Every string a person reads lives in locales/<lang>.yml; an unknown language reads English
 rust_i18n::i18n!("locales", fallback = "en");
 
-// The help text is read at `Cli::parse()`, after `i18n::init` has chosen the language. clap's own
-// scaffolding (Usage, Commands, Options, "Print help") stays English: clap has no translations.
+// The help text is read at `parse_cli()`, after `i18n::init` has chosen the language. clap has no
+// translations of its own, so `localise` swaps its headings, -h/-V and `help` for translated ones;
+// only parse errors keep clap's English message, with a translated hint underneath.
 #[derive(Parser)]
 #[command(name = "ccn", version, about = t!("cli.about").to_string())]
 struct Cli {
@@ -106,6 +107,12 @@ enum Command {
         #[arg(short, long, help = t!("cli.forget.yes").to_string())]
         yes: bool,
     },
+    // Replaces clap's built-in `help` subcommand, whose description can't be translated
+    #[command(about = t!("clap.help_command").to_string())]
+    Help {
+        #[arg(help = t!("clap.help_command_arg").to_string())]
+        command: Vec<String>,
+    },
     // Run as a Claude Code hook: reads the event JSON on stdin
     #[command(hide = true)]
     Hook {
@@ -132,21 +139,17 @@ enum ConfigCommand {
 fn main() {
     i18n::init();
     update::remove_leftovers();
-    let cli = Cli::parse();
+    let cli = parse_cli(std::env::args_os());
     let Some(command) = cli.command else {
         if let Err(err) = commands::default_command() {
-            eprintln!("ccn: {err:#}");
+            report(&err);
             std::process::exit(1);
         }
         return;
     };
     let result = match command {
-        Command::Hook { plugin } => {
-            if plugin && hookcfg::settings_has_hooks() {
-                return;
-            }
-            hook::run()
-        }
+        // The plugin's stand-aside check needs the event's cwd, so hook.rs makes it
+        Command::Hook { plugin } => hook::run(plugin),
         Command::Pair {
             code,
             name,
@@ -184,9 +187,166 @@ fn main() {
         Command::Licence => licence::show(),
         Command::Uninstall => commands::uninstall(),
         Command::Forget { yes } => commands::forget(yes),
+        // `ccn help pair` is `ccn pair --help`, which prints and exits
+        Command::Help { command } => {
+            let args = ["ccn".to_string()]
+                .into_iter()
+                .chain(command)
+                .chain(["--help".to_string()]);
+            parse_cli(args);
+            Ok(())
+        }
     };
     if let Err(err) = result {
-        eprintln!("ccn: {err:#}");
+        report(&err);
         std::process::exit(1);
+    }
+}
+
+/// Parses the command line with the translated help. Help and version print and exit 0; a parse
+/// error prints clap's message, then a translated hint, and exits 2.
+fn parse_cli<I, T>(args: I) -> Cli
+where
+    I: IntoIterator<Item = T>,
+    T: Into<std::ffi::OsString> + Clone,
+{
+    let fail = |err: clap::Error| -> ! {
+        use clap::error::ErrorKind;
+        if !matches!(
+            err.kind(),
+            ErrorKind::DisplayHelp
+                | ErrorKind::DisplayVersion
+                | ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
+        ) {
+            let _ = err.print();
+            eprintln!("\n{}", t!("clap.error_hint"));
+            std::process::exit(err.exit_code());
+        }
+        err.exit()
+    };
+    let matches = localise(Cli::command(), true)
+        .try_get_matches_from(args)
+        .unwrap_or_else(|err| fail(err));
+    Cli::from_arg_matches(&matches).unwrap_or_else(|err| fail(err))
+}
+
+/// Gives a command, and every subcommand under it, translated help headings and -h/-V flags in
+/// place of clap's English ones.
+fn localise(cmd: clap::Command, top: bool) -> clap::Command {
+    let names: Vec<String> = cmd
+        .get_subcommands()
+        .map(|c| c.get_name().to_string())
+        .collect();
+    let mut cmd = cmd
+        .disable_help_flag(true)
+        .disable_help_subcommand(true)
+        .arg(
+            Arg::new("help")
+                .short('h')
+                .long("help")
+                .action(ArgAction::Help)
+                .help(t!("clap.help").to_string()),
+        );
+    if top {
+        cmd = cmd.disable_version_flag(true).arg(
+            Arg::new("version")
+                .short('V')
+                .long("version")
+                .action(ArgAction::Version)
+                .help(t!("clap.version").to_string()),
+        );
+    }
+    for name in names {
+        cmd = cmd.mut_subcommand(name, |sub| localise(sub, false));
+    }
+    // clap's {all-args} would print English headings, so each section is written out, and only
+    // when it has something to show
+    let mut template = format!("{{about-with-newline}}\n{} {{usage}}\n", t!("clap.usage"));
+    if cmd.get_subcommands().any(|c| !c.is_hide_set()) {
+        template += &format!("\n{}\n{{subcommands}}\n", t!("clap.commands"));
+    }
+    if cmd.get_positionals().any(|a| !a.is_hide_set()) {
+        template += &format!("\n{}\n{{positionals}}\n", t!("clap.arguments"));
+    }
+    template += &format!("\n{}\n{{options}}\n{{after-help}}", t!("clap.options"));
+    cmd.help_template(template)
+}
+
+/// Prints a command's error. When the server couldn't be reached at all, a translated line says
+/// so first; the raw chain ("POST /api/...: io: Connection refused") follows as the detail.
+fn report(err: &anyhow::Error) {
+    if is_network_error(err) {
+        eprintln!("ccn: {}", t!("net.unreachable"));
+        eprintln!("     {err:#}");
+    } else {
+        eprintln!("ccn: {err:#}");
+    }
+}
+
+/// Whether the error chain holds a transport failure (no connection, DNS, timeout, TLS) rather
+/// than an answer from the server.
+pub fn is_network_error(err: &anyhow::Error) -> bool {
+    use std::io::ErrorKind;
+    err.chain().any(|cause| {
+        if let Some(e) = cause.downcast_ref::<ureq::Error>() {
+            return matches!(
+                e,
+                ureq::Error::Io(_)
+                    | ureq::Error::Timeout(_)
+                    | ureq::Error::HostNotFound
+                    | ureq::Error::ConnectionFailed
+                    | ureq::Error::Tls(_)
+                    | ureq::Error::ConnectProxyFailed(_)
+                    | ureq::Error::BodyStalled
+            );
+        }
+        cause.downcast_ref::<std::io::Error>().is_some_and(|e| {
+            matches!(
+                e.kind(),
+                ErrorKind::ConnectionRefused
+                    | ErrorKind::ConnectionReset
+                    | ErrorKind::ConnectionAborted
+                    | ErrorKind::NotConnected
+                    | ErrorKind::TimedOut
+                    | ErrorKind::HostUnreachable
+                    | ErrorKind::NetworkUnreachable
+                    | ErrorKind::NetworkDown
+            )
+        })
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_network_error;
+    use anyhow::Context;
+
+    #[test]
+    fn the_localised_command_line_is_valid() {
+        // clap's own consistency checks: no clashing -h/-V, every subcommand still reachable
+        let mut cmd = super::localise(<super::Cli as clap::CommandFactory>::command(), true);
+        cmd.build();
+        cmd.clone().debug_assert();
+        let help = cmd.render_help().to_string();
+        assert!(!help.contains("Print this message"), "{help}");
+        assert!(help.contains("--version"), "{help}");
+    }
+
+    #[test]
+    fn transport_failures_are_network_errors() {
+        let refused: anyhow::Result<()> = Err(ureq::Error::Io(std::io::Error::from(
+            std::io::ErrorKind::ConnectionRefused,
+        )))
+        .context("POST /api/pairing/claim-by-client");
+        assert!(is_network_error(&refused.unwrap_err()));
+        let dns: anyhow::Result<()> = Err(ureq::Error::HostNotFound).context("GET /health");
+        assert!(is_network_error(&dns.unwrap_err()));
+    }
+
+    #[test]
+    fn server_answers_are_not_network_errors() {
+        assert!(!is_network_error(&anyhow::anyhow!("server returned 500")));
+        let status: anyhow::Result<()> = Err(ureq::Error::StatusCode(502)).context("GET /health");
+        assert!(!is_network_error(&status.unwrap_err()));
     }
 }

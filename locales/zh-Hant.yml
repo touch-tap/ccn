@@ -7,9 +7,9 @@ cli:
   pair:
     about: "把這台電腦與你的手機配對。傳入 App 顯示的配對碼，或不帶配對碼執行，取得一個輸入到 App 裡的配對碼"
     code: "Claude Code Notifier App 中顯示的 6 位配對碼"
-    name: "這台電腦在手機上顯示的名稱（預設: 主機名稱）"
+    name: "這台電腦在手機上顯示的名稱（預設：主機名稱）"
     replace_mac_app: "同時移除 Mac 選單列 App 的鉤子項目，避免通知傳送兩次"
-    no_wait: "顯示 QR 碼後立即返回: 手機連線後配對會自動完成"
+    no_wait: "顯示 QR 碼後立即返回：手機連線後配對會自動完成"
   setup:
     about: "安裝 Claude Code 的鉤子和桌面通知（pair 和不帶參數的 ccn 會先做這一步）"
     replace_mac_app: "同時移除 Mac 選單列 App 的鉤子項目"
@@ -27,11 +27,11 @@ cli:
   sync:
     about: "立即從伺服器拉取最新設定"
   unlock:
-    about: "在瀏覽器中為這台電腦購買授權: 解鎖與它配對的每一部手機"
+    about: "在瀏覽器中為這台電腦購買授權：解鎖與它配對的每一部手機"
     lifetime: "一次付清而不是按年付費（也可以把年繳授權換成終身授權，金鑰不變）"
   upgrade:
     about: "把 ccn 更新到最新版本（背景每天也會檢查一次）"
-    check: "只回報是否有新版本: 已是最新則結束代碼為 0，有新版本則為 10"
+    check: "只回報是否有新版本：已是最新則結束代碼為 0，有新版本則為 10"
     quiet: "除非出了問題，否則不輸出任何內容"
   activate:
     about: "在這台電腦上使用授權金鑰（每個授權最多 3 台電腦）"
@@ -64,7 +64,7 @@ pair:
   or_type_code: "  或者在 Claude Code Notifier App 中輸入這個配對碼:  %{code}"
   enter_code: "  在 Claude Code Notifier App 中輸入這個配對碼:  %{code}"
   hooks_already_installed: "  鉤子已安裝，所以這台電腦上你已經能收到桌面通知。"
-  code_lasts: "  隨時都可以配對: 這個配對碼 %{duration}內有效。"
+  code_lasts: "  隨時都可以配對：這個配對碼 %{duration}內有效。"
   completes_on_its_own: "  手機連線後，配對會自動完成。"
   waiting: "  正在等待你的手機...（可以放心按 Ctrl+C: 手機連線後配對會自動完成）"
   code_expired: "配對碼在手機使用之前就過期了。請再執行一次 `ccn pair`。"
@@ -82,7 +82,7 @@ pair:
   pitch_annual: "  ccn unlock             每年 %{price}"
   pitch_lifetime: "  ccn unlock --lifetime  一次性 %{price}"
   pitch_covers: "涵蓋 %{computers} 台電腦以及與它們配對的每一部手機。%{days} 天退款保證。"
-  welcome_no_terminal: "一則測試通知正在發往你的手機: 試著在手機上回覆它。"
+  welcome_no_terminal: "一則測試通知正在發往你的手機：試著在手機上回覆它。"
   welcome: "一則測試通知正在發往你的手機。試著在手機上回覆它..."
   welcome_skip: "（按 Enter 略過）"
   welcome_answered: "✓ 你的手機回覆了「%{answer}」。以後你就是這樣回覆 Claude 的。"
@@ -126,7 +126,6 @@ doctor:
   hooks_stale: "鉤子指向另一個 ccn 執行檔；執行 `ccn setup` 更新它們"
   mac_app_hooks: "Mac App 的鉤子也已安裝（執行 `ccn setup --replace-mac-app`）"
   presence: "在場偵測: 目前已閒置 %{idle} 秒，門檻 %{threshold} 秒"
-  presence_none: "在場偵測: 這裡無法偵測，所以每個請求都會等待手機"
   replies: "回覆: 來自手機的核准和問題回答在任何終端機都可用；向閒置工作階段輸入自由文字%{free_text}"
   replies_tmux: "可用（tmux）"
   replies_no_tmux: "需要 tmux"
@@ -162,8 +161,8 @@ settings:
   unknown: "沒有「%{key}」這項設定。可用設定: notify_on_done, notify_on_permission, notify_on_question, sound, quiet_when_present, quiet_hours, hold_ceiling_seconds, presence_threshold_seconds, stop_hold_seconds, reminder_interval_seconds"
 
 forget:
-  needs_yes: "ccn forget 需要你確認: 在終端機中執行它，或加上 --yes"
-  warning: "這會從 Claude Code Notifier 伺服器上抹除這台電腦及其配對，然後像 `ccn uninstall` 一樣\n從 Claude Code 中移除 ccn，並刪除這裡的憑證和檔案。\n與這台電腦配對的手機會看到它消失。\n在網站上購買的授權不會被取消: 請到 claudecodenotifier.com/licence\n使用「Erase my licence」處理。"
+  needs_yes: "ccn forget 需要你確認：在終端機中執行它，或加上 --yes"
+  warning: "這會從 Claude Code Notifier 伺服器上抹除這台電腦及其配對，然後像 `ccn uninstall` 一樣\n從 Claude Code 中移除 ccn，並刪除這裡的憑證和檔案。\n與這台電腦配對的手機會看到它消失。\n在網站上購買的授權不會被取消：請到 claudecodenotifier.com/licence\n使用「Erase my licence」處理。"
   # 使用者必須輸入的詞；`yes` 始終也可以
   yes_word: "是"
   prompt: "\n輸入 %{yes} 繼續: "
@@ -185,7 +184,7 @@ local:
   permission_title: "Claude 需要權限"
   question_title: "Claude 有一個問題"
   first_nudge: "在手機上接收: ccn pair"
-  milestone_nudge: "到現在已有 10 則通知。想在手機上接收，並從鎖定畫面直接核准: 執行 ccn pair"
+  milestone_nudge: "到現在已有 10 則通知。想在手機上接收，並從鎖定畫面直接核准：執行 ccn pair"
   pair_message: "Claude Code Notifier: 你現在收到的是桌面通知。想在手機上也收到，並在手機上核准或回答，請在終端機中執行 `ccn pair`。"
 
 hook:
@@ -196,6 +195,11 @@ hook:
   # 標題、內文和指令由伺服器用使用者的語言寫好；這裡只是把它們拼起來
   nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
   needs_attention: "需要你處理"
+
+hooks:
+  doctor_presence_none: "在場偵測：此處無法偵測，因此不會等待手機：手機會收到提醒，你在終端機中回覆（如仍要等待，執行 `ccn config set hold_without_presence on`）"
+  doctor_presence_none_hold: "在場偵測：此處無法偵測，且 hold_without_presence 已開啟，因此每個請求都會等待手機，直到手機回覆或超過最長等待時間"
+  doctor_duplicate_hooks: "ccn 的鉤子出現在多個設定檔中（%{paths}）：命令不同時 Claude Code 會兩份都執行，而 `ccn uninstall` 只會移除使用者設定中的那份。只保留在一個檔案中"
 
 licence:
   already_licensed: "這台電腦已有授權（%{licence}）。"
@@ -261,7 +265,7 @@ update:
   no_release_build: "沒有適用於 %{os}-%{arch} 的發行版"
   no_build_named: "ccn %{version} 沒有名為 %{asset} 的建置"
   no_checksum: "SHA256SUMS 中沒有 %{asset} 的項目"
-  checksum_mismatch: "%{asset} 的校驗和不符: 沒有做任何更動"
+  checksum_mismatch: "%{asset} 的校驗和不符：沒有做任何更動"
   archive_empty: "壓縮檔裡沒有 ccn"
   zip_empty: "zip 裡沒有 ccn.exe"
   did_not_run: "下載的 ccn 無法執行，所以保留了已安裝的版本"
@@ -296,3 +300,48 @@ api:
   saving_settings: "儲存設定"
   sending_event: "傳送事件"
   waiting_response: "等待回應: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "另一個 ccn 升級正在執行。請幾分鐘後再試"
+
+local_files:
+  config_unreadable: "無法讀取 %{path}（%{error}），所以 ccn 不會覆寫它。請修復這個檔案，或刪除它後再執行一次 `ccn pair`。"
+  slot_not_freed: "無法釋放這台電腦的授權名額（%{error}）。如果它有授權，請用你的金鑰在 claudecodenotifier.com/licence 釋放名額。"
+  kept_dir: "已從 %{path} 移除 ccn 的檔案。這個資料夾裡還有其他檔案，所以保留了資料夾本身。"
+  remove_binary: "ccn 本身仍已安裝。要移除它，請執行：%{command}"
+
+payload:
+  plan_waiting: "Claude 已擬定計畫，正在等你核准。"
+  plan_ready: "計畫待核准"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "是，自動接受編輯"
+  plan_manual_edits: "是，手動核准編輯"
+  plan_keep_planning: "否，繼續規劃"
+  needs_permission: "%{tool} 需要權限"
+  permission_required: "需要權限"
+  has_questions: "Claude 有幾個問題"
+  finished_prompt: "已完成：%{prompt}"
+  question_header: "問題"
+  approve_plan: "核准計畫"
+  pattern: "模式：%{pattern}"
+  search: "搜尋：%{pattern}"
+
+net:
+  unreachable: "無法連線到 Claude Code Notifier 伺服器。請檢查網路連線後再試一次。"
+  doctor_unreachable: "伺服器: 無法連線到 %{url}。請檢查網路連線、Proxy 或防火牆"
+
+clap:
+  usage: "用法:"
+  commands: "命令:"
+  arguments: "引數:"
+  options: "選項:"
+  help: "顯示說明"
+  version: "顯示版本"
+  help_command: "顯示 ccn 或其某個命令的說明"
+  help_command_arg: "要查看說明的命令"
+  error_hint: "執行 `ccn --help` 查看所有命令和選項。"
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "版本簽章驗證失敗，因此未做任何變更。請稍後再試，或從 claudecodenotifier.com/cli 重新安裝"

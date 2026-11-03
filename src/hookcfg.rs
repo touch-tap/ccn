@@ -291,10 +291,25 @@ pub fn uninstall() -> Result<PathBuf> {
     Ok(path)
 }
 
-/// Whether settings.json already sends Claude Code's events somewhere: ccn's own entries, or the
-/// Mac app's. The plugin's hooks stand aside then, so no event is sent twice.
-pub fn settings_has_hooks() -> bool {
-    let Ok(root) = load(&config::claude_settings_path()) else {
+/// The settings files Claude Code reads hooks from for a session in `project`: the user's, then
+/// the project's shared and local ones. Managed (enterprise) settings are left out.
+pub fn settings_files(project: Option<&Path>) -> Vec<PathBuf> {
+    let mut files = vec![config::claude_settings_path()];
+    if let Some(project) = project {
+        for name in ["settings.json", "settings.local.json"] {
+            let path = project.join(".claude").join(name);
+            // Run from the home directory, the project's settings.json is the user's
+            if !files.contains(&path) {
+                files.push(path);
+            }
+        }
+    }
+    files
+}
+
+/// Whether the file has a hook entry that `matches`
+fn file_has(path: &Path, matches: impl Fn(&Value) -> bool) -> bool {
+    let Ok(root) = load(path) else {
         return false;
     };
     let Some(hooks) = root.get("hooks").and_then(|h| h.as_object()) else {
@@ -304,13 +319,28 @@ pub fn settings_has_hooks() -> bool {
         .values()
         .filter_map(|g| g.as_array())
         .flatten()
-        .any(|group| {
-            group
-                .get("hooks")
-                .and_then(|h| h.as_array())
-                .map(|list| list.iter().any(|entry| is_ours(entry) || is_mac_app(entry)))
-                .unwrap_or(false)
-        })
+        .filter_map(|group| group.get("hooks").and_then(|h| h.as_array()))
+        .flatten()
+        .any(matches)
+}
+
+/// Whether a settings file already sends Claude Code's events somewhere: ccn's own entries, or
+/// the Mac app's, in the user's settings or the project's (`project` is the session's project
+/// directory). The plugin's hooks stand aside then, so no event is sent twice.
+pub fn settings_has_hooks(project: Option<&Path>) -> bool {
+    settings_files(project)
+        .iter()
+        .any(|path| file_has(path, |entry| is_ours(entry) || is_mac_app(entry)))
+}
+
+/// The settings files that hold ccn's hooks. More than one means `ccn uninstall` (which edits the
+/// user's file only) leaves some behind, and Claude Code runs both copies when their commands
+/// differ (identical ones it runs once).
+pub fn files_with_ccn_hooks(project: Option<&Path>) -> Vec<PathBuf> {
+    settings_files(project)
+        .into_iter()
+        .filter(|path| file_has(path, is_ours))
+        .collect()
 }
 
 pub fn status() -> Result<Status> {

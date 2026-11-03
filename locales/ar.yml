@@ -128,7 +128,6 @@ doctor:
   hooks_stale: "hooks تشير إلى ملف ccn مختلف؛ لتحديثها شغّل `ccn setup`"
   mac_app_hooks: "hooks الخاصة بتطبيق Mac مثبتة أيضًا (شغّل `ccn setup --replace-mac-app`)"
   presence: "الحضور: خامل منذ %{idle} ث، الحد %{threshold} ث"
-  presence_none: "الحضور: لا يمكن رصده هنا، لذا ينتظر كل طلب الهاتف"
   replies: "الردود: الموافقات وإجابات الأسئلة من الهاتف تعمل في أي طرفية؛ النص الحر إلى جلسة خاملة %{free_text}"
   replies_tmux: "يعمل (tmux)"
   replies_no_tmux: "يحتاج tmux"
@@ -199,6 +198,11 @@ hook:
   nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
   needs_attention: "يحتاج إلى انتباهك"
 
+hooks:
+  doctor_presence_none: "الحضور: لا يمكن رصده هنا، لذا لا شيء ينتظر الهاتف: يصله تنبيه وتجيب أنت في الطرفية (`ccn config set hold_without_presence on` للانتظار رغم ذلك)"
+  doctor_presence_none_hold: "الحضور: لا يمكن رصده هنا، وhold_without_presence مفعّل، لذا ينتظر كل طلب الهاتف حتى يجيب أو تنقضي المدة القصوى"
+  doctor_duplicate_hooks: "خطافات ccn موجودة في أكثر من ملف إعدادات (%{paths}): يشغّل Claude Code النسختين إذا اختلفت أوامرهما، ولا يزيل `ccn uninstall` إلا ما في إعدادات المستخدم. أبقها في ملف واحد"
+
 licence:
   already_licensed: "هذا الكمبيوتر مرخّص بالفعل (%{licence})."
   switch_to_lifetime: "للتحويل إلى ترخيص مدى الحياة مع الاحتفاظ بالمفتاح نفسه: ccn unlock --lifetime"
@@ -218,7 +222,7 @@ licence:
   slots_full: "هذا الترخيص مستخدم بالفعل على %{count} أجهزة كمبيوتر:"
   free_one: "أفرغ مكانًا بتشغيل `ccn deactivate` على ذلك الكمبيوتر، أو استبدله من هنا:"
   replace_example: "  ccn activate %{key} --replace \"%{name}\""
-  old_laptop: "Old laptop"
+  old_laptop: "حاسوب محمول قديم"
   no_free_slot: "لا يوجد مكان شاغر لكمبيوتر"
   computers_on_licence: "أجهزة الكمبيوتر على هذا الترخيص:"
   activated: "✓ مرخّص (%{licence}). المستخدم: %{count} من 3 أجهزة كمبيوتر."
@@ -298,3 +302,48 @@ api:
   saving_settings: "حفظ الإعدادات"
   sending_event: "إرسال الحدث"
   waiting_response: "انتظار الاستجابة: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "هناك ترقية أخرى لـ ccn قيد التشغيل بالفعل. حاول مرة أخرى بعد بضع دقائق"
+
+local_files:
+  config_unreadable: "تعذّرت قراءة %{path} (%{error})، لذا لن يكتب ccn فوقه. أصلِح الملف، أو احذفه ثم شغّل `ccn pair` من جديد."
+  slot_not_freed: "تعذّر إفراغ مكان هذا الكمبيوتر على الترخيص (%{error}). إن كان له ترخيص، فأفرغ مكانه من claudecodenotifier.com/licence باستخدام مفتاحك."
+  kept_dir: "أُزيلت ملفات ccn من %{path}. يحتوي المجلد على ملفات أخرى أيضًا، لذا تُرك في مكانه."
+  remove_binary: "ما زال ccn نفسه مثبّتًا. لإزالته: %{command}"
+
+payload:
+  plan_waiting: "أنشأ Claude خطة وينتظر موافقتك."
+  plan_ready: "الخطة جاهزة للموافقة"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "نعم، اقبل التعديلات تلقائيًا"
+  plan_manual_edits: "نعم، وافق على التعديلات يدويًا"
+  plan_keep_planning: "لا، تابع التخطيط"
+  needs_permission: "%{tool} يحتاج إلى إذن"
+  permission_required: "مطلوب إذن"
+  has_questions: "لدى Claude أسئلة"
+  finished_prompt: "انتهى: %{prompt}"
+  question_header: "سؤال"
+  approve_plan: "الموافقة على الخطة"
+  pattern: "النمط: %{pattern}"
+  search: "بحث: %{pattern}"
+
+net:
+  unreachable: "تعذّر الوصول إلى خادم Claude Code Notifier. تحقّق من اتصالك بالإنترنت وحاول مرة أخرى."
+  doctor_unreachable: "الخادم: تعذّر الوصول إلى %{url}. تحقّق من اتصالك بالإنترنت أو الوكيل أو جدار الحماية"
+
+clap:
+  usage: "الاستخدام:"
+  commands: "الأوامر:"
+  arguments: "الوسائط:"
+  options: "الخيارات:"
+  help: "عرض المساعدة"
+  version: "عرض الإصدار"
+  help_command: "عرض المساعدة لـ ccn أو لأحد أوامره"
+  help_command_arg: "الأمر الذي تريد عرض مساعدته"
+  error_hint: "شغّل `ccn --help` لعرض الأوامر والخيارات."
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "تعذّر التحقق من توقيع الإصدار، لذلك لم يتغيّر شيء. حاول لاحقًا أو أعد التثبيت من claudecodenotifier.com/cli"

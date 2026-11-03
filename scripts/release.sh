@@ -5,7 +5,7 @@
 # Builds the macOS notifier app, signs and notarizes it, creates the DRAFT release with it attached,
 # then pushes the tag. The Release workflow builds every target with that app embedded and adds them
 # to the draft; this script waits for it, then signs and notarizes the two macOS binaries with the
-# Developer ID and replaces them (and SHA256SUMS and ccn.rb) in the draft. Needs the certificate in the keychain and the `ccn-notary` notarytool profile
+# Developer ID and replaces them (and SHA256SUMS, its signature and ccn.rb) in the draft. Needs the certificate in the keychain and the `ccn-notary` notarytool profile
 # (see RELEASING.md).
 set -eu
 version=$1
@@ -29,6 +29,14 @@ else
   ! git rev-parse -q --verify "refs/tags/$tag" >/dev/null || fail "$tag already exists"
   sha=$(git rev-parse HEAD)
 fi
+
+# The update signing key (RELEASING.md, "The update signing key"): ccn upgrade refuses a release
+# whose SHA256SUMS isn't signed by a key built into the binary, so check it before anything starts
+signing_key=$(security find-generic-password -s ccn-release-signing -a touchtap -w 2>/dev/null) \
+  || fail "no update signing key in the keychain (ccn-release-signing)"
+cargo build -q --release --example release-sign
+public=$(CCN_RELEASE_SIGNING_KEY="$signing_key" target/release/examples/release-sign public)
+grep -q "\"$public\"" src/update.rs || fail "the keychain's signing key ($public) isn't in RELEASE_KEYS in src/update.rs"
 
 identity=${CODESIGN_IDENTITY:-$(security find-identity -v -p codesigning \
   | grep -o '"Developer ID Application[^"]*"' | head -1 | tr -d '"')}
@@ -84,10 +92,12 @@ for target in aarch64-apple-darwin x86_64-apple-darwin; do
   codesign -dv "$mac/$target/ccn" 2>&1 | grep -q "TeamIdentifier=4ABJZNGY79" || fail "$target isn't signed by TouchTap"
   tar czf "$mac/ccn-$target.tar.gz" -C "$mac/$target" ccn
   sum=$(shasum -a 256 "$mac/ccn-$target.tar.gz" | cut -d' ' -f1)
-  awk -v f="ccn-$target.tar.gz" -v s="$sum" '$2 == f { print s "  " f; next } { print }' "$mac/SHA256SUMS" > "$mac/SHA256SUMS.new"
+  awk -v f="ccn-$target.tar.gz" -v s="$sum" '{ n = $2; sub(/^\*/, "", n) } n == f { print s "  " f; next } { print }' "$mac/SHA256SUMS" > "$mac/SHA256SUMS.new"
   mv "$mac/SHA256SUMS.new" "$mac/SHA256SUMS"
 done
 scripts/brew-formula.sh "$version" "$mac/SHA256SUMS" > "$mac/ccn.rb"
+# Signed last, once SHA256SUMS has its final macOS lines: this is what ccn upgrade checks
+CCN_RELEASE_SIGNING_KEY="$signing_key" target/release/examples/release-sign sign "$mac/SHA256SUMS"
 gh release upload "$tag" --clobber "$mac/ccn-aarch64-apple-darwin.tar.gz" "$mac/ccn-x86_64-apple-darwin.tar.gz" \
-  "$mac/SHA256SUMS" "$mac/ccn.rb"
+  "$mac/SHA256SUMS" "$mac/SHA256SUMS.sig" "$mac/ccn.rb"
 echo "Done: $tag is a draft with signed macOS binaries. Check it, then publish it."

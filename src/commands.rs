@@ -488,6 +488,7 @@ pub fn setup(replace_mac_app: bool) -> Result<()> {
 /// Installs the hooks and registers desktop notifications. Idempotent, and silent when everything
 /// was already in place, so pairing and the install scripts can run it every time.
 pub fn ensure_setup(replace_mac_app: bool) -> Result<()> {
+    telemetry::remember_install_source();
     if let Some(copy) = hookcfg::install_self()? {
         println!("{}", t!("setup.installed_self", path = copy.display()));
     }
@@ -579,6 +580,11 @@ pub fn doctor() -> Result<()> {
         Ok(()) => println!(
             "{yes}{}",
             t!("doctor.server_reachable", url = cfg.server_url)
+        ),
+        // Unreachable: say so in the user's language, with the raw error underneath
+        Err(err) if crate::is_network_error(&err) => println!(
+            "{no}{}\n   {err:#}",
+            t!("net.doctor_unreachable", url = cfg.server_url)
         ),
         Err(err) => println!(
             "{no}{}",
@@ -683,6 +689,16 @@ pub fn doctor() -> Result<()> {
             t!("doctor.hooks_error", error = format!("{err:#}"))
         ),
     }
+    // Doctor runs in a terminal, usually in the project, so its folder stands for the project's
+    let project = std::env::current_dir().ok();
+    let files = hookcfg::files_with_ccn_hooks(project.as_deref());
+    if files.len() > 1 {
+        let paths: Vec<String> = files.iter().map(|p| p.display().to_string()).collect();
+        println!(
+            "{no}{}",
+            t!("hooks.doctor_duplicate_hooks", paths = paths.join(", "))
+        );
+    }
 
     match presence::idle_seconds() {
         Some(idle) => println!(
@@ -693,7 +709,12 @@ pub fn doctor() -> Result<()> {
                 threshold = format!("{:.0}", cfg.settings.presence_threshold())
             )
         ),
-        None => println!("{no}{}", t!("doctor.presence_none")),
+        // Holding blind would stall someone typing at this very terminal, so by default nothing
+        // waits here; the phone gets a note instead
+        None if cfg.hold_without_presence() => {
+            println!("{no}{}", t!("hooks.doctor_presence_none_hold"))
+        }
+        None => println!("{no}{}", t!("hooks.doctor_presence_none")),
     }
     let tmux = std::env::var("TMUX")
         .map(|v| !v.is_empty())
@@ -841,6 +862,14 @@ pub fn config_show() -> Result<()> {
         if cfg.pair_nudges { "on" } else { "off" }
     );
     println!(
+        "hold_without_presence      {} {local_only}",
+        if cfg.hold_without_presence {
+            "on"
+        } else {
+            "off"
+        }
+    );
+    println!(
         "auto_update                {} {local_only}",
         if cfg.auto_update { "on" } else { "off" }
     );
@@ -857,6 +886,14 @@ pub fn config_set(key: &str, value: &str) -> Result<()> {
     let mut cfg = Config::load();
     if key == "desktop_notifications" {
         cfg.desktop_notifications = matches!(
+            value.to_ascii_lowercase().as_str(),
+            "on" | "true" | "yes" | "1"
+        );
+        cfg.save()?;
+        return config_show();
+    }
+    if key == "hold_without_presence" {
+        cfg.hold_without_presence = matches!(
             value.to_ascii_lowercase().as_str(),
             "on" | "true" | "yes" | "1"
         );
@@ -963,8 +1000,17 @@ fn remove_local(revoke_on_server: bool) -> Result<()> {
     if revoke_on_server && cfg.is_paired() {
         let api = Api::new(&cfg);
         // Free the licence slot first, so a reinstall (which is a new computer) doesn't find it taken
-        if let Ok(true) = api.deactivate_licence() {
-            println!("{}", t!("uninstall.slot_freed"));
+        match api.deactivate_licence() {
+            Ok(true) => println!("{}", t!("uninstall.slot_freed")),
+            // No licence, or the server had already forgotten this computer: no slot to free
+            Ok(false) => {}
+            Err(err) if api::is_rejected(&err) => {}
+            // The token goes below, so this computer can't free the slot later: say how to
+            // do it from the licence page, and carry on (uninstall must work offline)
+            Err(err) => eprintln!(
+                "{}",
+                t!("local_files.slot_not_freed", error = format!("{err:#}"))
+            ),
         }
         if let Ok(devices) = api.pairings() {
             for d in devices {
@@ -974,12 +1020,51 @@ fn remove_local(revoke_on_server: bool) -> Result<()> {
         }
     }
     config::delete_token();
-    let _ = std::fs::remove_dir_all(config::ccn_dir());
-    println!(
-        "{}",
-        t!("uninstall.removed_dir", path = config::ccn_dir().display())
-    );
+    // ccn's own files only: CCN_HOME may point at a folder that holds other things
+    let path = config::ccn_dir();
+    if config::remove_local_files() {
+        println!("{}", t!("uninstall.removed_dir", path = path.display()));
+    } else {
+        println!("{}", t!("local_files.kept_dir", path = path.display()));
+    }
+    // Package managers own the binary, and the install scripts' copy may be in use: say how
+    if let Some(command) = binary_removal_command() {
+        println!("{}", t!("local_files.remove_binary", command = command));
+    }
     Ok(())
+}
+
+/// The command that removes the ccn binary, for the way it was installed. Uninstall leaves the
+/// binary to its owner: Homebrew, npm, scoop and winget would otherwise still list it.
+fn binary_removal_command() -> Option<String> {
+    let running = std::env::current_exe().ok()?;
+    let lower = running
+        .to_string_lossy()
+        .replace('\\', "/")
+        .to_ascii_lowercase();
+    let method = if lower.contains("/scoop/apps/ccn/") {
+        "scoop"
+    } else if lower.contains("/winget/packages/") {
+        "winget"
+    } else {
+        telemetry::install_method()
+    };
+    Some(match method {
+        "homebrew" => "brew uninstall touch-tap/tap/ccn".to_string(),
+        "npm" => "npm uninstall -g @touchtap/ccn".to_string(),
+        "scoop" => "scoop uninstall ccn".to_string(),
+        "winget" => "winget uninstall TouchTap.ccn".to_string(),
+        // The install scripts, npx (whose copy went into the user's bin directory) and anything
+        // else: the file the hooks ran
+        _ => {
+            let exe = hookcfg::exe_path().ok()?;
+            if cfg!(windows) {
+                format!("Remove-Item \"{}\"", exe.display())
+            } else {
+                format!("rm \"{}\"", exe.display())
+            }
+        }
+    })
 }
 
 #[cfg(test)]

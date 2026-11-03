@@ -106,7 +106,7 @@ sync:
 
 doctor:
   header: "ccn %{version} op %{platform}"
-  config: "config: %{path}"
+  config: "configuratie: %{path}"
   credentials_present: "inloggegevens: aanwezig (%{store})"
   credentials_missing: "inloggegevens: ontbreken: voer `ccn pair <code>` uit"
   server_reachable: "server: %{url} bereikbaar"
@@ -124,7 +124,6 @@ doctor:
   hooks_stale: "de hooks wijzen naar een ander ccn-programma; voer `ccn setup` uit om ze bij te werken"
   mac_app_hooks: "de hooks van de Mac-app zijn ook geïnstalleerd (voer `ccn setup --replace-mac-app` uit)"
   presence: "aanwezigheid: nu %{idle}s inactief, drempel %{threshold}s"
-  presence_none: "aanwezigheid: hier niet te detecteren, dus elk verzoek wacht op de telefoon"
   replies: "antwoorden: goedkeuringen en antwoorden op vragen vanaf de telefoon werken in elke terminal; vrije tekst naar een inactieve sessie %{free_text}"
   replies_tmux: "werkt (tmux)"
   replies_no_tmux: "vereist tmux"
@@ -194,6 +193,11 @@ hook:
   # De server schrijft titel, tekst en opdracht in de taal van de gebruiker; dit voegt ze alleen samen
   nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
   needs_attention: "Heeft je aandacht nodig"
+
+hooks:
+  doctor_presence_none: "aanwezigheid: hier niet te bepalen, dus niets wacht op de telefoon: die krijgt een melding en je antwoordt in de terminal (`ccn config set hold_without_presence on` om toch te wachten)"
+  doctor_presence_none_hold: "aanwezigheid: hier niet te bepalen en hold_without_presence staat aan, dus elk verzoek wacht op de telefoon tot die antwoordt of de maximale wachttijd voorbij is"
+  doctor_duplicate_hooks: "De hooks van ccn staan in meer dan één instellingenbestand (%{paths}): Claude Code voert beide kopieën uit als hun opdrachten verschillen, en `ccn uninstall` verwijdert alleen die in je gebruikersinstellingen. Houd ze in één bestand"
 
 licence:
   already_licensed: "Deze computer heeft al een licentie (%{licence})."
@@ -294,3 +298,48 @@ api:
   saving_settings: "opslaan van instellingen"
   sending_event: "versturen van de gebeurtenis"
   waiting_response: "wachten op een antwoord: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "er loopt al een andere ccn-upgrade. Probeer het over een paar minuten opnieuw"
+
+local_files:
+  config_unreadable: "%{path} kan niet worden gelezen (%{error}), dus ccn overschrijft het niet. Herstel het bestand, of verwijder het en voer `ccn pair` opnieuw uit."
+  slot_not_freed: "De licentieplek van deze computer kon niet worden vrijgemaakt (%{error}). Als hij een licentie heeft, maak de plek dan vrij op claudecodenotifier.com/licence met je sleutel."
+  kept_dir: "De bestanden van ccn zijn uit %{path} verwijderd. De map bevat ook andere bestanden en is daarom blijven staan."
+  remove_binary: "ccn zelf is nog geïnstalleerd. Zo verwijder je het: %{command}"
+
+payload:
+  plan_waiting: "Claude heeft een plan gemaakt en wacht op je goedkeuring."
+  plan_ready: "Plan klaar voor goedkeuring"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "Ja, wijzigingen automatisch accepteren"
+  plan_manual_edits: "Ja, wijzigingen zelf goedkeuren"
+  plan_keep_planning: "Nee, verder plannen"
+  needs_permission: "%{tool} vraagt toestemming"
+  permission_required: "Toestemming nodig"
+  has_questions: "Claude heeft vragen"
+  finished_prompt: "Klaar: %{prompt}"
+  question_header: "Vraag"
+  approve_plan: "Plan goedkeuren"
+  pattern: "Patroon: %{pattern}"
+  search: "Zoeken: %{pattern}"
+
+net:
+  unreachable: "De server van Claude Code Notifier is niet bereikbaar. Controleer je internetverbinding en probeer het opnieuw."
+  doctor_unreachable: "server: %{url} niet bereikbaar. Controleer je internetverbinding, proxy of firewall"
+
+clap:
+  usage: "Gebruik:"
+  commands: "Opdrachten:"
+  arguments: "Argumenten:"
+  options: "Opties:"
+  help: "Help tonen"
+  version: "Versie tonen"
+  help_command: "Help tonen voor ccn of een van zijn opdrachten"
+  help_command_arg: "De opdracht waarvoor je de help wilt zien"
+  error_hint: "Voer `ccn --help` uit om de opdrachten en opties te zien."
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "de handtekening van de release klopt niet, dus er is niets gewijzigd. Probeer het later opnieuw of installeer opnieuw via claudecodenotifier.com/cli"

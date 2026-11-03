@@ -181,3 +181,97 @@ fn refuses_without_yes_when_there_is_no_terminal() {
     assert!(text(&out.stderr).contains("--yes"), "{}", text(&out.stderr));
     assert!(sandbox.ccn_dir().join("credentials").exists());
 }
+
+fn unreachable_url() -> String {
+    // A port nothing is listening on
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    format!("http://{}", listener.local_addr().unwrap())
+}
+
+/// `CCN_HOME` may point at a folder that holds other things: only ccn's own files go.
+#[test]
+fn removes_only_ccns_own_files_from_a_shared_folder() {
+    let sandbox = Sandbox::new("shared");
+    let dir = sandbox.ccn_dir();
+    std::fs::write(dir.join("notes.txt"), "mine").unwrap();
+    std::fs::create_dir_all(dir.join("sessions")).unwrap();
+    std::fs::write(dir.join("sessions/plan.txt"), "mine too").unwrap();
+    std::fs::write(
+        dir.join("sessions/abc.json"),
+        r#"{"session_id":"abc","updated_at":1}"#,
+    )
+    .unwrap();
+    std::fs::write(dir.join("unpaired.json"), "{}").unwrap();
+    std::fs::write(dir.join(".config.toml.123-abcdef12.tmp"), "half").unwrap();
+    let (url, server) = fake_server(200, r#"{"erased":true,"purged":true}"#);
+    let out = sandbox.run(&url, &["forget", "--yes"]);
+    server.join().unwrap();
+    assert!(out.status.success(), "{}", text(&out.stderr));
+    let mut left: Vec<String> = walk(&dir);
+    left.sort();
+    assert_eq!(left, vec!["notes.txt", "sessions/plan.txt"]);
+    assert!(
+        text(&out.stdout).contains("left in place"),
+        "{}",
+        text(&out.stdout)
+    );
+}
+
+fn walk(dir: &Path) -> Vec<String> {
+    let mut out = Vec::new();
+    for entry in std::fs::read_dir(dir).unwrap().flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if entry.path().is_dir() {
+            out.extend(
+                walk(&entry.path())
+                    .into_iter()
+                    .map(|n| format!("{name}/{n}")),
+            );
+        } else {
+            out.push(name);
+        }
+    }
+    out
+}
+
+/// Offline, uninstall still removes everything, but says the licence slot may still be held and
+/// how to free it, since the token it would need is gone.
+#[test]
+fn uninstall_offline_says_the_licence_slot_was_not_freed() {
+    let sandbox = Sandbox::new("uninstall-offline");
+    let out = sandbox.run(&unreachable_url(), &["uninstall"]);
+    assert!(out.status.success(), "{}", text(&out.stderr));
+    let stderr = text(&out.stderr);
+    assert!(
+        stderr.contains("Couldn't free this computer's licence slot")
+            && stderr.contains("claudecodenotifier.com/licence"),
+        "{stderr}"
+    );
+    assert!(!sandbox.ccn_dir().exists());
+    assert!(settings_hooks_gone(&sandbox));
+    // The binary is left to whatever installed it, with the command to remove it
+    let stdout = text(&out.stdout);
+    assert!(stdout.contains("ccn itself is still installed"), "{stdout}");
+    let exe = std::path::Path::new(env!("CARGO_BIN_EXE_ccn"));
+    assert!(exe.exists());
+}
+
+/// A server that has already forgotten the computer has no slot for it: nothing to report.
+#[test]
+fn uninstall_after_the_server_forgot_the_computer_is_quiet_about_the_slot() {
+    let sandbox = Sandbox::new("uninstall-gone");
+    let (url, server) = fake_server(401, r#"{"error":{"code":"UNAUTHORIZED","message":"no"}}"#);
+    let out = sandbox.run(&url, &["uninstall"]);
+    let request = server.join().unwrap();
+    assert!(
+        request.starts_with("POST /api/clients/me/licence/deactivate "),
+        "{request}"
+    );
+    assert!(out.status.success(), "{}", text(&out.stderr));
+    assert!(
+        !text(&out.stderr).contains("licence slot"),
+        "{}",
+        text(&out.stderr)
+    );
+    assert!(!sandbox.ccn_dir().exists());
+}

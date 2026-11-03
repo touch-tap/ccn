@@ -52,7 +52,7 @@ cli:
 common:
   your_phone: "điện thoại của bạn"
   not_paired: "máy tính này chưa được ghép nối. Chạy `ccn pair <mã>` với mã trong ứng dụng."
-  store_keychain: "keychain"
+  store_keychain: "chuỗi khóa"
   store_file: "tệp"
   date_format: "%d/%m/%Y"
 
@@ -127,7 +127,6 @@ doctor:
   hooks_stale: "hook đang trỏ tới một tệp ccn khác; chạy `ccn setup` để cập nhật"
   mac_app_hooks: "hook của ứng dụng Mac cũng đang được cài (chạy `ccn setup --replace-mac-app`)"
   presence: "hiện diện: đã rảnh %{idle}s, ngưỡng %{threshold}s"
-  presence_none: "hiện diện: không phát hiện được ở đây, nên mọi yêu cầu đều chờ điện thoại"
   replies: "trả lời: phê duyệt và trả lời câu hỏi từ điện thoại hoạt động trong mọi terminal; văn bản tự do vào một phiên đang rảnh %{free_text}"
   replies_tmux: "hoạt động (tmux)"
   replies_no_tmux: "cần tmux"
@@ -197,6 +196,11 @@ hook:
   # The server writes title, body and command in the user's language; this only joins them
   nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
   needs_attention: "Cần bạn chú ý"
+
+hooks:
+  doctor_presence_none: "hiện diện: không phát hiện được ở đây, nên không có gì chờ điện thoại: điện thoại nhận một thông báo và bạn trả lời trong terminal (`ccn config set hold_without_presence on` để vẫn chờ)"
+  doctor_presence_none_hold: "hiện diện: không phát hiện được ở đây và hold_without_presence đang bật, nên mọi yêu cầu chờ điện thoại cho đến khi nó trả lời hoặc hết thời gian chờ tối đa"
+  doctor_duplicate_hooks: "Hook của ccn nằm trong nhiều hơn một tệp cài đặt (%{paths}): Claude Code chạy cả hai bản khi lệnh của chúng khác nhau, và `ccn uninstall` chỉ gỡ các hook trong cài đặt người dùng của bạn. Hãy chỉ giữ trong một tệp"
 
 licence:
   already_licensed: "Máy tính này đã có giấy phép (%{licence})."
@@ -297,3 +301,48 @@ api:
   saving_settings: "lưu cài đặt"
   sending_event: "gửi sự kiện"
   waiting_response: "chờ phản hồi: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "một bản nâng cấp ccn khác đang chạy. Hãy thử lại sau vài phút"
+
+local_files:
+  config_unreadable: "Không đọc được %{path} (%{error}), nên ccn sẽ không ghi đè lên nó. Hãy sửa tệp, hoặc xóa nó rồi chạy lại `ccn pair`."
+  slot_not_freed: "Không giải phóng được chỗ của máy tính này trong giấy phép (%{error}). Nếu máy có giấy phép, hãy giải phóng chỗ tại claudecodenotifier.com/licence bằng khóa của bạn."
+  kept_dir: "Đã xóa các tệp của ccn khỏi %{path}. Thư mục còn chứa tệp khác nên được giữ lại."
+  remove_binary: "Bản thân ccn vẫn còn được cài đặt. Để gỡ nó: %{command}"
+
+payload:
+  plan_waiting: "Claude đã lập một kế hoạch và đang chờ bạn phê duyệt."
+  plan_ready: "Kế hoạch đang chờ phê duyệt"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "Có, tự động chấp nhận chỉnh sửa"
+  plan_manual_edits: "Có, duyệt từng chỉnh sửa"
+  plan_keep_planning: "Không, tiếp tục lập kế hoạch"
+  needs_permission: "%{tool} cần quyền"
+  permission_required: "Cần cấp quyền"
+  has_questions: "Claude có vài câu hỏi"
+  finished_prompt: "Đã xong: %{prompt}"
+  question_header: "Câu hỏi"
+  approve_plan: "Phê duyệt kế hoạch"
+  pattern: "Mẫu: %{pattern}"
+  search: "Tìm kiếm: %{pattern}"
+
+net:
+  unreachable: "Không kết nối được tới máy chủ Claude Code Notifier. Hãy kiểm tra kết nối internet rồi thử lại."
+  doctor_unreachable: "máy chủ: không kết nối được tới %{url}. Hãy kiểm tra kết nối internet, proxy hoặc tường lửa"
+
+clap:
+  usage: "Cách dùng:"
+  commands: "Lệnh:"
+  arguments: "Đối số:"
+  options: "Tùy chọn:"
+  help: "Hiện trợ giúp"
+  version: "Hiện phiên bản"
+  help_command: "Hiện trợ giúp của ccn hoặc của một lệnh"
+  help_command_arg: "Lệnh cần xem trợ giúp"
+  error_hint: "Chạy `ccn --help` để xem các lệnh và tùy chọn."
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "chữ ký của bản phát hành không hợp lệ nên không có gì bị thay đổi. Hãy thử lại sau hoặc cài lại từ claudecodenotifier.com/cli"

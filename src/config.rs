@@ -4,7 +4,8 @@ use anyhow::{Context, Result};
 use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 pub const DEFAULT_SERVER_URL: &str = "https://ccnotifier-api.touchtap.workers.dev";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -284,6 +285,9 @@ pub struct Config {
     pub phones: Option<u32>,
     /// When the first phone paired with this computer
     pub paired_at: Option<i64>,
+    /// Where the install line came from (web, app, link or direct), set by the install scripts'
+    /// CCN_INSTALL_SOURCE the first time `ccn setup` runs, and sent with the anonymous setup events
+    pub install_source: Option<String>,
     /// Claude Code has shown "paired with <phone>" once
     pub paired_message_shown: bool,
     /// Desktop notifications shown while no phone was paired
@@ -304,6 +308,15 @@ pub struct Config {
     pub update_available: Option<String>,
     /// When `update_available` was last mentioned in Claude Code
     pub update_announced_at: Option<i64>,
+    /// Hold Claude for the phone even where presence can't be detected (`ccn config set
+    /// hold_without_presence on`; default off, since typing can't then release the hold)
+    pub hold_without_presence: bool,
+    /// The file as this process read it, to save only the fields it changed (see `save`)
+    #[serde(skip)]
+    loaded: Option<toml::Table>,
+    /// Why the file couldn't be read, when it exists but is damaged: `save` then refuses
+    #[serde(skip)]
+    unreadable: Option<String>,
 }
 
 impl Default for Config {
@@ -324,6 +337,7 @@ impl Default for Config {
             licence_nudge_last_at: None,
             phones: None,
             paired_at: None,
+            install_source: None,
             paired_message_shown: false,
             local_notifications: 0,
             pair_nudge_last_at: None,
@@ -333,16 +347,109 @@ impl Default for Config {
             update_checked_at: None,
             update_available: None,
             update_announced_at: None,
+            hold_without_presence: false,
+            loaded: None,
+            unreadable: None,
+        }
+    }
+}
+
+/// What reading the config file found.
+enum ConfigFile {
+    Missing,
+    /// The file's own table, keys this version doesn't know included, and what it parsed into
+    Read(toml::Table, Box<Config>),
+    /// It exists but can't be read or parsed, even after a moment
+    Unreadable(String),
+}
+
+/// Reads the config file. Hooks run concurrently and every write is atomic, but an older ccn
+/// (mid-upgrade) or an editor may still truncate and rewrite it in place, so a file that is
+/// empty or doesn't parse is read again a few times before it counts as damaged. One that stays
+/// empty is treated as missing: ccn never writes an empty config.
+fn read_config_file(path: &Path) -> ConfigFile {
+    let mut problem = String::new();
+    for attempt in 0..4 {
+        if attempt > 0 {
+            std::thread::sleep(std::time::Duration::from_millis(25));
+        }
+        let text = match fs::read_to_string(path) {
+            Ok(text) => text,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return ConfigFile::Missing,
+            Err(err) => {
+                problem = err.to_string();
+                continue;
+            }
+        };
+        if text.trim().is_empty() {
+            problem.clear();
+            continue;
+        }
+        let parsed = toml::from_str::<toml::Table>(&text).and_then(|table| {
+            let cfg = toml::Value::Table(table.clone()).try_into::<Config>()?;
+            Ok((table, cfg))
+        });
+        match parsed {
+            Ok((table, cfg)) => return ConfigFile::Read(table, Box::new(cfg)),
+            Err(err) => problem = err.message().to_string(),
+        }
+    }
+    if problem.is_empty() {
+        ConfigFile::Missing
+    } else {
+        ConfigFile::Unreadable(problem)
+    }
+}
+
+/// Holds an advisory lock on `<config>.lock` while a save reads and rewrites the config, so two
+/// processes saving at once can't lose each other's changes. Waits at most two seconds: a hook
+/// must never hang, and a save without the lock is still atomic, just last-writer-wins.
+fn lock_config(path: &Path) -> Option<fs::File> {
+    let lock_path = path.with_extension("lock");
+    let mut options = fs::OpenOptions::new();
+    options.create(true).truncate(false).write(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let file = options.open(&lock_path).ok()?;
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    loop {
+        match file.try_lock() {
+            Ok(()) => return Some(file),
+            Err(fs::TryLockError::WouldBlock) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(5))
+            }
+            Err(err) => {
+                crate::logger::log(&format!("config: saving without the lock ({err})"));
+                return None;
+            }
+        }
+    }
+}
+
+/// Puts onto `on_disk` the top-level keys this process changed since it read the file (`was` to
+/// `now`), and leaves every other key as the file has it now. Two hooks that loaded the same file
+/// and changed different fields then both keep their change, and a hook that loaded before
+/// `ccn pair` doesn't wipe the `client_id` pairing wrote. `skip` keys are never written.
+fn merge_changes(on_disk: &mut toml::Table, was: &toml::Table, now: &toml::Table, skip: &[&str]) {
+    for (key, value) in now {
+        if !skip.contains(&key.as_str()) && was.get(key) != Some(value) {
+            on_disk.insert(key.clone(), value.clone());
+        }
+    }
+    // A field set to None isn't serialised: its key going is the change
+    for key in was.keys() {
+        if !skip.contains(&key.as_str()) && !now.contains_key(key) {
+            on_disk.remove(key);
         }
     }
 }
 
 impl Config {
     pub fn load() -> Config {
-        let mut cfg = fs::read_to_string(config_path())
-            .ok()
-            .and_then(|text| toml::from_str::<Config>(&text).ok())
-            .unwrap_or_default();
+        let mut cfg = Config::load_from(&config_path());
         if let Ok(url) = std::env::var("CCN_SERVER_URL") {
             if !url.is_empty() {
                 cfg.server_url = url;
@@ -354,28 +461,76 @@ impl Config {
         cfg
     }
 
-    pub fn save(&self) -> Result<()> {
-        let path = config_path();
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).with_context(|| format!("creating {}", parent.display()))?;
+    /// The config in `path` as written, with no environment override. A damaged file gives the
+    /// defaults, so hooks keep working (in local mode), but marked so they never save over it.
+    fn load_from(path: &Path) -> Config {
+        match read_config_file(path) {
+            ConfigFile::Missing => Config::default(),
+            ConfigFile::Read(_, cfg) => {
+                let mut cfg = *cfg;
+                // Normalised through Config, so `save` compares like with like
+                cfg.loaded = toml::Table::try_from(&cfg).ok();
+                cfg
+            }
+            ConfigFile::Unreadable(problem) => {
+                crate::logger::log(&format!(
+                    "config: {} can't be read ({problem}); using defaults and not saving over it",
+                    path.display()
+                ));
+                Config {
+                    unreadable: Some(problem),
+                    ..Config::default()
+                }
+            }
         }
-        let mut to_write = self.clone();
-        if std::env::var("CCN_SERVER_URL").is_ok() {
-            // an override from the environment is not persisted
-            to_write.server_url =
-                Config::load_file_server_url().unwrap_or_else(|| DEFAULT_SERVER_URL.to_string());
-        }
-        let text = toml::to_string_pretty(&to_write)?;
-        fs::write(&path, text).with_context(|| format!("writing {}", path.display()))?;
-        restrict_permissions(&path);
-        Ok(())
     }
 
-    fn load_file_server_url() -> Option<String> {
-        fs::read_to_string(config_path())
-            .ok()
-            .and_then(|text| toml::from_str::<Config>(&text).ok())
-            .map(|c| c.server_url)
+    /// Saves the fields this process changed since `load`, merged into the file as it is now (see
+    /// `merge_changes`), atomically and under a lock. Never writes over a damaged file: doing so
+    /// would replace a `client_id` it may still hold with nothing, silently unpairing the computer.
+    pub fn save(&self) -> Result<()> {
+        // An override from the environment is not persisted
+        let env_url = std::env::var("CCN_SERVER_URL").is_ok_and(|v| !v.is_empty());
+        let skip: &[&str] = if env_url { &["server_url"] } else { &[] };
+        self.save_to(&config_path(), skip)
+    }
+
+    fn save_to(&self, path: &Path, skip: &[&str]) -> Result<()> {
+        let refuse = |problem: &str| {
+            anyhow::anyhow!(
+                "{}",
+                t!(
+                    "local_files.config_unreadable",
+                    path = path.display(),
+                    error = problem
+                )
+            )
+        };
+        if let Some(problem) = &self.unreadable {
+            return Err(refuse(problem));
+        }
+        if let Some(dir) = path.parent() {
+            ensure_dir(dir).with_context(|| format!("creating {}", dir.display()))?;
+        }
+        let _lock = lock_config(path);
+        let mut on_disk = match read_config_file(path) {
+            ConfigFile::Missing => toml::Table::new(),
+            ConfigFile::Read(table, _) => table,
+            ConfigFile::Unreadable(problem) => {
+                crate::logger::log(&format!(
+                    "config: {} became unreadable ({problem}); not saving over it",
+                    path.display()
+                ));
+                return Err(refuse(&problem));
+            }
+        };
+        let now = toml::Table::try_from(self)?;
+        let was = self.loaded.clone().unwrap_or_default();
+        merge_changes(&mut on_disk, &was, &now, skip);
+        let text = toml::to_string_pretty(&on_disk)?;
+        write_atomic(path, text.as_bytes())
+            .with_context(|| format!("writing {}", path.display()))?;
+        Ok(())
     }
 
     /// This computer has credentials: it is registered with the server (not necessarily with a
@@ -397,6 +552,12 @@ impl Config {
         if count > 0 && self.paired_at.is_none() {
             self.paired_at = Some(now());
         }
+    }
+
+    /// `hold_without_presence`, or `CCN_HOLD_WITHOUT_PRESENCE=1` for this process
+    pub fn hold_without_presence(&self) -> bool {
+        self.hold_without_presence
+            || std::env::var("CCN_HOLD_WITHOUT_PRESENCE").is_ok_and(|v| !v.is_empty() && v != "0")
     }
 
     pub fn machine_name(&self) -> String {
@@ -460,12 +621,8 @@ impl Unpaired {
     }
 
     pub fn save(&self) {
-        let path = unpaired_path();
-        if let Some(parent) = path.parent() {
-            let _ = fs::create_dir_all(parent);
-        }
         if let Ok(text) = serde_json::to_string(self) {
-            let _ = fs::write(path, text);
+            let _ = write_atomic(&unpaired_path(), text.as_bytes());
         }
     }
 
@@ -541,12 +698,9 @@ pub fn store_token(cfg: &Config, token: &str) -> Result<&'static str> {
         }
     }
     let path = credentials_path();
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    fs::write(&path, format!("{token}\n"))
+    // Created 0600 (never briefly world-readable) and swapped in whole
+    write_atomic(&path, format!("{token}\n").as_bytes())
         .with_context(|| format!("writing {}", path.display()))?;
-    restrict_permissions(&path);
     Ok("file")
 }
 
@@ -557,23 +711,177 @@ pub fn delete_token() {
         file_only,
         keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER),
     ) {
-        // On macOS only the build that created the item may delete it; a later version (same
-        // signature) may still change it, so it empties the item instead
-        if entry.delete_credential().is_err() {
+        // On macOS only the build that created the item may delete it through the API; Apple's
+        // `security` tool usually may. Failing both, a later version (same signature) may still
+        // change the item, so it is emptied, which load_token reads as no token
+        if entry.delete_credential().is_err() && !delete_with_security_tool() {
             let _ = entry.set_password("");
         }
     }
     let _ = fs::remove_file(credentials_path());
 }
 
-#[cfg(unix)]
-fn restrict_permissions(path: &std::path::Path) {
-    use std::os::unix::fs::PermissionsExt;
-    let _ = fs::set_permissions(path, fs::Permissions::from_mode(0o600));
+#[cfg(target_os = "macos")]
+fn delete_with_security_tool() -> bool {
+    std::process::Command::new("/usr/bin/security")
+        .args([
+            "delete-generic-password",
+            "-s",
+            KEYRING_SERVICE,
+            "-a",
+            KEYRING_USER,
+        ])
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success())
 }
 
-#[cfg(not(unix))]
-fn restrict_permissions(_path: &std::path::Path) {}
+#[cfg(not(target_os = "macos"))]
+fn delete_with_security_tool() -> bool {
+    false
+}
+
+/// What ccn writes in its directory, by name. Uninstall deletes these and nothing else, since
+/// `CCN_HOME` may point at a folder that holds other things.
+const OWN_FILES: &[&str] = &[
+    "config.toml",
+    "config.lock",
+    "credentials",
+    "ccn.log",
+    "unpaired.json",
+    "icon.png",
+    // hook.rs: when a best-effort update last failed, so other hooks skip the network for a while
+    "offline_at",
+    // update.rs: held while an upgrader runs
+    "update.lock",
+];
+
+/// Deletes ccn's own files from its directory (the list above, the session files, the macOS
+/// notifier app and any temp file a crash left), then the directory if that leaves it empty.
+/// Returns whether the directory itself went.
+pub fn remove_local_files() -> bool {
+    let dir = ccn_dir();
+    for name in OWN_FILES {
+        let _ = fs::remove_file(dir.join(name));
+    }
+    crate::session::remove_all();
+    let app = format!("{}.app", crate::notify::APP_NAME);
+    // notify.rs builds the app as "<name>.tmp-<pid>" beside it, then renames it into place
+    let app_tmp = format!("{}.tmp-", crate::notify::APP_NAME);
+    if let Ok(entries) = fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if name == app || name.starts_with(&app_tmp) {
+                let _ = fs::remove_dir_all(entry.path());
+            } else if OWN_FILES.iter().any(|own| is_temp_file(&name, own)) {
+                let _ = fs::remove_file(entry.path());
+            }
+        }
+    }
+    // Only succeeds when empty
+    let _ = fs::remove_dir(&dir);
+    !dir.exists()
+}
+
+// ============================================
+// Writing files safely
+// ============================================
+
+/// Creates `dir` and any missing parents. On Unix they are made 0700: the ccn directory holds
+/// the token, prompts and tool inputs. The default ccn directory, if an older version made it
+/// 0755, is tightened too; a directory chosen with `CCN_HOME` is left as the user made it.
+pub fn ensure_dir(dir: &Path) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
+        if !dir.is_dir() {
+            return fs::DirBuilder::new()
+                .recursive(true)
+                .mode(0o700)
+                .create(dir);
+        }
+        let default_dir = std::env::var("CCN_HOME").map_or(true, |v| v.is_empty());
+        if default_dir && dir == ccn_dir() {
+            if let Ok(meta) = fs::metadata(dir) {
+                if meta.permissions().mode() & 0o077 != 0 {
+                    let _ = fs::set_permissions(dir, fs::Permissions::from_mode(0o700));
+                }
+            }
+        }
+        Ok(())
+    }
+    #[cfg(not(unix))]
+    {
+        fs::create_dir_all(dir)
+    }
+}
+
+/// Replaces `path` with `contents` all at once. Hooks run concurrently (several Claude sessions,
+/// parallel hooks in one), and `fs::write` truncates first, so a reader could see an empty or
+/// half-written file. This writes a uniquely named temp file beside it (0600 on Unix from the
+/// start) and renames it over the target, which readers see as either the old file or the new.
+pub fn write_atomic(path: &Path, contents: &[u8]) -> std::io::Result<()> {
+    let dir = path.parent().unwrap_or(Path::new("."));
+    ensure_dir(dir)?;
+    let tmp = dir.join(temp_name(path));
+    let result = (|| {
+        let mut options = fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let mut file = options.open(&tmp)?;
+        file.write_all(contents)?;
+        // On disk before the rename, so a crash can't leave the new name on an empty file
+        file.sync_all()?;
+        drop(file);
+        rename_over(&tmp, path)
+    })();
+    if result.is_err() {
+        let _ = fs::remove_file(&tmp);
+    }
+    result
+}
+
+/// `.config.toml.<pid>-<random>.tmp`: hidden, unique per write, and recognisable by
+/// `is_temp_file` so uninstall can clear any a crash left behind.
+fn temp_name(path: &Path) -> String {
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let random = uuid::Uuid::new_v4().simple().to_string();
+    format!(".{name}.{}-{}.tmp", std::process::id(), &random[..8])
+}
+
+/// Whether `file_name` is a temp file `write_atomic` made for `target` (a file name).
+pub fn is_temp_file(file_name: &str, target: &str) -> bool {
+    file_name
+        .strip_prefix('.')
+        .and_then(|rest| rest.strip_prefix(target))
+        .is_some_and(|rest| rest.starts_with('.') && rest.ends_with(".tmp"))
+}
+
+/// `fs::rename` replaces an existing target on Unix and Windows alike (MoveFileEx with
+/// REPLACE_EXISTING). On Windows it can fail for a moment while another process (or a virus
+/// scanner) has the target open without sharing delete, so it is retried briefly.
+fn rename_over(from: &Path, to: &Path) -> std::io::Result<()> {
+    let mut attempt = 0;
+    loop {
+        match fs::rename(from, to) {
+            Ok(()) => return Ok(()),
+            Err(err) if attempt >= 4 || cfg!(unix) => return Err(err),
+            Err(_) => {
+                attempt += 1;
+                std::thread::sleep(std::time::Duration::from_millis(15));
+            }
+        }
+    }
+}
 
 pub fn now() -> i64 {
     chrono::Utc::now().timestamp()
@@ -589,18 +897,43 @@ pub const LOCALES: &[&str] = &[
     "zh-Hans", "zh-Hant",
 ];
 
-/// The language to ask the server for: `CCN_LANG`, else the OS locale, mapped onto `LOCALES`.
+/// The language to ask the server for, mapped onto `LOCALES`: `CCN_LANG`, else the POSIX locale
+/// variables, else the first of the OS's preferred languages that ccn speaks, else English.
 pub fn locale() -> String {
-    let raw = std::env::var("CCN_LANG")
-        .ok()
-        .filter(|v| !v.trim().is_empty())
-        .or_else(sys_locale::get_locale)
-        .unwrap_or_default();
-    normalise_locale(&raw).to_string()
+    let env = |key: &str| std::env::var(key).ok();
+    let posix = [env("LC_ALL"), env("LC_MESSAGES"), env("LANG")];
+    let os = sys_locale::get_locales().collect::<Vec<_>>();
+    pick_locale(env("CCN_LANG").as_deref(), &posix, &os).to_string()
+}
+
+/// `locale` without the environment, so it can be tested. sys-locale reads CFLocale on macOS and
+/// ignores LANG there, so the POSIX variables are checked first everywhere (LC_ALL, then
+/// LC_MESSAGES, then LANG, as gettext does); "C", "POSIX" and empty say nothing. A language ccn
+/// doesn't speak falls through to the next choice: with macOS preferences [sv, de], German.
+fn pick_locale(ccn_lang: Option<&str>, posix: &[Option<String>], os: &[String]) -> &'static str {
+    if let Some(lang) = ccn_lang.filter(|v| !v.trim().is_empty()) {
+        return normalise_locale(lang);
+    }
+    let said_something = |v: &&String| {
+        let tag = v.split(['.', '@']).next().unwrap_or("").trim();
+        !tag.is_empty() && tag != "C" && tag != "POSIX"
+    };
+    // The first POSIX variable set decides, as it would for any other program
+    let from_env = posix.iter().flatten().find(said_something);
+    from_env
+        .into_iter()
+        .chain(os.iter())
+        .find_map(|raw| supported_locale(raw))
+        .unwrap_or("en")
 }
 
 /// Maps a BCP 47 or POSIX locale tag onto one of `LOCALES`; anything unknown is "en".
 pub fn normalise_locale(raw: &str) -> &'static str {
+    supported_locale(raw).unwrap_or("en")
+}
+
+/// Maps a BCP 47 or POSIX locale tag onto one of `LOCALES`, or None for a language ccn lacks.
+fn supported_locale(raw: &str) -> Option<&'static str> {
     // en_GB.UTF-8 → en-GB; drop the encoding and modifier
     let tag = raw.split(['.', '@']).next().unwrap_or("").replace('_', "-");
     let mut parts = tag.split('-').filter(|p| !p.is_empty());
@@ -611,21 +944,101 @@ pub fn normalise_locale(raw: &str) -> &'static str {
             let traditional = rest
                 .iter()
                 .any(|p| matches!(p.as_str(), "hant" | "tw" | "hk" | "mo"));
-            if traditional { "zh-Hant" } else { "zh-Hans" }
+            Some(if traditional { "zh-Hant" } else { "zh-Hans" })
         }
-        "pt" => "pt-BR",
-        "iw" | "he" => "he",
+        "pt" => Some("pt-BR"),
+        "iw" | "he" => Some("he"),
         other => LOCALES
             .iter()
             .find(|l| l.eq_ignore_ascii_case(other))
-            .copied()
-            .unwrap_or("en"),
+            .copied(),
     }
 }
 
 #[cfg(test)]
 mod locale_tests {
-    use super::normalise_locale;
+    use super::{normalise_locale, pick_locale};
+
+    fn os(tags: &[&str]) -> Vec<String> {
+        tags.iter().map(|t| t.to_string()).collect()
+    }
+
+    fn posix(
+        lc_all: Option<&str>,
+        lc_messages: Option<&str>,
+        lang: Option<&str>,
+    ) -> Vec<Option<String>> {
+        [lc_all, lc_messages, lang]
+            .iter()
+            .map(|v| v.map(str::to_string))
+            .collect()
+    }
+
+    #[test]
+    fn ccn_lang_wins_over_everything() {
+        let env = posix(Some("fr_FR.UTF-8"), None, Some("de_DE.UTF-8"));
+        assert_eq!(pick_locale(Some("ja"), &env, &os(&["ko"])), "ja");
+        // Even a language ccn lacks: the user asked for it by name
+        assert_eq!(pick_locale(Some("sv"), &env, &os(&["ko"])), "en");
+        // Blank is unset
+        assert_eq!(pick_locale(Some(" "), &env, &os(&["ko"])), "fr");
+    }
+
+    #[test]
+    fn posix_variables_come_before_the_os_preference_in_their_order() {
+        let prefs = os(&["ko-KR"]);
+        assert_eq!(
+            pick_locale(
+                None,
+                &posix(Some("fr_FR.UTF-8"), Some("it_IT"), Some("de_DE")),
+                &prefs
+            ),
+            "fr"
+        );
+        assert_eq!(
+            pick_locale(None, &posix(None, Some("it_IT"), Some("de_DE")), &prefs),
+            "it"
+        );
+        assert_eq!(
+            pick_locale(None, &posix(None, None, Some("de_DE.UTF-8")), &prefs),
+            "de"
+        );
+        // C, POSIX and empty say nothing, so the next variable or the OS decides
+        assert_eq!(
+            pick_locale(None, &posix(Some("C"), None, Some("de_DE")), &prefs),
+            "de"
+        );
+        assert_eq!(
+            pick_locale(
+                None,
+                &posix(Some(""), Some("POSIX"), Some("C.UTF-8")),
+                &prefs
+            ),
+            "ko"
+        );
+        assert_eq!(pick_locale(None, &posix(None, None, None), &prefs), "ko");
+    }
+
+    #[test]
+    fn walks_the_os_preferences_to_the_first_supported_language() {
+        let none = posix(None, None, None);
+        assert_eq!(pick_locale(None, &none, &os(&["sv", "de"])), "de");
+        assert_eq!(
+            pick_locale(None, &none, &os(&["sv-SE", "nb-NO", "zh-Hant-TW"])),
+            "zh-Hant"
+        );
+        assert_eq!(pick_locale(None, &none, &os(&["sv", "fi"])), "en");
+        assert_eq!(pick_locale(None, &none, &os(&[])), "en");
+        // A POSIX language ccn lacks falls through to the OS preferences too
+        assert_eq!(
+            pick_locale(
+                None,
+                &posix(None, None, Some("sv_SE.UTF-8")),
+                &os(&["sv", "nl"])
+            ),
+            "nl"
+        );
+    }
 
     #[test]
     fn maps_os_locales_onto_the_supported_set() {
@@ -649,5 +1062,206 @@ mod locale_tests {
         assert_eq!(normalise_locale("POSIX"), "en");
         assert_eq!(normalise_locale(""), "en");
         assert_eq!(normalise_locale("xx-YY"), "en");
+    }
+}
+
+#[cfg(test)]
+mod write_tests {
+    use super::*;
+
+    fn temp_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("ccn-write-{name}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        dir
+    }
+
+    #[test]
+    fn an_atomic_write_replaces_the_file_and_leaves_no_temp_file() {
+        let dir = temp_dir("atomic");
+        let path = dir.join("nested").join("config.toml");
+        write_atomic(&path, b"first = 1\n").unwrap();
+        write_atomic(&path, b"second = 2\n").unwrap();
+        assert_eq!(fs::read_to_string(&path).unwrap(), "second = 2\n");
+        let names: Vec<String> = fs::read_dir(path.parent().unwrap())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, vec!["config.toml".to_string()]);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = |p: &Path| fs::metadata(p).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode(&path), 0o600);
+            assert_eq!(mode(path.parent().unwrap()), 0o700);
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Readers in other threads only ever see a whole file, never an empty or partial one.
+    #[test]
+    fn readers_never_see_a_partial_write() {
+        let dir = temp_dir("readers");
+        let path = dir.join("state.json");
+        let big = |c: char| c.to_string().repeat(256 * 1024);
+        write_atomic(&path, big('a').as_bytes()).unwrap();
+        let writer = {
+            let path = path.clone();
+            std::thread::spawn(move || {
+                for i in 0..40 {
+                    let c = if i % 2 == 0 { 'b' } else { 'a' };
+                    write_atomic(&path, big(c).as_bytes()).unwrap();
+                }
+            })
+        };
+        while !writer.is_finished() {
+            let text = fs::read_to_string(&path).unwrap();
+            assert_eq!(text.len(), 256 * 1024);
+            assert!(text == big('a') || text == big('b'));
+        }
+        writer.join().unwrap();
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn temp_files_are_recognised_by_their_target() {
+        let name = temp_name(Path::new("/x/config.toml"));
+        assert!(is_temp_file(&name, "config.toml"), "{name}");
+        assert!(!is_temp_file(&name, "credentials"));
+        assert!(!is_temp_file("config.toml", "config.toml"));
+        assert!(!is_temp_file(".config.toml", "config.toml"));
+        assert!(!is_temp_file(".config.tomlx.tmp", "config.toml"));
+    }
+
+    #[test]
+    fn a_damaged_config_is_never_saved_over() {
+        let dir = temp_dir("damaged");
+        let path = dir.join("config.toml");
+        fs::create_dir_all(&dir).unwrap();
+        let damaged = "client_id = \"keep-me\"\nphones = [oops\n";
+        fs::write(&path, damaged).unwrap();
+        let mut cfg = Config::load_from(&path);
+        // Defaults, so hooks still run, but marked
+        assert!(cfg.client_id.is_none());
+        assert!(cfg.unreadable.is_some());
+        cfg.local_notifications = 5;
+        let err = cfg.save_to(&path, &[]).unwrap_err();
+        assert!(format!("{err}").contains("can't be read"), "{err}");
+        assert_eq!(fs::read_to_string(&path).unwrap(), damaged);
+        // Nor by a process that read it while it was fine
+        fs::remove_file(&path).unwrap();
+        let good = Config::default();
+        good.save_to(&path, &[]).unwrap();
+        let cfg = Config::load_from(&path);
+        fs::write(&path, damaged).unwrap();
+        assert!(cfg.save_to(&path, &[]).is_err());
+        assert_eq!(fs::read_to_string(&path).unwrap(), damaged);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_missing_or_empty_config_is_the_defaults_and_can_be_saved() {
+        let dir = temp_dir("missing");
+        let path = dir.join("config.toml");
+        let cfg = Config::load_from(&path);
+        assert!(cfg.unreadable.is_none() && cfg.loaded.is_none());
+        cfg.save_to(&path, &[]).unwrap();
+        let text = fs::read_to_string(&path).unwrap();
+        assert!(
+            text.contains("server_url") && text.contains("[settings]"),
+            "{text}"
+        );
+        fs::write(&path, "\n").unwrap();
+        let cfg = Config::load_from(&path);
+        assert!(cfg.unreadable.is_none());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Two processes load the same file and each changes a different field: both changes survive,
+    /// and one that loaded before pairing doesn't wipe the client_id pairing saved.
+    #[test]
+    fn concurrent_saves_keep_each_others_changes() {
+        let dir = temp_dir("merge");
+        let path = dir.join("config.toml");
+        Config::default().save_to(&path, &[]).unwrap();
+        let mut hook = Config::load_from(&path);
+        let mut pair = Config::load_from(&path);
+        pair.client_id = Some("computer-1".into());
+        pair.phones = Some(1);
+        pair.save_to(&path, &[]).unwrap();
+        hook.local_notifications = 3;
+        hook.save_to(&path, &[]).unwrap();
+        let cfg = Config::load_from(&path);
+        assert_eq!(cfg.client_id.as_deref(), Some("computer-1"));
+        assert_eq!(cfg.phones, Some(1));
+        assert_eq!(cfg.local_notifications, 3);
+        // Clearing a field is a change too
+        let mut reset = Config::load_from(&path);
+        reset.client_id = None;
+        reset.save_to(&path, &[]).unwrap();
+        assert!(Config::load_from(&path).client_id.is_none());
+        assert_eq!(Config::load_from(&path).local_notifications, 3);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn keys_from_a_newer_version_and_skipped_keys_are_kept() {
+        let dir = temp_dir("keep");
+        let path = dir.join("config.toml");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            &path,
+            "server_url = \"https://saved.example\"\nfuture_field = 7\n",
+        )
+        .unwrap();
+        let mut cfg = Config::load_from(&path);
+        // As Config::load does with CCN_SERVER_URL
+        cfg.server_url = "http://127.0.0.1:1".into();
+        cfg.pair_nudges = false;
+        cfg.save_to(&path, &["server_url"]).unwrap();
+        let text = fs::read_to_string(&path).unwrap();
+        assert!(text.contains("future_field = 7"), "{text}");
+        assert!(text.contains("https://saved.example"), "{text}");
+        assert!(text.contains("pair_nudges = false"), "{text}");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Many threads each set their own counter-like field at once; none is lost.
+    #[test]
+    fn simultaneous_saves_lose_nothing() {
+        let dir = temp_dir("simultaneous");
+        let path = dir.join("config.toml");
+        Config::default().save_to(&path, &[]).unwrap();
+        let handles: Vec<_> = (0..8)
+            .map(|i| {
+                let path = path.clone();
+                std::thread::spawn(move || {
+                    let mut cfg = Config::load_from(&path);
+                    match i {
+                        0 => cfg.client_id = Some("c".into()),
+                        1 => cfg.phones = Some(2),
+                        2 => cfg.paired_at = Some(1),
+                        3 => cfg.machine_name = Some("m".into()),
+                        4 => cfg.registered_at = Some(2),
+                        5 => cfg.update_checked_at = Some(3),
+                        6 => cfg.licence_checked_at = Some(4),
+                        _ => cfg.pair_nudge_last_at = Some(5),
+                    }
+                    cfg.save_to(&path, &[]).unwrap();
+                })
+            })
+            .collect();
+        for h in handles {
+            h.join().unwrap();
+        }
+        let cfg = Config::load_from(&path);
+        assert_eq!(cfg.client_id.as_deref(), Some("c"));
+        assert_eq!(cfg.phones, Some(2));
+        assert_eq!(cfg.paired_at, Some(1));
+        assert_eq!(cfg.machine_name.as_deref(), Some("m"));
+        assert_eq!(cfg.registered_at, Some(2));
+        assert_eq!(cfg.update_checked_at, Some(3));
+        assert_eq!(cfg.licence_checked_at, Some(4));
+        assert_eq!(cfg.pair_nudge_last_at, Some(5));
+        let _ = fs::remove_dir_all(&dir);
     }
 }

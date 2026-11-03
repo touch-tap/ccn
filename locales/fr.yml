@@ -125,7 +125,6 @@ doctor:
   hooks_stale: "les hooks pointent vers un autre binaire ccn ; lance `ccn setup` pour les mettre à jour"
   mac_app_hooks: "les hooks de l'app Mac sont aussi installés (lance `ccn setup --replace-mac-app`)"
   presence: "présence : inactif depuis %{idle}s, seuil %{threshold}s"
-  presence_none: "présence : indétectable ici, chaque demande attend donc le téléphone"
   replies: "réponses : les autorisations et les réponses aux questions depuis le téléphone marchent dans tout terminal ; le texte libre vers une session inactive %{free_text}"
   replies_tmux: "marche (tmux)"
   replies_no_tmux: "demande tmux"
@@ -195,6 +194,11 @@ hook:
   # Le serveur écrit le titre, le corps et la commande dans la langue de l'utilisateur ; ceci ne fait que les assembler
   nudge_message: "Claude Code Notifier : %{title} %{body} %{command}"
   needs_attention: "Demande ton attention"
+
+hooks:
+  doctor_presence_none: "présence : non détectable ici, donc rien n'attend le téléphone : il reçoit une note et vous répondez dans le terminal (`ccn config set hold_without_presence on` pour attendre quand même)"
+  doctor_presence_none_hold: "présence : non détectable ici, et hold_without_presence est activé, donc chaque demande attend le téléphone jusqu'à sa réponse ou la fin du délai maximal"
+  doctor_duplicate_hooks: "Les hooks de ccn figurent dans plusieurs fichiers de réglages (%{paths}) : Claude Code exécute les deux copies si leurs commandes diffèrent, et `ccn uninstall` ne retire que celles de vos réglages utilisateur. Gardez-les dans un seul"
 
 licence:
   already_licensed: "Cet ordinateur a déjà une licence (%{licence})."
@@ -295,3 +299,48 @@ api:
   saving_settings: "enregistrement des réglages"
   sending_event: "envoi de l'événement"
   waiting_response: "attente d'une réponse : %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "une autre mise à jour de ccn est déjà en cours. Réessayez dans quelques minutes"
+
+local_files:
+  config_unreadable: "Impossible de lire %{path} (%{error}), donc ccn ne l'écrasera pas. Corrige le fichier, ou supprime-le et relance `ccn pair`."
+  slot_not_freed: "Impossible de libérer la place de cet ordinateur sur la licence (%{error}). S'il a une licence, libère sa place sur claudecodenotifier.com/licence avec ta clé."
+  kept_dir: "Fichiers de ccn supprimés de %{path}. Le dossier contient d'autres fichiers, il a donc été conservé."
+  remove_binary: "ccn lui-même est toujours installé. Pour le supprimer : %{command}"
+
+payload:
+  plan_waiting: "Claude a préparé un plan et attend ton approbation."
+  plan_ready: "Plan prêt à approuver"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "Oui, accepter les modifications automatiquement"
+  plan_manual_edits: "Oui, approuver chaque modification"
+  plan_keep_planning: "Non, continuer à planifier"
+  needs_permission: "%{tool} demande une autorisation"
+  permission_required: "Autorisation requise"
+  has_questions: "Claude a des questions"
+  finished_prompt: "Terminé : %{prompt}"
+  question_header: "Question"
+  approve_plan: "Approuver le plan"
+  pattern: "Motif : %{pattern}"
+  search: "Recherche : %{pattern}"
+
+net:
+  unreachable: "Impossible de joindre le serveur de Claude Code Notifier. Vérifie ta connexion internet et réessaie."
+  doctor_unreachable: "serveur : impossible de joindre %{url}. Vérifie ta connexion internet, ton proxy ou ton pare-feu"
+
+clap:
+  usage: "Utilisation :"
+  commands: "Commandes :"
+  arguments: "Arguments :"
+  options: "Options :"
+  help: "Afficher l'aide"
+  version: "Afficher la version"
+  help_command: "Afficher l'aide de ccn ou de l'une de ses commandes"
+  help_command_arg: "La commande dont afficher l'aide"
+  error_hint: "Lance `ccn --help` pour voir les commandes et les options."
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "la signature de la version n'est pas valide, rien n'a donc été modifié. Réessaie plus tard ou réinstalle depuis claudecodenotifier.com/cli"

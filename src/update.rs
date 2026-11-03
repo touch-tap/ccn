@@ -14,7 +14,12 @@
 //! Where the latest version comes from: `GET {server}/api/cli/latest`, falling back to the GitHub
 //! releases API. The assets are the ones .github/workflows/release.yml publishes under the
 //! release's `downloadBase`: `ccn-<triple>.tar.gz` (Unix) or `ccn-<triple>.zip` (Windows), plus
-//! `SHA256SUMS`. The download is checked against SHA256SUMS before anything is written, the new
+//! `SHA256SUMS`. That base is pinned to this repository's GitHub releases over https whatever the
+//! server says (`CCN_DOWNLOAD_BASE` overrides it for tests), because SHA256SUMS comes from the same
+//! place as the archive: a base anyone else chose could vouch for its own binary. SHA256SUMS must
+//! also carry `SHA256SUMS.sig`, an ed25519 signature by a key in `RELEASE_KEYS`, made on the
+//! release Mac, so changing the files on GitHub isn't enough either. The download is
+//! checked against SHA256SUMS before anything is written, the new
 //! binary is written beside the old one and must run before it is renamed over it, so a hook
 //! running mid-update never sees a half-written file.
 
@@ -41,6 +46,17 @@ const GITHUB_LATEST: &str = "https://api.github.com/repos/touch-tap/ccn/releases
 const RELEASES_BASE: &str = "https://github.com/touch-tap/ccn/releases/download";
 /// Release archives are about 2 MB; anything near this is not one of ours.
 const MAX_DOWNLOAD: u64 = 64 * 1024 * 1024;
+/// An update lock older than this was left by an upgrader that died: two 120 s downloads and the
+/// version probe fit well inside it.
+const STALE_LOCK: Duration = Duration::from_secs(10 * 60);
+/// How long the new binary's `--version` may take before it counts as not running.
+const PROBE_TIMEOUT: Duration = Duration::from_secs(10);
+/// The ed25519 public keys a release's `SHA256SUMS.sig` must verify against. The private key is
+/// in the release Mac's keychain (scripts/release.sh signs with it; RELEASING.md, "The update
+/// signing key"). Pinning the download to GitHub stops anyone with the server choosing the files;
+/// the signature also stops anyone who could change the release's files on GitHub. To rotate,
+/// ship a release that lists both keys, then sign with the new one.
+const RELEASE_KEYS: &[&str] = &["9af037468a4b22787da3e45609bcacb9421648ef17e8694e815793e02317380a"];
 
 pub struct Mode {
     /// Only report whether a newer release exists
@@ -81,6 +97,14 @@ pub fn run(mode: Mode) -> Result<()> {
         }
         Err(err) => Err(err),
     }
+}
+
+/// `CCN_DOWNLOAD_BASE`: where to fetch the archive and SHA256SUMS instead of GitHub, for the
+/// tests and CI's local release server. The install scripts read the same variable.
+fn download_base_override() -> Option<String> {
+    std::env::var("CCN_DOWNLOAD_BASE")
+        .ok()
+        .filter(|base| !base.is_empty())
 }
 
 fn run_inner(mode: &Mode) -> Result<i32> {
@@ -164,6 +188,15 @@ fn run_inner(mode: &Mode) -> Result<i32> {
         );
     }
 
+    // Two SessionStarts a moment apart can each start an upgrader: only one downloads and swaps
+    let Some(_lock) = UpdateLock::acquire().map_err(|e| failed("install", e))? else {
+        if mode.background {
+            log("update: another ccn upgrade is already running");
+            return Ok(0);
+        }
+        bail!("{}", t!("update_lock.busy"));
+    };
+
     let asset = this_asset()
         .with_context(|| {
             t!(
@@ -190,9 +223,22 @@ fn run_inner(mode: &Mode) -> Result<i32> {
         ));
     }
 
-    let base = latest.download_base.trim_end_matches('/');
-    let archive = download(&format!("{base}/{asset}")).map_err(|e| failed("download", e))?;
-    let sums = download(&format!("{base}/SHA256SUMS")).map_err(|e| failed("download", e))?;
+    let overridden = download_base_override();
+    let https_only = overridden.is_none();
+    let base = overridden.unwrap_or(latest.download_base);
+    let base = base.trim_end_matches('/');
+    let archive =
+        download(&format!("{base}/{asset}"), https_only).map_err(|e| failed("download", e))?;
+    let sums =
+        download(&format!("{base}/SHA256SUMS"), https_only).map_err(|e| failed("download", e))?;
+    let signature = download(&format!("{base}/SHA256SUMS.sig"), https_only)
+        .map_err(|e| failed("signature", e))?;
+    if !signature_valid(&sums, &signature, &release_keys()) {
+        return Err(failed(
+            "signature",
+            anyhow::anyhow!("{}", t!("update_signature.invalid")),
+        ));
+    }
     let expected = checksum_for(&String::from_utf8_lossy(&sums), &asset)
         .with_context(|| t!("update.no_checksum", asset = asset).into_owned())
         .map_err(|e| failed("checksum", e))?;
@@ -360,18 +406,32 @@ fn spawn_background() {
 
 /// "homebrew", "npm", "scoop", "winget" from the binary's path; otherwise what the install
 /// scripts and npx told telemetry ("script", "powershell", "npx") or "other".
+///
+/// Decided from the resolved path: `hookcfg::exe_path` maps a Cellar binary back to brew's link,
+/// and on an Intel Mac that link is `/usr/local/bin/ccn`, which says nothing about Homebrew. Taken
+/// at face value, the daily upgrade would replace brew's symlink with a file of its own.
 fn detect_method(exe: &Path) -> &'static str {
-    method_from_path(exe).unwrap_or_else(telemetry::install_method)
+    method_from_path_resolved(exe).unwrap_or_else(telemetry::install_method)
+}
+
+/// The method from where `exe` really is (following brew's and winget's links, scoop's `current`
+/// junction), falling back to the path as given when it cannot be resolved.
+pub(crate) fn method_from_path_resolved(exe: &Path) -> Option<&'static str> {
+    exe.canonicalize()
+        .ok()
+        .and_then(|real| method_from_path(&real))
+        .or_else(|| method_from_path(exe))
 }
 
 fn method_from_path(exe: &Path) -> Option<&'static str> {
     let path = exe.to_string_lossy().replace('\\', "/");
     let lower = path.to_ascii_lowercase();
-    if path.contains("/Cellar/") || path.contains("/homebrew/") || path.contains("linuxbrew") {
+    // `/Cellar/ccn/` under any prefix: /opt/homebrew, /usr/local, ~/.linuxbrew or a custom one
+    if path.contains("/Cellar/ccn/") || path.contains("/homebrew/") || path.contains("linuxbrew") {
         Some("homebrew")
     } else if lower.contains("/scoop/apps/ccn/") {
         Some("scoop")
-    } else if lower.contains("/winget/packages/") {
+    } else if lower.contains("/winget/packages/") || lower.contains("/winget/links/") {
         Some("winget")
     } else if path.contains("node_modules") {
         Some("npm")
@@ -460,6 +520,47 @@ fn checksum_for(sums: &str, asset: &str) -> Option<String> {
     })
 }
 
+/// The keys a release signature may verify against. A debug build (the tests) also accepts
+/// `CCN_UPDATE_PUBLIC_KEY`, so tests can sign with a key of their own; a release build never does,
+/// or the variable would let anyone who can set it vouch for their own binary.
+fn release_keys() -> Vec<String> {
+    let mut keys: Vec<String> = RELEASE_KEYS.iter().map(|k| k.to_string()).collect();
+    if cfg!(debug_assertions)
+        && let Ok(key) = std::env::var("CCN_UPDATE_PUBLIC_KEY")
+        && !key.is_empty()
+    {
+        keys.push(key);
+    }
+    keys
+}
+
+fn unhex<const N: usize>(text: &str) -> Option<[u8; N]> {
+    let text = text.trim();
+    if text.len() != N * 2 || !text.is_ascii() {
+        return None;
+    }
+    let mut out = [0u8; N];
+    for (i, byte) in out.iter_mut().enumerate() {
+        *byte = u8::from_str_radix(&text[i * 2..i * 2 + 2], 16).ok()?;
+    }
+    Some(out)
+}
+
+/// Whether `signature` (128 hex characters, as release-sign writes it) is an ed25519 signature of
+/// `sums` by one of `keys` (64 hex characters each).
+fn signature_valid(sums: &[u8], signature: &[u8], keys: &[String]) -> bool {
+    use ed25519_dalek::{Signature, VerifyingKey};
+    let Some(bytes) = std::str::from_utf8(signature).ok().and_then(unhex::<64>) else {
+        return false;
+    };
+    let signature = Signature::from_bytes(&bytes);
+    keys.iter().any(|key| {
+        unhex::<32>(key)
+            .and_then(|key| VerifyingKey::from_bytes(&key).ok())
+            .is_some_and(|key| key.verify_strict(sums, &signature).is_ok())
+    })
+}
+
 fn sha256_hex(bytes: &[u8]) -> String {
     use sha2::Digest;
     let digest = sha2::Sha256::digest(bytes);
@@ -475,8 +576,14 @@ fn sha256_hex(bytes: &[u8]) -> String {
 // ============================================
 
 fn agent(timeout: Duration) -> ureq::Agent {
+    agent_with(timeout, false)
+}
+
+/// `https_only` also refuses a redirect to plain http, which GitHub's downloads never need.
+fn agent_with(timeout: Duration, https_only: bool) -> ureq::Agent {
     ureq::Agent::config_builder()
         .timeout_global(Some(timeout))
+        .https_only(https_only)
         .http_status_as_error(false)
         .user_agent(format!("ccn/{VERSION}"))
         .build()
@@ -499,8 +606,8 @@ fn get_json(url: &str, timeout: Duration) -> Result<Value> {
         .with_context(|| format!("GET {url}: not JSON"))
 }
 
-fn download(url: &str) -> Result<Vec<u8>> {
-    let mut response = agent(Duration::from_secs(120))
+fn download(url: &str, https_only: bool) -> Result<Vec<u8>> {
+    let mut response = agent_with(Duration::from_secs(120), https_only)
         .get(url)
         .call()
         .with_context(|| format!("GET {url}"))?;
@@ -534,6 +641,17 @@ fn fetch_latest(server_url: &str) -> Result<Latest> {
     }
 }
 
+/// `{RELEASES_BASE}/<tag>`, the only download base an update is taken from. None for a tag that
+/// could step out of the release's folder or is not a version at all.
+fn pinned_base(tag: &str) -> Option<String> {
+    let safe = !tag.is_empty()
+        && tag
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "._-+".contains(c))
+        && parse_version(tag).is_some();
+    safe.then(|| format!("{RELEASES_BASE}/{tag}"))
+}
+
 fn latest_from_server(v: &Value) -> Result<Latest> {
     let version = v["version"]
         .as_str()
@@ -541,16 +659,20 @@ fn latest_from_server(v: &Value) -> Result<Latest> {
         .context("the server's reply has no version")?
         .trim_start_matches('v')
         .to_string();
-    let download_base = match v["downloadBase"].as_str() {
-        Some(base) => base.to_string(),
-        None => format!(
-            "{RELEASES_BASE}/{}",
-            v["tag"]
-                .as_str()
-                .map(str::to_string)
-                .unwrap_or_else(|| format!("v{version}"))
-        ),
-    };
+    let tag = v["tag"]
+        .as_str()
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("v{version}"));
+    let download_base =
+        pinned_base(&tag).with_context(|| format!("the server's tag {tag:?} is not a release"))?;
+    // The server only says which release; where it is downloaded from is not its to choose
+    if let Some(base) = v["downloadBase"].as_str()
+        && base.trim_end_matches('/') != download_base
+    {
+        log(&format!(
+            "update: ignoring the server's downloadBase {base:?}; using {download_base}"
+        ));
+    }
     Ok(Latest {
         version,
         download_base,
@@ -564,7 +686,8 @@ fn latest_from_github(v: &Value) -> Result<Latest> {
         .context("GitHub's reply has no tag_name")?;
     Ok(Latest {
         version: tag.trim_start_matches('v').to_string(),
-        download_base: format!("{RELEASES_BASE}/{tag}"),
+        download_base: pinned_base(tag)
+            .with_context(|| format!("GitHub's tag {tag:?} is not a release"))?,
         assets: asset_list(&v["assets"], |a| a["name"].as_str()),
     })
 }
@@ -623,8 +746,66 @@ fn extract_binary(archive: &[u8]) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
-/// Writes `<target>.new` beside the target, checks it runs, then swaps it in. On any failure the
-/// `.new` file is removed and the target is as it was.
+/// `update.lock` in ccn's folder, made with create_new so exactly one upgrader holds it; removed
+/// when dropped. A lock older than STALE_LOCK is taken over.
+struct UpdateLock(PathBuf);
+
+impl UpdateLock {
+    /// None when another upgrader holds it.
+    fn acquire() -> Result<Option<UpdateLock>> {
+        let dir = config::ccn_dir();
+        fs::create_dir_all(&dir).with_context(|| format!("creating {}", dir.display()))?;
+        Self::acquire_at(dir.join("update.lock"), STALE_LOCK)
+    }
+
+    fn acquire_at(path: PathBuf, stale: Duration) -> Result<Option<UpdateLock>> {
+        use std::io::{ErrorKind, Write};
+        for _ in 0..2 {
+            match fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&path)
+            {
+                Ok(mut file) => {
+                    let _ = writeln!(file, "{}", std::process::id());
+                    return Ok(Some(UpdateLock(path)));
+                }
+                Err(err) if err.kind() == ErrorKind::AlreadyExists => {
+                    let age = fs::metadata(&path)
+                        .and_then(|m| m.modified())
+                        .ok()
+                        .and_then(|t| t.elapsed().ok());
+                    match age {
+                        // A crashed upgrader's: clear it and try once more. If two of us race
+                        // here, create_new still lets only one in.
+                        Some(age) if age > stale => {
+                            log(&format!(
+                                "update: taking over a lock left {}s ago",
+                                age.as_secs()
+                            ));
+                            let _ = fs::remove_file(&path);
+                        }
+                        _ => return Ok(None),
+                    }
+                }
+                Err(err) => {
+                    return Err(err).with_context(|| format!("creating {}", path.display()));
+                }
+            }
+        }
+        Ok(None)
+    }
+}
+
+impl Drop for UpdateLock {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.0);
+    }
+}
+
+/// Writes `<target>.<pid>.new` beside the target, checks it runs, then swaps it in. On any
+/// failure that file is removed and the target is as it was. The pid keeps two upgraders that
+/// got past the lock (a stale takeover) from writing into each other's file.
 fn install_binary(bytes: &[u8], target: &Path) -> Result<()> {
     let dir = target
         .parent()
@@ -635,7 +816,7 @@ fn install_binary(bytes: &[u8], target: &Path) -> Result<()> {
         .file_name()
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_else(|| "ccn".to_string());
-    let tmp = dir.join(format!("{name}.new"));
+    let tmp = dir.join(format!("{name}.{}.new", std::process::id()));
     let result = write_and_swap(bytes, &tmp, target);
     if result.is_err() {
         let _ = fs::remove_file(&tmp);
@@ -656,17 +837,46 @@ fn write_and_swap(bytes: &[u8], tmp: &Path, target: &Path) -> Result<()> {
         use std::os::unix::fs::PermissionsExt;
         fs::set_permissions(tmp, fs::Permissions::from_mode(0o755))?;
     }
-    let runs = Command::new(tmp)
-        .arg("--version")
-        .stdin(Stdio::null())
-        .stderr(Stdio::null())
-        .output()
-        .map(|o| o.status.success() && !o.stdout.is_empty())
-        .unwrap_or(false);
-    if !runs {
+    if !runs_within(tmp, PROBE_TIMEOUT) {
         bail!("{}", t!("update.did_not_run"));
     }
     swap(tmp, target)
+}
+
+/// Whether `exe --version` prints something and succeeds within `timeout`. A binary that hangs
+/// (or waits on something it should not) is killed and counts as not running, so a background
+/// upgrader can never be left waiting on it.
+fn runs_within(exe: &Path, timeout: Duration) -> bool {
+    use std::io::Read;
+    let Ok(mut child) = Command::new(exe)
+        .arg("--version")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+    else {
+        return false;
+    };
+    let deadline = std::time::Instant::now() + timeout;
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(25));
+            }
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return false;
+            }
+        }
+    };
+    // `--version` is one short line, far below a pipe's buffer, so it is all there once it exits
+    let mut stdout = Vec::new();
+    if let Some(mut pipe) = child.stdout.take() {
+        let _ = pipe.read_to_end(&mut stdout);
+    }
+    status.success() && !stdout.is_empty()
 }
 
 #[cfg(unix)]
@@ -689,6 +899,41 @@ fn swap(tmp: &Path, target: &Path) -> Result<()> {
     }
     let _ = fs::remove_file(&old);
     Ok(())
+}
+
+#[cfg(test)]
+mod signature_tests {
+    use super::*;
+    use ed25519_dalek::{Signer, SigningKey};
+
+    fn hex(bytes: &[u8]) -> String {
+        bytes.iter().map(|b| format!("{b:02x}")).collect()
+    }
+
+    #[test]
+    fn accepts_only_a_signature_by_a_listed_key_over_these_exact_sums() {
+        let key = SigningKey::from_bytes(&[1; 32]);
+        let other = SigningKey::from_bytes(&[2; 32]);
+        let keys = vec![hex(key.verifying_key().as_bytes())];
+        let sums = b"abc  ccn-x86_64-unknown-linux-gnu.tar.gz\n";
+        let good = format!("{}\n", hex(&key.sign(sums).to_bytes()));
+        assert!(signature_valid(sums, good.as_bytes(), &keys));
+        // Another key, other contents, and things that aren't signatures
+        let wrong = hex(&other.sign(sums).to_bytes());
+        assert!(!signature_valid(sums, wrong.as_bytes(), &keys));
+        assert!(!signature_valid(b"changed", good.as_bytes(), &keys));
+        assert!(!signature_valid(sums, b"", &keys));
+        assert!(!signature_valid(sums, b"<html>Not Found</html>", &keys));
+        assert!(!signature_valid(sums, good.as_bytes(), &[]));
+    }
+
+    #[test]
+    fn the_built_in_release_keys_are_valid_public_keys() {
+        for key in RELEASE_KEYS {
+            let bytes = unhex::<32>(key).expect("64 hex characters");
+            assert!(ed25519_dalek::VerifyingKey::from_bytes(&bytes).is_ok());
+        }
+    }
 }
 
 #[cfg(test)]
@@ -804,6 +1049,17 @@ deadbeef  ccn-x86_64-apple-darwin.tar.gz
             )),
             Some("winget")
         );
+        assert_eq!(
+            method_from_path(&p("/usr/local/Cellar/ccn/0.2.0/bin/ccn")),
+            Some("homebrew"),
+            "an Intel Mac's prefix has no `homebrew` in it"
+        );
+        assert_eq!(
+            method_from_path(&p(
+                r"C:\Users\jack\AppData\Local\Microsoft\WinGet\Links\ccn.exe"
+            )),
+            Some("winget")
+        );
         assert_eq!(method_from_path(&p("/Users/jack/.local/bin/ccn")), None);
         assert_eq!(
             method_from_path(&p(r"C:\Users\jack\AppData\Local\Programs\ccn\ccn.exe")),
@@ -869,6 +1125,45 @@ deadbeef  ccn-x86_64-apple-darwin.tar.gz
     }
 
     #[test]
+    fn the_download_base_is_always_this_repositorys_releases() {
+        let pinned = "https://github.com/touch-tap/ccn/releases/download/v0.4.0";
+        for hostile in [
+            "http://github.com/touch-tap/ccn/releases/download/v0.4.0",
+            "https://evil.example/ccn/v0.4.0",
+            "https://github.com/someone-else/ccn/releases/download/v0.4.0",
+            "https://github.com/touch-tap/ccn/releases/download/v0.4.0/../../../x",
+        ] {
+            let latest = latest_from_server(&json!({
+                "version": "0.4.0", "tag": "v0.4.0", "downloadBase": hostile
+            }))
+            .unwrap();
+            assert_eq!(latest.download_base, pinned, "{hostile} was not ignored");
+        }
+        // A trailing slash on the right base is still the right base
+        let latest = latest_from_server(&json!({
+            "version": "0.4.0", "tag": "v0.4.0", "downloadBase": format!("{pinned}/")
+        }))
+        .unwrap();
+        assert_eq!(latest.download_base, pinned);
+
+        // A tag that would leave the release's folder is refused, from either source
+        for tag in ["../../evil", "v0.4.0/../x", "v0.4.0?x=1", "latest", ""] {
+            assert!(
+                latest_from_server(&json!({ "version": "0.4.0", "tag": tag })).is_err(),
+                "{tag:?}"
+            );
+            assert!(
+                latest_from_github(&json!({ "tag_name": tag })).is_err(),
+                "{tag:?}"
+            );
+        }
+        assert_eq!(
+            pinned_base("v0.4.0-beta.1").as_deref(),
+            Some("https://github.com/touch-tap/ccn/releases/download/v0.4.0-beta.1")
+        );
+    }
+
+    #[test]
     fn the_daily_check_runs_once_a_day_and_announces_once_a_week() {
         let now = 1_800_000_000;
         let mut cfg = Config::default();
@@ -906,6 +1201,70 @@ deadbeef  ccn-x86_64-apple-darwin.tar.gz
             (false, None),
             "older is never announced"
         );
+    }
+
+    #[test]
+    fn only_one_upgrader_holds_the_lock_and_a_stale_one_is_taken_over() {
+        let dir = std::env::temp_dir().join(format!("ccn-update-lock-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("update.lock");
+
+        let first = UpdateLock::acquire_at(path.clone(), STALE_LOCK).unwrap();
+        assert!(first.is_some());
+        assert!(
+            UpdateLock::acquire_at(path.clone(), STALE_LOCK)
+                .unwrap()
+                .is_none(),
+            "a second upgrader waits its turn"
+        );
+        drop(first);
+        assert!(!path.exists(), "released when dropped");
+
+        // Left behind by an upgrader that died
+        fs::write(&path, "1\n").unwrap();
+        let old = std::time::SystemTime::now() - Duration::from_secs(3600);
+        fs::File::options()
+            .write(true)
+            .open(&path)
+            .unwrap()
+            .set_modified(old)
+            .unwrap();
+        let taken = UpdateLock::acquire_at(path.clone(), STALE_LOCK).unwrap();
+        assert!(taken.is_some(), "a stale lock is taken over");
+        drop(taken);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn a_new_binary_that_hangs_does_not_count_as_running() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("ccn-update-probe-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let script = |name: &str, body: &str| {
+            let path = dir.join(name);
+            fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+            path
+        };
+        let ok = script("ok", "echo ccn 9.9.9");
+        let hangs = script("hangs", "exec sleep 30");
+        let silent = script("silent", "exit 0");
+        let fails = script("fails", "echo ccn; exit 1");
+
+        assert!(runs_within(&ok, Duration::from_secs(5)));
+        let started = std::time::Instant::now();
+        assert!(!runs_within(&hangs, Duration::from_millis(300)));
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "killed, not waited for"
+        );
+        assert!(!runs_within(&silent, Duration::from_secs(5)));
+        assert!(!runs_within(&fails, Duration::from_secs(5)));
+        assert!(!runs_within(&dir.join("missing"), Duration::from_secs(5)));
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

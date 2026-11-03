@@ -11,6 +11,14 @@
 # CCN_NO_ANALYTICS=1 (or DO_NOT_TRACK=1) stops the anonymous install events.
 set -eu
 
+# Where the install line came from: web, app or link when the script is fetched from
+# claudecodenotifier.com/<source>/install.sh (the site rewrites the next line), direct otherwise.
+source_tag="${CCN_INSTALL_SOURCE:-direct}"
+# The same rule as ccn's telemetry.rs: lowercase letters, digits, _ and -, at most 32 of them.
+# Spelt out because [a-z] also matches capitals in some locales.
+case "$source_tag" in ""|*[!abcdefghijklmnopqrstuvwxyz0123456789_-]*) source_tag="other" ;; esac
+[ ${#source_tag} -le 32 ] || source_tag="other"
+
 repo="touch-tap/ccn"
 code=""
 licence=""
@@ -34,7 +42,7 @@ case "$(uname -s)" in Darwin) model="macos" ;; Linux) model="linux" ;; *) model=
 case "$(uname -m)" in arm64|aarch64) model="$model-aarch64" ;; x86_64|amd64) model="$model-x86_64" ;; *) model="$model-other" ;; esac
 track() {
   case "${CCN_NO_ANALYTICS:-}${DO_NOT_TRACK:-}" in ""|0|00) ;; *) return 0 ;; esac
-  body="{\"context\":{\"platform\":\"cli\",\"deviceModel\":\"$model\",\"environment\":\"production\"},\"events\":[{\"name\":\"$1\",\"properties\":{\"method\":\"script\"${2:+,$2}}}]}"
+  body="{\"context\":{\"platform\":\"cli\",\"deviceModel\":\"$model\",\"environment\":\"production\"},\"events\":[{\"name\":\"$1\",\"properties\":{\"method\":\"script\",\"source\":\"$source_tag\"${2:+,$2}}}]}"
   url="${CCN_SERVER_URL:-https://ccnotifier-api.touchtap.workers.dev}/api/events"
   if command -v curl >/dev/null 2>&1; then
     curl -fsS -m 3 -H 'Content-Type: application/json' -d "$body" "$url" >/dev/null 2>&1 || true
@@ -86,7 +94,8 @@ fetch "$base/$asset" "$tmp/$asset" || fail "could not download $base/$asset"
 fetch "$base/SHA256SUMS" "$tmp/SHA256SUMS" || fail "could not download the checksums"
 
 stage="checksum"
-expected="$(awk -v f="$asset" '$2 == f { print $1 }' "$tmp/SHA256SUMS")"
+# `<hash>  <name>`, or `<hash> *<name>` from a binary-mode sha256sum
+expected="$(awk -v f="$asset" '{ n = $2; sub(/^\*/, "", n) } n == f { print $1; exit }' "$tmp/SHA256SUMS")"
 if command -v sha256sum >/dev/null 2>&1; then
   actual="$(sha256sum "$tmp/$asset" | awk '{ print $1 }')"
 else
@@ -97,12 +106,14 @@ fi
 stage="unpack"
 tar xzf "$tmp/$asset" -C "$tmp" || fail "could not unpack $asset"
 mkdir -p "$dir"
-# Write beside the target and rename, so a hook running the old binary is never half-overwritten
-cp "$tmp/ccn" "$dir/.ccn.new"
-chmod 755 "$dir/.ccn.new"
-mv "$dir/.ccn.new" "$dir/ccn"
+# Write beside the target, check it runs, then rename: a hook running the old binary never sees a
+# half-written file, and a download that doesn't run leaves the old one in place
+new="$dir/.ccn.new.$$"
+cp "$tmp/ccn" "$new"
+chmod 755 "$new"
 stage="run"
-version="$("$dir/ccn" --version)" || fail "the downloaded ccn did not run"
+version="$("$new" --version)" || { rm -f "$new"; fail "the downloaded ccn did not run, so nothing was changed"; }
+mv "$new" "$dir/ccn" || { rm -f "$new"; fail "could not replace $dir/ccn"; }
 say "Installed $version to $dir/ccn"
 
 ccn="ccn"
@@ -121,6 +132,7 @@ on_path=yes
 track cli_install_finished "\"pairing\":\"$([ -n "$code" ] && echo yes || echo no)\",\"on_path\":\"$on_path\""
 
 export CCN_INSTALL_METHOD=script
+export CCN_INSTALL_SOURCE="$source_tag"
 # Hooks and desktop notifications first, before any pairing: from here on every claude session is
 # covered, phone or no phone. A problem with settings.json doesn't stop the install.
 say ""
@@ -131,6 +143,9 @@ if [ -n "$licence" ]; then
   say ""
   "$dir/ccn" activate "$licence" < /dev/null || say "The licence wasn't applied. Try again later: $ccn activate $licence"
 fi
+# exec replaces this shell, so the EXIT trap never runs: clear the download first
+rm -rf "$tmp"
+trap - EXIT
 if [ -n "$code" ]; then
   say ""
   # stdin is the piped script, so give pair the terminal for any question it asks

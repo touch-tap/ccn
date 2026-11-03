@@ -9,12 +9,20 @@
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
+# Where the install line came from: web, app or link when the script is fetched from
+# claudecodenotifier.com/<source>/install.ps1 (the site rewrites the next line), direct otherwise.
+$sourceTag = if ($env:CCN_INSTALL_SOURCE) { $env:CCN_INSTALL_SOURCE } else { 'direct' }
+# The same rule as ccn's telemetry.rs: lowercase letters, digits, _ and -, at most 32 of them
+# (-cnotmatch: PowerShell's -notmatch ignores case)
+if ($sourceTag -cnotmatch '^[a-z0-9_-]{1,32}$') { $sourceTag = 'other' }
+
 # One anonymous event per step, so we can see where installs fail: the event name, the stage, the
 # processor. Nothing else. $env:CCN_NO_ANALYTICS = "1" (or DO_NOT_TRACK) turns it off.
 $stage = 'start'
 function Send-SetupEvent([string]$name, [hashtable]$properties = @{}) {
     if (($env:CCN_NO_ANALYTICS -and $env:CCN_NO_ANALYTICS -ne '0') -or ($env:DO_NOT_TRACK -and $env:DO_NOT_TRACK -ne '0')) { return }
     $properties['method'] = 'powershell'
+    $properties['source'] = $sourceTag
     $body = @{
         context = @{ platform = 'cli'; deviceModel = "windows-$arch"; environment = 'production' }
         events = @(@{ name = $name; properties = $properties })
@@ -46,17 +54,31 @@ try {
 
     $stage = 'unpack'
     Expand-Archive (Join-Path $tmp $asset) -DestinationPath $tmp -Force
+    # Run the download before it replaces anything, so one that doesn't run leaves the old ccn
+    $stage = 'run'
+    $new = Join-Path $tmp 'ccn.exe'
+    $version = & $new --version
+    if ($LASTEXITCODE -ne 0 -or -not $version) { throw "the downloaded ccn did not run, so nothing was changed" }
+
+    $stage = 'install'
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
-    # A running ccn.exe cannot be overwritten but can be renamed, so move it aside first
+    # A running ccn.exe cannot be overwritten but can be renamed, so move it aside first, and put
+    # it back if the new one cannot take its place
     $target = Join-Path $dir 'ccn.exe'
+    $old = Join-Path $dir 'ccn.old.exe'
+    $movedAside = $false
     if (Test-Path $target) {
-        $old = Join-Path $dir 'ccn.old.exe'
         Remove-Item $old -Force -ErrorAction SilentlyContinue
         Move-Item $target $old -Force
+        $movedAside = $true
     }
-    Move-Item (Join-Path $tmp 'ccn.exe') $target
-    $stage = 'run'
-    Write-Host "Installed $(& $target --version) to $target"
+    try {
+        Move-Item $new $target
+    } catch {
+        if ($movedAside) { Move-Item $old $target -Force -ErrorAction SilentlyContinue }
+        throw
+    }
+    Write-Host "Installed $version to $target"
 } catch {
     Send-SetupEvent 'cli_install_failed' @{ stage = $stage }
     throw
@@ -74,6 +96,7 @@ if (-not (($env:Path -split ';') -contains $dir)) { $env:Path = "$env:Path;$dir"
 Send-SetupEvent 'cli_install_finished'
 # The install line runs `ccn pair` next in this same session
 $env:CCN_INSTALL_METHOD = 'powershell'
+$env:CCN_INSTALL_SOURCE = $sourceTag
 
 # Hooks and desktop notifications first, before any pairing: from here on every claude session is
 # covered, phone or no phone. A problem with settings.json doesn't stop the install.

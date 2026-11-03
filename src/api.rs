@@ -36,6 +36,22 @@ pub fn is_rejected(err: &anyhow::Error) -> bool {
     err.downcast_ref::<Rejected>().is_some()
 }
 
+/// Whether a reply means the server refused this computer's credentials. The server's auth
+/// middleware answers 401 UNAUTHORIZED for an unknown token; its 403s (FORBIDDEN, NOT_SUPPORTED)
+/// are about a request, not the credentials. A 403 from in front of the server, such as a
+/// Cloudflare WAF or bot challenge (an HTML page), must not mark the computer unpaired: that
+/// would stop every hook until `ccn pair`. So a 403 counts only with the server's own JSON
+/// UNAUTHORIZED code, in case it ever answers that way.
+fn credentials_rejected(status: u16, body: &str) -> bool {
+    match status {
+        401 => true,
+        403 => serde_json::from_str::<Value>(body)
+            .ok()
+            .is_some_and(|v| v["error"]["code"].as_str() == Some("UNAUTHORIZED")),
+        _ => false,
+    }
+}
+
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
@@ -193,16 +209,16 @@ impl Api {
         .with_context(|| format!("{method} {path}"))?;
 
         let status = response.status().as_u16();
-        if (status == 401 || status == 403) && self.token.is_some() {
-            self.rejected.store(true, Ordering::Relaxed);
-            return Err(anyhow::Error::new(Rejected));
-        }
         let etag = response
             .headers()
             .get("etag")
             .and_then(|v| v.to_str().ok())
             .map(|s| s.to_string());
         let body = response.body_mut().read_to_string().unwrap_or_default();
+        if self.token.is_some() && credentials_rejected(status, &body) {
+            self.rejected.store(true, Ordering::Relaxed);
+            return Err(anyhow::Error::new(Rejected));
+        }
         Ok(Reply { status, body, etag })
     }
 
@@ -626,6 +642,31 @@ mod tests {
         assert_eq!(offer.annual_price, "$39.99");
         assert_eq!(offer.computers, 3);
         assert_eq!(new.nudge_message.unwrap().id, "none-lifetime-a");
+    }
+
+    #[test]
+    fn only_the_servers_own_refusal_counts_as_rejected_credentials() {
+        let unauthorized = r#"{"error":{"code":"UNAUTHORIZED","message":"Invalid auth token"}}"#;
+        assert!(credentials_rejected(401, unauthorized));
+        assert!(credentials_rejected(401, ""));
+        assert!(credentials_rejected(403, unauthorized));
+        // A Cloudflare challenge or WAF block in front of the server
+        assert!(!credentials_rejected(
+            403,
+            "<!DOCTYPE html><html><head><title>Just a moment...</title>"
+        ));
+        assert!(!credentials_rejected(403, ""));
+        // The server's own 403s are about the request, not the computer
+        assert!(!credentials_rejected(
+            403,
+            r#"{"error":{"code":"NOT_SUPPORTED","message":"Licences are for computers running ccn"}}"#
+        ));
+        assert!(!credentials_rejected(
+            403,
+            r#"{"error":{"code":"FORBIDDEN","message":"Not paired with this Mac"}}"#
+        ));
+        assert!(!credentials_rejected(500, unauthorized));
+        assert!(!credentials_rejected(200, ""));
     }
 
     #[test]

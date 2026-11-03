@@ -1,6 +1,11 @@
 //! Builds the messages the server expects: the same shapes the Mac app sends on its WebSocket,
 //! so the server's push code and the phone apps need no change.
+//!
+//! The apps show `title`, `message`, `promptText`, `toolInput` and question headers as sent, so
+//! ccn's own wording here is translated (payload.* keys). Option labels stay English: the apps
+//! recognise "Allow once" and friends by value and English label and show their own translation.
 
+use rust_i18n::t;
 use serde_json::{Value, json};
 
 use crate::session::SessionState;
@@ -10,12 +15,22 @@ pub const PERMISSION_OPTIONS: &[(&str, &str)] = &[
     ("Allow for session", "a"),
     ("Deny", "n"),
 ];
-pub const PLAN_OPTIONS: &[(&str, &str)] = &[
-    ("Yes, clear context and auto-accept", "1"),
-    ("Yes, and manually approve edits", "2"),
-    ("Yes, auto-accept edits", "3"),
-    ("Yes, manually approve edits", "4"),
-];
+/// The plan-approval choices' values. `3` and `4` keep the values earlier versions sent for these
+/// two. The "clear context" choices (`1`, `2`) are gone: a hook can't clear context, so offering
+/// them would be untrue. `n` keeps Claude planning; the phone shows it as the deny button.
+/// respond.rs maps each value.
+pub const PLAN_VALUES: [&str; 3] = ["3", "4", "n"];
+
+/// The plan-approval choices with their labels in the computer's language. Unlike the permission
+/// options, whose English labels the phone apps recognise and translate themselves, the apps show
+/// these labels exactly as sent.
+fn plan_options() -> Value {
+    json!([
+        { "label": t!("payload.plan_accept_edits"), "value": PLAN_VALUES[0] },
+        { "label": t!("payload.plan_manual_edits"), "value": PLAN_VALUES[1] },
+        { "label": t!("payload.plan_keep_planning"), "value": PLAN_VALUES[2] },
+    ])
+}
 
 pub struct Input<'a>(pub &'a Value);
 
@@ -75,12 +90,12 @@ pub fn tool_summary(tool_name: &str, input: &Value) -> Option<String> {
             field("file_path").or_else(|| field("notebook_path"))
         }
         "Bash" => field("command"),
-        "Glob" => field("pattern").map(|p| format!("Pattern: {p}")),
-        "Grep" => field("pattern").map(|p| format!("Search: {p}")),
+        "Glob" => field("pattern").map(|p| t!("payload.pattern", pattern = p).into_owned()),
+        "Grep" => field("pattern").map(|p| t!("payload.search", pattern = p).into_owned()),
         "WebFetch" => field("url"),
         "WebSearch" => field("query"),
         "Task" | "Agent" => field("description"),
-        "ExitPlanMode" => Some("Approve the plan".to_string()),
+        "ExitPlanMode" => Some(t!("payload.approve_plan").into_owned()),
         "AskUserQuestion" => first_question(input),
         _ => {
             // First string field, else a compact JSON rendering
@@ -129,7 +144,8 @@ pub fn questions_from_input(input: &Value) -> Vec<Value> {
             }
             Some(json!({
                 "question": question,
-                "header": q["header"].as_str().unwrap_or("Question"),
+                "header": q["header"].as_str().map(str::to_string)
+                    .unwrap_or_else(|| t!("payload.question_header").into_owned()),
                 "options": options,
                 "multiSelect": q["multiSelect"].as_bool().unwrap_or(false),
             }))
@@ -164,27 +180,26 @@ pub fn permission_card(input: &Input, remote: bool) -> (Value, &'static str, Str
     let is_plan = tool_name == "ExitPlanMode";
 
     let (notification_type, prompt_type, message, prompt_text, opts) = if is_plan {
-        let plan = plan_text(&tool_input).unwrap_or_else(|| {
-            "Claude has created a plan and is waiting for your approval.".to_string()
-        });
+        let plan =
+            plan_text(&tool_input).unwrap_or_else(|| t!("payload.plan_waiting").into_owned());
         (
             "plan_approval",
             "plan_approval",
-            "Plan ready for approval".to_string(),
+            t!("payload.plan_ready").into_owned(),
             plan,
-            options(PLAN_OPTIONS),
+            plan_options(),
         )
     } else {
         let description = tool_input["description"].as_str().unwrap_or("");
         let text = match (&summary, description.is_empty()) {
             (Some(s), false) => format!("{tool_name}: {s}\n\n{description}"),
             (Some(s), true) => format!("{tool_name}: {s}"),
-            (None, _) => format!("{tool_name} needs permission"),
+            (None, _) => t!("payload.needs_permission", tool = tool_name).into_owned(),
         };
         (
             "permission_prompt",
             "permission",
-            "Permission required".to_string(),
+            t!("payload.permission_required").into_owned(),
             text,
             options(PERMISSION_OPTIONS),
         )
@@ -213,17 +228,18 @@ pub fn permission_card(input: &Input, remote: bool) -> (Value, &'static str, Str
 pub fn question_card(input: &Input, questions: &[Value], remote: bool) -> (Value, String) {
     let project = input.project_name();
     let session_id = input.session_id();
+    let fallback = crate::local::question_title();
     let first = questions
         .first()
         .and_then(|q| q["question"].as_str())
-        .unwrap_or("Claude has a question");
+        .unwrap_or(&fallback);
     let key = format!("AskUserQuestion:{first}");
     let card = json!({
         "type": "notification",
         "sessionId": session_id,
         "notificationType": "permission_prompt",
         "title": title(project.as_deref()),
-        "message": "Claude has questions",
+        "message": t!("payload.has_questions"),
         "promptText": first,
         "promptType": "user_question",
         "questions": questions,
@@ -246,18 +262,21 @@ pub fn done_card(input: &Input, state: &SessionState, remote: bool) -> Value {
     let prompt_text = last
         .filter(|s| !s.is_empty())
         .or_else(|| {
-            state
-                .prompt
-                .as_ref()
-                .map(|p| format!("Finished: {}", SessionState::truncate(p, 300)))
+            state.prompt.as_ref().map(|p| {
+                t!(
+                    "payload.finished_prompt",
+                    prompt = SessionState::truncate(p, 300)
+                )
+                .into_owned()
+            })
         })
-        .unwrap_or_else(|| "Claude has finished and is waiting for you.".to_string());
+        .unwrap_or_else(crate::local::finished_body);
     json!({
         "type": "notification",
         "sessionId": session_id,
         "notificationType": "idle_prompt",
         "title": title(project.as_deref()),
-        "message": "Claude has finished",
+        "message": crate::local::finished_title(),
         "promptText": prompt_text,
         "promptType": "freeform",
         "terminalContext": terminal_context(&session_id, &input.cwd(), remote),
