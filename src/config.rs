@@ -752,6 +752,10 @@ const OWN_FILES: &[&str] = &[
     "ccn.log",
     "unpaired.json",
     "icon.png",
+    // hook.rs: when a best-effort update last failed, so other hooks skip the network for a while
+    "offline_at",
+    // update.rs: held while an upgrader runs
+    "update.lock",
 ];
 
 /// Deletes ccn's own files from its directory (the list above, the session files, the macOS
