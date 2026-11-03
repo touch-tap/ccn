@@ -126,7 +126,6 @@ doctor:
   hooks_stale: "钩子指向另一个 ccn 二进制文件；运行 `ccn setup` 更新它们"
   mac_app_hooks: "Mac 应用的钩子也已安装（运行 `ccn setup --replace-mac-app`）"
   presence: "在场检测: 当前已空闲 %{idle} 秒，阈值 %{threshold} 秒"
-  presence_none: "在场检测: 这里无法检测，所以每个请求都会等待手机"
   replies: "回复: 来自手机的批准和问题回答在任何终端都可用；向空闲会话输入自由文本%{free_text}"
   replies_tmux: "可用（tmux）"
   replies_no_tmux: "需要 tmux"
@@ -196,6 +195,11 @@ hook:
   # 标题、正文和命令由服务器用用户的语言写好；这里只是把它们拼起来
   nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
   needs_attention: "需要你处理"
+
+hooks:
+  doctor_presence_none: "在场检测：此处无法检测，因此不会等待手机：手机会收到提醒，你在终端中回复（如仍要等待，运行 `ccn config set hold_without_presence on`）"
+  doctor_presence_none_hold: "在场检测：此处无法检测，且 hold_without_presence 已开启，因此每个请求都会等待手机，直到手机回复或超过最长等待时间"
+  doctor_duplicate_hooks: "ccn 的钩子出现在多个设置文件中（%{paths}）：命令不同时 Claude Code 会两份都运行，而 `ccn uninstall` 只会移除用户设置中的那份。只保留在一个文件中"
 
 licence:
   already_licensed: "这台电脑已有许可（%{licence}）。"

@@ -308,6 +308,9 @@ pub struct Config {
     pub update_available: Option<String>,
     /// When `update_available` was last mentioned in Claude Code
     pub update_announced_at: Option<i64>,
+    /// Hold Claude for the phone even where presence can't be detected (`ccn config set
+    /// hold_without_presence on`; default off, since typing can't then release the hold)
+    pub hold_without_presence: bool,
     /// The file as this process read it, to save only the fields it changed (see `save`)
     #[serde(skip)]
     loaded: Option<toml::Table>,
@@ -344,6 +347,7 @@ impl Default for Config {
             update_checked_at: None,
             update_available: None,
             update_announced_at: None,
+            hold_without_presence: false,
             loaded: None,
             unreadable: None,
         }
@@ -548,6 +552,12 @@ impl Config {
         if count > 0 && self.paired_at.is_none() {
             self.paired_at = Some(now());
         }
+    }
+
+    /// `hold_without_presence`, or `CCN_HOLD_WITHOUT_PRESENCE=1` for this process
+    pub fn hold_without_presence(&self) -> bool {
+        self.hold_without_presence
+            || std::env::var("CCN_HOLD_WITHOUT_PRESENCE").is_ok_and(|v| !v.is_empty() && v != "0")
     }
 
     pub fn machine_name(&self) -> String {

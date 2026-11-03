@@ -124,7 +124,6 @@ doctor:
   hooks_stale: "hooki wskazują na inny plik ccn; uruchom `ccn setup`, aby je zaktualizować"
   mac_app_hooks: "hooki aplikacji na Maca też są zainstalowane (uruchom `ccn setup --replace-mac-app`)"
   presence: "obecność: bezczynność %{idle}s, próg %{threshold}s"
-  presence_none: "obecność: tu niewykrywalna, więc każda prośba czeka na telefon"
   replies: "odpowiedzi: zatwierdzenia i odpowiedzi na pytania z telefonu działają w każdym terminalu; dowolny tekst do bezczynnej sesji %{free_text}"
   replies_tmux: "działa (tmux)"
   replies_no_tmux: "wymaga tmux"
@@ -194,6 +193,11 @@ hook:
   # Serwer pisze tytuł, treść i polecenie w języku użytkownika; to tylko je łączy
   nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
   needs_attention: "Wymaga Twojej uwagi"
+
+hooks:
+  doctor_presence_none: "obecność: nie da się jej tu wykryć, więc nic nie czeka na telefon: dostaje powiadomienie, a odpowiadasz w terminalu (`ccn config set hold_without_presence on`, aby mimo to czekać)"
+  doctor_presence_none_hold: "obecność: nie da się jej tu wykryć, a hold_without_presence jest włączone, więc każde żądanie czeka na telefon, aż odpowie lub minie maksymalny czas"
+  doctor_duplicate_hooks: "Hooki ccn są w więcej niż jednym pliku ustawień (%{paths}): Claude Code uruchamia obie kopie, gdy ich polecenia się różnią, a `ccn uninstall` usuwa tylko te z ustawień użytkownika. Zostaw je w jednym"
 
 licence:
   already_licensed: "Ten komputer ma już licencję (%{licence})."

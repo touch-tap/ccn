@@ -689,6 +689,16 @@ pub fn doctor() -> Result<()> {
             t!("doctor.hooks_error", error = format!("{err:#}"))
         ),
     }
+    // Doctor runs in a terminal, usually in the project, so its folder stands for the project's
+    let project = std::env::current_dir().ok();
+    let files = hookcfg::files_with_ccn_hooks(project.as_deref());
+    if files.len() > 1 {
+        let paths: Vec<String> = files.iter().map(|p| p.display().to_string()).collect();
+        println!(
+            "{no}{}",
+            t!("hooks.doctor_duplicate_hooks", paths = paths.join(", "))
+        );
+    }
 
     match presence::idle_seconds() {
         Some(idle) => println!(
@@ -699,7 +709,12 @@ pub fn doctor() -> Result<()> {
                 threshold = format!("{:.0}", cfg.settings.presence_threshold())
             )
         ),
-        None => println!("{no}{}", t!("doctor.presence_none")),
+        // Holding blind would stall someone typing at this very terminal, so by default nothing
+        // waits here; the phone gets a note instead
+        None if cfg.hold_without_presence() => {
+            println!("{no}{}", t!("hooks.doctor_presence_none_hold"))
+        }
+        None => println!("{no}{}", t!("hooks.doctor_presence_none")),
     }
     let tmux = std::env::var("TMUX")
         .map(|v| !v.is_empty())
@@ -847,6 +862,14 @@ pub fn config_show() -> Result<()> {
         if cfg.pair_nudges { "on" } else { "off" }
     );
     println!(
+        "hold_without_presence      {} {local_only}",
+        if cfg.hold_without_presence {
+            "on"
+        } else {
+            "off"
+        }
+    );
+    println!(
         "auto_update                {} {local_only}",
         if cfg.auto_update { "on" } else { "off" }
     );
@@ -863,6 +886,14 @@ pub fn config_set(key: &str, value: &str) -> Result<()> {
     let mut cfg = Config::load();
     if key == "desktop_notifications" {
         cfg.desktop_notifications = matches!(
+            value.to_ascii_lowercase().as_str(),
+            "on" | "true" | "yes" | "1"
+        );
+        cfg.save()?;
+        return config_show();
+    }
+    if key == "hold_without_presence" {
+        cfg.hold_without_presence = matches!(
             value.to_ascii_lowercase().as_str(),
             "on" | "true" | "yes" | "1"
         );

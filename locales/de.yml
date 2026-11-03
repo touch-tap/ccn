@@ -125,7 +125,6 @@ doctor:
   hooks_stale: "die Hooks zeigen auf eine andere ccn-Binary; führe `ccn setup` aus, um sie zu aktualisieren"
   mac_app_hooks: "die Hooks der Mac-App sind auch installiert (führe `ccn setup --replace-mac-app` aus)"
   presence: "Anwesenheit: gerade %{idle}s untätig, Schwelle %{threshold}s"
-  presence_none: "Anwesenheit: hier nicht erkennbar, deshalb wartet jede Anfrage auf das Handy"
   replies: "Antworten: Freigaben und Antworten auf Fragen vom Handy funktionieren in jedem Terminal; freier Text in eine untätige Sitzung %{free_text}"
   replies_tmux: "funktioniert (tmux)"
   replies_no_tmux: "braucht tmux"
@@ -195,6 +194,11 @@ hook:
   # Der Server schreibt Titel, Text und Befehl in der Sprache des Nutzers; das hier fügt sie nur zusammen
   nudge_message: "Claude Code Notifier: %{title} %{body} %{command}"
   needs_attention: "Braucht deine Aufmerksamkeit"
+
+hooks:
+  doctor_presence_none: "Anwesenheit: hier nicht erkennbar, daher wartet nichts auf das Handy: Es bekommt einen Hinweis, und du antwortest im Terminal (`ccn config set hold_without_presence on`, um trotzdem zu warten)"
+  doctor_presence_none_hold: "Anwesenheit: hier nicht erkennbar, und hold_without_presence ist an, daher wartet jede Anfrage auf das Handy, bis es antwortet oder die Höchstdauer abläuft"
+  doctor_duplicate_hooks: "Die Hooks von ccn stehen in mehr als einer Einstellungsdatei (%{paths}): Claude Code führt beide Kopien aus, wenn sich ihre Befehle unterscheiden, und `ccn uninstall` entfernt nur die in deinen Benutzereinstellungen. Behalte sie in nur einer"
 
 licence:
   already_licensed: "Dieser Computer ist bereits lizenziert (%{licence})."
