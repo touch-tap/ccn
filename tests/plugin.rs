@@ -65,14 +65,19 @@ impl Sandbox {
     /// (it records the session when it does)
     fn plugin_ran(&self, project_dir_env: bool) -> bool {
         let session = format!("plugin-test-{}", std::process::id());
-        let input = format!(
-            r#"{{"hook_event_name":"SessionStart","session_id":"{session}","cwd":"{}","source":"startup"}}"#,
-            if project_dir_env {
-                "/somewhere/else".to_string()
-            } else {
-                self.project().join("src").display().to_string()
-            }
-        );
+        // Built with serde_json, so a Windows path's backslashes are escaped
+        let cwd = if project_dir_env {
+            "/somewhere/else".to_string()
+        } else {
+            self.project().join("src").display().to_string()
+        };
+        let input = serde_json::json!({
+            "hook_event_name": "SessionStart",
+            "session_id": session,
+            "cwd": cwd,
+            "source": "startup",
+        })
+        .to_string();
         let mut command = self.command(&["hook", "--plugin"]);
         if project_dir_env {
             command.env("CLAUDE_PROJECT_DIR", self.project());
