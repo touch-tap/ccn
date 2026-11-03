@@ -59,8 +59,8 @@ fn paired_system_message(phone: &str) -> String {
     t!("hook.paired_message", phone = phone).into_owned()
 }
 
-pub fn run() -> Result<()> {
-    match std::panic::catch_unwind(run_inner) {
+pub fn run(plugin: bool) -> Result<()> {
+    match std::panic::catch_unwind(|| run_inner(plugin)) {
         Ok(Ok(Some(output))) => println!("{output}"),
         Ok(Ok(None)) => {}
         Ok(Err(err)) => log(&format!("hook error: {err:#}")),
@@ -77,10 +77,26 @@ struct Ctx {
     started: Instant,
 }
 
-fn run_inner() -> Result<Option<Value>> {
+/// The Claude Code plugin calls `ccn hook --plugin` for every event. It stands aside when a
+/// settings file Claude Code reads for this session already has ccn's hooks or the Mac app's (the
+/// user's, or the project's `.claude/settings.json` / `settings.local.json`), so no event is
+/// handled twice.
+fn plugin_stands_aside(input: &Value) -> bool {
+    // Claude Code tells hooks the project's root; the event's cwd can be a folder inside it
+    let project = std::env::var_os("CLAUDE_PROJECT_DIR")
+        .filter(|dir| !dir.is_empty())
+        .map(std::path::PathBuf::from)
+        .or_else(|| Input(input).str("cwd").map(std::path::PathBuf::from));
+    crate::hookcfg::settings_has_hooks(project.as_deref())
+}
+
+fn run_inner(plugin: bool) -> Result<Option<Value>> {
     let mut raw = String::new();
     std::io::stdin().read_to_string(&mut raw)?;
     let input: Value = serde_json::from_str(&raw).context("hook input is not JSON")?;
+    if plugin && plugin_stands_aside(&input) {
+        return Ok(None);
+    }
     let started = Instant::now();
     let event = input["hook_event_name"].as_str().unwrap_or("").to_string();
     let session_id = Input(&input).session_id();

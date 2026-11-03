@@ -200,6 +200,7 @@ hook:
 hooks:
   doctor_presence_none: "varlık: burada algılanamıyor, bu yüzden hiçbir şey telefonu beklemiyor: telefona bir not gider, sen terminalde yanıtlarsın (yine de beklemek için `ccn config set hold_without_presence on`)"
   doctor_presence_none_hold: "varlık: burada algılanamıyor ve hold_without_presence açık, bu yüzden her istek telefon yanıtlayana ya da azami süre dolana kadar bekler"
+  doctor_duplicate_hooks: "ccn'in hook'ları birden fazla ayar dosyasında (%{paths}): komutları farklıysa Claude Code iki kopyayı da çalıştırır ve `ccn uninstall` yalnızca kullanıcı ayarlarındakileri kaldırır. Tek bir dosyada tut"
 
 licence:
   already_licensed: "Bu bilgisayar zaten lisanslı (%{licence})."

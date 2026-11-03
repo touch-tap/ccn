@@ -141,12 +141,8 @@ fn main() {
         return;
     };
     let result = match command {
-        Command::Hook { plugin } => {
-            if plugin && hookcfg::settings_has_hooks() {
-                return;
-            }
-            hook::run()
-        }
+        // The plugin's stand-aside check needs the event's cwd, so hook.rs makes it
+        Command::Hook { plugin } => hook::run(plugin),
         Command::Pair {
             code,
             name,

@@ -684,6 +684,16 @@ pub fn doctor() -> Result<()> {
             t!("doctor.hooks_error", error = format!("{err:#}"))
         ),
     }
+    // Doctor runs in a terminal, usually in the project, so its folder stands for the project's
+    let project = std::env::current_dir().ok();
+    let files = hookcfg::files_with_ccn_hooks(project.as_deref());
+    if files.len() > 1 {
+        let paths: Vec<String> = files.iter().map(|p| p.display().to_string()).collect();
+        println!(
+            "{no}{}",
+            t!("hooks.doctor_duplicate_hooks", paths = paths.join(", "))
+        );
+    }
 
     match presence::idle_seconds() {
         Some(idle) => println!(

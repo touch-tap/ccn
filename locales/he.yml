@@ -201,6 +201,7 @@ hook:
 hooks:
   doctor_presence_none: "נוכחות: לא ניתנת לזיהוי כאן, ולכן שום דבר לא ממתין לטלפון: הוא מקבל הודעה ואתה עונה בטרמינל (`ccn config set hold_without_presence on` כדי להמתין בכל זאת)"
   doctor_presence_none_hold: "נוכחות: לא ניתנת לזיהוי כאן, ו-hold_without_presence פעיל, ולכן כל בקשה ממתינה לטלפון עד שיענה או עד שיעבור זמן ההמתנה המרבי"
+  doctor_duplicate_hooks: "ה-hooks של ccn נמצאים ביותר מקובץ הגדרות אחד (%{paths}): Claude Code מריץ את שני העותקים כשהפקודות שונות, ו-`ccn uninstall` מסיר רק את אלה שבהגדרות המשתמש שלך. השאר אותם בקובץ אחד"
 
 licence:
   already_licensed: "למחשב הזה כבר יש רישיון (%{licence})."

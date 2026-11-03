@@ -201,6 +201,7 @@ hook:
 hooks:
   doctor_presence_none: "presence: not detectable here, so nothing waits for the phone: it gets a note and you answer in the terminal (`ccn config set hold_without_presence on` to wait anyway)"
   doctor_presence_none_hold: "presence: not detectable here, and hold_without_presence is on, so every request waits for the phone until it answers or the hold ceiling passes"
+  doctor_duplicate_hooks: "ccn's hooks are in more than one settings file (%{paths}): Claude Code runs both copies when their commands differ, and `ccn uninstall` only removes the ones in your user settings. Keep them in one"
 
 licence:
   already_licensed: "This computer is already licensed (%{licence})."

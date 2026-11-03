@@ -199,6 +199,7 @@ hook:
 hooks:
   doctor_presence_none: "在席検出: ここでは検出できないため、スマートフォンの応答は待ちません。スマートフォンには通知が届き、ターミナルで応答します（それでも待つには `ccn config set hold_without_presence on`）"
   doctor_presence_none_hold: "在席検出: ここでは検出できず、hold_without_presence がオンのため、各リクエストはスマートフォンが応答するか上限時間が過ぎるまで待ちます"
+  doctor_duplicate_hooks: "ccn のフックが複数の設定ファイル（%{paths}）にあります。コマンドが異なる場合、Claude Code は両方を実行し、`ccn uninstall` はユーザー設定にあるものしか削除しません。1 つのファイルだけに残してください"
 
 licence:
   already_licensed: "このコンピュータにはすでにライセンスがあります（%{licence}）。"

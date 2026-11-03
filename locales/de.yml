@@ -198,6 +198,7 @@ hook:
 hooks:
   doctor_presence_none: "Anwesenheit: hier nicht erkennbar, daher wartet nichts auf das Handy: Es bekommt einen Hinweis, und du antwortest im Terminal (`ccn config set hold_without_presence on`, um trotzdem zu warten)"
   doctor_presence_none_hold: "Anwesenheit: hier nicht erkennbar, und hold_without_presence ist an, daher wartet jede Anfrage auf das Handy, bis es antwortet oder die Höchstdauer abläuft"
+  doctor_duplicate_hooks: "Die Hooks von ccn stehen in mehr als einer Einstellungsdatei (%{paths}): Claude Code führt beide Kopien aus, wenn sich ihre Befehle unterscheiden, und `ccn uninstall` entfernt nur die in deinen Benutzereinstellungen. Behalte sie in nur einer"
 
 licence:
   already_licensed: "Dieser Computer ist bereits lizenziert (%{licence})."

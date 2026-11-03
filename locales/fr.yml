@@ -198,6 +198,7 @@ hook:
 hooks:
   doctor_presence_none: "présence : non détectable ici, donc rien n'attend le téléphone : il reçoit une note et vous répondez dans le terminal (`ccn config set hold_without_presence on` pour attendre quand même)"
   doctor_presence_none_hold: "présence : non détectable ici, et hold_without_presence est activé, donc chaque demande attend le téléphone jusqu'à sa réponse ou la fin du délai maximal"
+  doctor_duplicate_hooks: "Les hooks de ccn figurent dans plusieurs fichiers de réglages (%{paths}) : Claude Code exécute les deux copies si leurs commandes diffèrent, et `ccn uninstall` ne retire que celles de vos réglages utilisateur. Gardez-les dans un seul"
 
 licence:
   already_licensed: "Cet ordinateur a déjà une licence (%{licence})."

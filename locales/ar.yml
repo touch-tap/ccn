@@ -201,6 +201,7 @@ hook:
 hooks:
   doctor_presence_none: "الحضور: لا يمكن رصده هنا، لذا لا شيء ينتظر الهاتف: يصله تنبيه وتجيب أنت في الطرفية (`ccn config set hold_without_presence on` للانتظار رغم ذلك)"
   doctor_presence_none_hold: "الحضور: لا يمكن رصده هنا، وhold_without_presence مفعّل، لذا ينتظر كل طلب الهاتف حتى يجيب أو تنقضي المدة القصوى"
+  doctor_duplicate_hooks: "خطافات ccn موجودة في أكثر من ملف إعدادات (%{paths}): يشغّل Claude Code النسختين إذا اختلفت أوامرهما، ولا يزيل `ccn uninstall` إلا ما في إعدادات المستخدم. أبقها في ملف واحد"
 
 licence:
   already_licensed: "هذا الكمبيوتر مرخّص بالفعل (%{licence})."

@@ -200,6 +200,7 @@ hook:
 hooks:
   doctor_presence_none: "hiện diện: không phát hiện được ở đây, nên không có gì chờ điện thoại: điện thoại nhận một thông báo và bạn trả lời trong terminal (`ccn config set hold_without_presence on` để vẫn chờ)"
   doctor_presence_none_hold: "hiện diện: không phát hiện được ở đây và hold_without_presence đang bật, nên mọi yêu cầu chờ điện thoại cho đến khi nó trả lời hoặc hết thời gian chờ tối đa"
+  doctor_duplicate_hooks: "Hook của ccn nằm trong nhiều hơn một tệp cài đặt (%{paths}): Claude Code chạy cả hai bản khi lệnh của chúng khác nhau, và `ccn uninstall` chỉ gỡ các hook trong cài đặt người dùng của bạn. Hãy chỉ giữ trong một tệp"
 
 licence:
   already_licensed: "Máy tính này đã có giấy phép (%{licence})."

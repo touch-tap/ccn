@@ -199,6 +199,7 @@ hook:
 hooks:
   doctor_presence_none: "在場偵測：此處無法偵測，因此不會等待手機：手機會收到提醒，你在終端機中回覆（如仍要等待，執行 `ccn config set hold_without_presence on`）"
   doctor_presence_none_hold: "在場偵測：此處無法偵測，且 hold_without_presence 已開啟，因此每個請求都會等待手機，直到手機回覆或超過最長等待時間"
+  doctor_duplicate_hooks: "ccn 的鉤子出現在多個設定檔中（%{paths}）：命令不同時 Claude Code 會兩份都執行，而 `ccn uninstall` 只會移除使用者設定中的那份。只保留在一個檔案中"
 
 licence:
   already_licensed: "這台電腦已有授權（%{licence}）。"

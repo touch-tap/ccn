@@ -199,6 +199,7 @@ hook:
 hooks:
   doctor_presence_none: "자리 감지: 여기서는 감지할 수 없어 휴대폰을 기다리지 않습니다. 휴대폰에는 알림이 가고 터미널에서 응답합니다(그래도 기다리려면 `ccn config set hold_without_presence on`)"
   doctor_presence_none_hold: "자리 감지: 여기서는 감지할 수 없고 hold_without_presence가 켜져 있어, 모든 요청이 휴대폰이 응답하거나 최대 대기 시간이 지날 때까지 기다립니다"
+  doctor_duplicate_hooks: "ccn의 훅이 둘 이상의 설정 파일(%{paths})에 있습니다. 명령이 다르면 Claude Code가 두 사본을 모두 실행하고, `ccn uninstall`은 사용자 설정에 있는 것만 제거합니다. 한 파일에만 두세요"
 
 licence:
   already_licensed: "이 컴퓨터에는 이미 라이선스가 있어요 (%{licence})."
