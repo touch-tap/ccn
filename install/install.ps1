@@ -12,7 +12,9 @@ $ProgressPreference = 'SilentlyContinue'
 # Where the install line came from: web, app or link when the script is fetched from
 # claudecodenotifier.com/<source>/install.ps1 (the site rewrites the next line), direct otherwise.
 $sourceTag = if ($env:CCN_INSTALL_SOURCE) { $env:CCN_INSTALL_SOURCE } else { 'direct' }
-if ($sourceTag -notmatch '^[a-z0-9_-]+$') { $sourceTag = 'other' }
+# The same rule as ccn's telemetry.rs: lowercase letters, digits, _ and -, at most 32 of them
+# (-cnotmatch: PowerShell's -notmatch ignores case)
+if ($sourceTag -cnotmatch '^[a-z0-9_-]{1,32}$') { $sourceTag = 'other' }
 
 # One anonymous event per step, so we can see where installs fail: the event name, the stage, the
 # processor. Nothing else. $env:CCN_NO_ANALYTICS = "1" (or DO_NOT_TRACK) turns it off.

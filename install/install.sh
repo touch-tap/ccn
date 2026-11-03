@@ -14,7 +14,10 @@ set -eu
 # Where the install line came from: web, app or link when the script is fetched from
 # claudecodenotifier.com/<source>/install.sh (the site rewrites the next line), direct otherwise.
 source_tag="${CCN_INSTALL_SOURCE:-direct}"
-case "$source_tag" in ""|*[!a-z0-9_-]*) source_tag="other" ;; esac
+# The same rule as ccn's telemetry.rs: lowercase letters, digits, _ and -, at most 32 of them.
+# Spelt out because [a-z] also matches capitals in some locales.
+case "$source_tag" in ""|*[!abcdefghijklmnopqrstuvwxyz0123456789_-]*) source_tag="other" ;; esac
+[ ${#source_tag} -le 32 ] || source_tag="other"
 
 repo="touch-tap/ccn"
 code=""

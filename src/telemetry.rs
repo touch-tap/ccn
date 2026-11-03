@@ -40,23 +40,33 @@ pub fn install_method() -> &'static str {
         .unwrap_or("other")
 }
 
-/// The install scripts' CCN_INSTALL_SOURCE, if it is one of the known values.
-pub fn install_source_from_env() -> Option<&'static str> {
-    match std::env::var("CCN_INSTALL_SOURCE").ok()?.as_str() {
-        "web" => Some("web"),
-        "app" => Some("app"),
-        "link" => Some("link"),
-        "direct" => Some("direct"),
-        _ => None,
+/// The longest install source kept; install.sh and install.ps1 apply the same cap.
+const MAX_SOURCE_LEN: usize = 32;
+
+/// The install scripts' CCN_INSTALL_SOURCE. The website can tag an install line with any short
+/// source (web, app, link, a campaign), so this keeps the same values the scripts send:
+/// lowercase letters, digits, `_` and `-`, up to 32 of them, and "other" for anything else.
+/// None when it is not set.
+pub fn install_source_from_env() -> Option<String> {
+    let value = std::env::var("CCN_INSTALL_SOURCE").ok()?;
+    clean_source(&value)
+}
+
+fn clean_source(value: &str) -> Option<String> {
+    if value.is_empty() {
+        return None;
     }
+    let safe = value.len() <= MAX_SOURCE_LEN
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_' || b == b'-');
+    Some(if safe { value } else { "other" }.to_string())
 }
 
 /// Where this computer's install line was copied from: this run's environment first, then what
 /// `ccn setup` remembered. None for Homebrew, npm and npx installs, which have no install line.
 pub fn install_source(cfg: &Config) -> Option<String> {
-    install_source_from_env()
-        .map(str::to_string)
-        .or_else(|| cfg.install_source.clone())
+    install_source_from_env().or_else(|| cfg.install_source.clone())
 }
 
 /// Remembers the install source on the first run that carries one, so a later `ccn pair` typed by
@@ -65,7 +75,7 @@ pub fn remember_install_source() {
     if let Some(source) = install_source_from_env() {
         let mut cfg = Config::load();
         if cfg.install_source.is_none() {
-            cfg.install_source = Some(source.to_string());
+            cfg.install_source = Some(source);
             let _ = cfg.save();
         }
     }
@@ -167,6 +177,27 @@ mod tests {
         assert_eq!(install_source(&cfg), None);
         cfg.install_source = Some("web".to_string());
         assert_eq!(install_source(&cfg).as_deref(), Some("web"));
+    }
+
+    #[test]
+    fn install_sources_follow_the_install_scripts_rule() {
+        let c = |s: &str| clean_source(s);
+        for kept in [
+            "web",
+            "app",
+            "link",
+            "direct",
+            "other",
+            "reddit_2026-11",
+            "a",
+        ] {
+            assert_eq!(c(kept).as_deref(), Some(kept));
+        }
+        assert_eq!(c(&"a".repeat(32)), Some("a".repeat(32)));
+        for odd in ["Web", "web site", "web/app", "wéb", "x\"y", &"a".repeat(33)] {
+            assert_eq!(c(odd).as_deref(), Some("other"), "{odd:?}");
+        }
+        assert_eq!(c(""), None);
     }
 
     #[test]
