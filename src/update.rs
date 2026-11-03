@@ -14,7 +14,10 @@
 //! Where the latest version comes from: `GET {server}/api/cli/latest`, falling back to the GitHub
 //! releases API. The assets are the ones .github/workflows/release.yml publishes under the
 //! release's `downloadBase`: `ccn-<triple>.tar.gz` (Unix) or `ccn-<triple>.zip` (Windows), plus
-//! `SHA256SUMS`. The download is checked against SHA256SUMS before anything is written, the new
+//! `SHA256SUMS`. That base is pinned to this repository's GitHub releases over https whatever the
+//! server says (`CCN_DOWNLOAD_BASE` overrides it for tests), because SHA256SUMS comes from the same
+//! place as the archive: a base anyone else chose could vouch for its own binary. The download is
+//! checked against SHA256SUMS before anything is written, the new
 //! binary is written beside the old one and must run before it is renamed over it, so a hook
 //! running mid-update never sees a half-written file.
 
@@ -81,6 +84,14 @@ pub fn run(mode: Mode) -> Result<()> {
         }
         Err(err) => Err(err),
     }
+}
+
+/// `CCN_DOWNLOAD_BASE`: where to fetch the archive and SHA256SUMS instead of GitHub, for the
+/// tests and CI's local release server. The install scripts read the same variable.
+fn download_base_override() -> Option<String> {
+    std::env::var("CCN_DOWNLOAD_BASE")
+        .ok()
+        .filter(|base| !base.is_empty())
 }
 
 fn run_inner(mode: &Mode) -> Result<i32> {
@@ -190,9 +201,14 @@ fn run_inner(mode: &Mode) -> Result<i32> {
         ));
     }
 
-    let base = latest.download_base.trim_end_matches('/');
-    let archive = download(&format!("{base}/{asset}")).map_err(|e| failed("download", e))?;
-    let sums = download(&format!("{base}/SHA256SUMS")).map_err(|e| failed("download", e))?;
+    let overridden = download_base_override();
+    let https_only = overridden.is_none();
+    let base = overridden.unwrap_or(latest.download_base);
+    let base = base.trim_end_matches('/');
+    let archive =
+        download(&format!("{base}/{asset}"), https_only).map_err(|e| failed("download", e))?;
+    let sums =
+        download(&format!("{base}/SHA256SUMS"), https_only).map_err(|e| failed("download", e))?;
     let expected = checksum_for(&String::from_utf8_lossy(&sums), &asset)
         .with_context(|| t!("update.no_checksum", asset = asset).into_owned())
         .map_err(|e| failed("checksum", e))?;
@@ -489,8 +505,14 @@ fn sha256_hex(bytes: &[u8]) -> String {
 // ============================================
 
 fn agent(timeout: Duration) -> ureq::Agent {
+    agent_with(timeout, false)
+}
+
+/// `https_only` also refuses a redirect to plain http, which GitHub's downloads never need.
+fn agent_with(timeout: Duration, https_only: bool) -> ureq::Agent {
     ureq::Agent::config_builder()
         .timeout_global(Some(timeout))
+        .https_only(https_only)
         .http_status_as_error(false)
         .user_agent(format!("ccn/{VERSION}"))
         .build()
@@ -513,8 +535,8 @@ fn get_json(url: &str, timeout: Duration) -> Result<Value> {
         .with_context(|| format!("GET {url}: not JSON"))
 }
 
-fn download(url: &str) -> Result<Vec<u8>> {
-    let mut response = agent(Duration::from_secs(120))
+fn download(url: &str, https_only: bool) -> Result<Vec<u8>> {
+    let mut response = agent_with(Duration::from_secs(120), https_only)
         .get(url)
         .call()
         .with_context(|| format!("GET {url}"))?;
@@ -548,6 +570,17 @@ fn fetch_latest(server_url: &str) -> Result<Latest> {
     }
 }
 
+/// `{RELEASES_BASE}/<tag>`, the only download base an update is taken from. None for a tag that
+/// could step out of the release's folder or is not a version at all.
+fn pinned_base(tag: &str) -> Option<String> {
+    let safe = !tag.is_empty()
+        && tag
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "._-+".contains(c))
+        && parse_version(tag).is_some();
+    safe.then(|| format!("{RELEASES_BASE}/{tag}"))
+}
+
 fn latest_from_server(v: &Value) -> Result<Latest> {
     let version = v["version"]
         .as_str()
@@ -555,16 +588,20 @@ fn latest_from_server(v: &Value) -> Result<Latest> {
         .context("the server's reply has no version")?
         .trim_start_matches('v')
         .to_string();
-    let download_base = match v["downloadBase"].as_str() {
-        Some(base) => base.to_string(),
-        None => format!(
-            "{RELEASES_BASE}/{}",
-            v["tag"]
-                .as_str()
-                .map(str::to_string)
-                .unwrap_or_else(|| format!("v{version}"))
-        ),
-    };
+    let tag = v["tag"]
+        .as_str()
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("v{version}"));
+    let download_base =
+        pinned_base(&tag).with_context(|| format!("the server's tag {tag:?} is not a release"))?;
+    // The server only says which release; where it is downloaded from is not its to choose
+    if let Some(base) = v["downloadBase"].as_str()
+        && base.trim_end_matches('/') != download_base
+    {
+        log(&format!(
+            "update: ignoring the server's downloadBase {base:?}; using {download_base}"
+        ));
+    }
     Ok(Latest {
         version,
         download_base,
@@ -578,7 +615,8 @@ fn latest_from_github(v: &Value) -> Result<Latest> {
         .context("GitHub's reply has no tag_name")?;
     Ok(Latest {
         version: tag.trim_start_matches('v').to_string(),
-        download_base: format!("{RELEASES_BASE}/{tag}"),
+        download_base: pinned_base(tag)
+            .with_context(|| format!("GitHub's tag {tag:?} is not a release"))?,
         assets: asset_list(&v["assets"], |a| a["name"].as_str()),
     })
 }
@@ -891,6 +929,45 @@ deadbeef  ccn-x86_64-apple-darwin.tar.gz
             vec!["ccn-x86_64-pc-windows-msvc.zip", "SHA256SUMS"]
         );
         assert!(latest_from_server(&json!({})).is_err());
+    }
+
+    #[test]
+    fn the_download_base_is_always_this_repositorys_releases() {
+        let pinned = "https://github.com/touch-tap/ccn/releases/download/v0.4.0";
+        for hostile in [
+            "http://github.com/touch-tap/ccn/releases/download/v0.4.0",
+            "https://evil.example/ccn/v0.4.0",
+            "https://github.com/someone-else/ccn/releases/download/v0.4.0",
+            "https://github.com/touch-tap/ccn/releases/download/v0.4.0/../../../x",
+        ] {
+            let latest = latest_from_server(&json!({
+                "version": "0.4.0", "tag": "v0.4.0", "downloadBase": hostile
+            }))
+            .unwrap();
+            assert_eq!(latest.download_base, pinned, "{hostile} was not ignored");
+        }
+        // A trailing slash on the right base is still the right base
+        let latest = latest_from_server(&json!({
+            "version": "0.4.0", "tag": "v0.4.0", "downloadBase": format!("{pinned}/")
+        }))
+        .unwrap();
+        assert_eq!(latest.download_base, pinned);
+
+        // A tag that would leave the release's folder is refused, from either source
+        for tag in ["../../evil", "v0.4.0/../x", "v0.4.0?x=1", "latest", ""] {
+            assert!(
+                latest_from_server(&json!({ "version": "0.4.0", "tag": tag })).is_err(),
+                "{tag:?}"
+            );
+            assert!(
+                latest_from_github(&json!({ "tag_name": tag })).is_err(),
+                "{tag:?}"
+            );
+        }
+        assert_eq!(
+            pinned_base("v0.4.0-beta.1").as_deref(),
+            Some("https://github.com/touch-tap/ccn/releases/download/v0.4.0-beta.1")
+        );
     }
 
     #[test]

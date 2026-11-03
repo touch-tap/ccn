@@ -66,6 +66,9 @@ impl Sandbox {
             .env("CCN_CREDENTIAL_STORE", "file")
             .env("CCN_NOTIFY", "off")
             .env("CCN_NO_ANALYTICS", "1")
+            // The server's downloadBase is ignored (only GitHub's releases are trusted), so the
+            // fake release is reached the way CI's is
+            .env("CCN_DOWNLOAD_BASE", format!("{server}/dl"))
             .env_remove("CCN_INSTALL_METHOD")
             .env_remove("CCN_EPHEMERAL")
             .stdin(Stdio::null())
@@ -172,7 +175,7 @@ fn release_server(
     let version = version.to_string();
     serve(move |url| {
         let latest = format!(
-            r#"{{"version":"{version}","tag":"v{version}","publishedAt":1761800000,"downloadBase":"{url}/dl","assets":["{}","SHA256SUMS"]}}"#,
+            r#"{{"version":"{version}","tag":"v{version}","publishedAt":1761800000,"downloadBase":"{url}/evil","assets":["{}","SHA256SUMS"]}}"#,
             asset_name()
         );
         HashMap::from([
