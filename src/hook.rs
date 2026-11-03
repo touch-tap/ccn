@@ -428,6 +428,12 @@ impl Ctx {
         if !self.cfg.settings.notify_on_permission() {
             return Ok(None);
         }
+        // Claude Code runs every matching PermissionRequest hook in parallel, ours alongside any
+        // other tool's (a policy hook, another notifier). The docs give no precedence between
+        // their decisions, and the request waits for the slowest hook, so while we hold, another
+        // hook's instant allow or deny waits too, up to the hold ceiling. Holding only when the
+        // user is away (and, since Nov 2026, never when presence is unknown) keeps that rare;
+        // there is no way to see the other hooks' answers from here.
         let (card, kind, key) = payload::permission_card(&self.input(), false);
         let ceiling = self.cfg.settings.hold_ceiling();
         // When the user is present we send nothing here: Claude Code shows its prompt and the
@@ -496,6 +502,14 @@ impl Ctx {
                 log(&format!("could not send the done update: {err:#}"));
             }
         }
+        // `stop_hook_active` is true when Claude is running on because a Stop hook blocked: here,
+        // a reply typed on the phone. Each new stop holds again, so a conversation from the phone
+        // can go on, but Claude Code caps a run of Stop blocks at 8 with no tool call between
+        // them (CLAUDE_CODE_STOP_HOOK_BLOCK_CAP) and then ends the turn whatever the hook says.
+        // So a 9th reply in a row with no tool use in between is shown as answered on the phone
+        // but not acted on. Rare enough not to count blocks for; a tool call resets the count.
+        // A stop within 5s of a done card we just sent (another Stop hook blocked right after it)
+        // gets no second card.
         if stop_hook_active {
             if let Some(card) = &self.state.last_card {
                 if card.kind == "done" && config::now() - card.sent_at < 5 {
