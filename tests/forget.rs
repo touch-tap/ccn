@@ -64,16 +64,45 @@ fn fake_server(status: u16, body: &'static str) -> (String, std::thread::JoinHan
     let url = format!("http://{}", listener.local_addr().unwrap());
     let handle = std::thread::spawn(move || {
         let (mut stream, _) = listener.accept().unwrap();
-        let mut request = vec![0u8; 4096];
-        let n = stream.read(&mut request).unwrap();
+        let request = read_request(&mut stream);
         let reply = format!(
             "HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
             body.len()
         );
         stream.write_all(reply.as_bytes()).unwrap();
-        String::from_utf8_lossy(&request[..n]).to_string()
+        // Close gracefully: Windows resets a connection closed with unread data, and ccn then
+        // sees "connection aborted" instead of the reply
+        let _ = stream.shutdown(std::net::Shutdown::Write);
+        request
     });
     (url, handle)
+}
+
+/// The whole request: headers, then as much body as Content-Length says. Reading all of it before
+/// replying matters on Windows, which resets a socket closed with unread bytes.
+fn read_request(stream: &mut std::net::TcpStream) -> String {
+    let mut data = Vec::new();
+    let mut chunk = [0u8; 4096];
+    loop {
+        let text = String::from_utf8_lossy(&data).to_string();
+        if let Some(end) = text.find("\r\n\r\n") {
+            let length = text[..end]
+                .lines()
+                .find_map(|line| {
+                    let (name, value) = line.split_once(':')?;
+                    name.eq_ignore_ascii_case("content-length")
+                        .then(|| value.trim().parse::<usize>().ok())?
+                })
+                .unwrap_or(0);
+            if data.len() >= end + 4 + length {
+                return text;
+            }
+        }
+        match stream.read(&mut chunk) {
+            Ok(0) | Err(_) => return String::from_utf8_lossy(&data).to_string(),
+            Ok(n) => data.extend_from_slice(&chunk[..n]),
+        }
+    }
 }
 
 fn text(bytes: &[u8]) -> String {

@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 /// Each idle probe that runs another program gets this long. A hook polls presence every second
 /// while it holds, so a probe that hangs (a D-Bus call to a session bus that never answers) must
 /// not hang the hook with it.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 const PROBE_TIMEOUT: Duration = Duration::from_millis(500);
 
 pub fn idle_seconds() -> Option<f64> {
