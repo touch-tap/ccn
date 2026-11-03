@@ -75,11 +75,11 @@ impl SessionState {
 
     pub fn save(&mut self) -> Result<()> {
         self.updated_at = config::now();
-        let path = path_for(&self.session_id);
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        fs::write(path, serde_json::to_string(self)?)?;
+        // Parallel hooks in one session read this while another writes it
+        config::write_atomic(
+            &path_for(&self.session_id),
+            serde_json::to_string(self)?.as_bytes(),
+        )?;
         Ok(())
     }
 

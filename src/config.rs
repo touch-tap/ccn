@@ -4,7 +4,8 @@ use anyhow::{Context, Result};
 use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 pub const DEFAULT_SERVER_URL: &str = "https://ccnotifier-api.touchtap.workers.dev";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -360,9 +361,6 @@ impl Config {
 
     pub fn save(&self) -> Result<()> {
         let path = config_path();
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).with_context(|| format!("creating {}", parent.display()))?;
-        }
         let mut to_write = self.clone();
         if std::env::var("CCN_SERVER_URL").is_ok() {
             // an override from the environment is not persisted
@@ -370,8 +368,8 @@ impl Config {
                 Config::load_file_server_url().unwrap_or_else(|| DEFAULT_SERVER_URL.to_string());
         }
         let text = toml::to_string_pretty(&to_write)?;
-        fs::write(&path, text).with_context(|| format!("writing {}", path.display()))?;
-        restrict_permissions(&path);
+        write_atomic(&path, text.as_bytes())
+            .with_context(|| format!("writing {}", path.display()))?;
         Ok(())
     }
 
@@ -464,12 +462,8 @@ impl Unpaired {
     }
 
     pub fn save(&self) {
-        let path = unpaired_path();
-        if let Some(parent) = path.parent() {
-            let _ = fs::create_dir_all(parent);
-        }
         if let Ok(text) = serde_json::to_string(self) {
-            let _ = fs::write(path, text);
+            let _ = write_atomic(&unpaired_path(), text.as_bytes());
         }
     }
 
@@ -545,12 +539,9 @@ pub fn store_token(cfg: &Config, token: &str) -> Result<&'static str> {
         }
     }
     let path = credentials_path();
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    fs::write(&path, format!("{token}\n"))
+    // Created 0600 (never briefly world-readable) and swapped in whole
+    write_atomic(&path, format!("{token}\n").as_bytes())
         .with_context(|| format!("writing {}", path.display()))?;
-    restrict_permissions(&path);
     Ok("file")
 }
 
@@ -570,14 +561,103 @@ pub fn delete_token() {
     let _ = fs::remove_file(credentials_path());
 }
 
-#[cfg(unix)]
-fn restrict_permissions(path: &std::path::Path) {
-    use std::os::unix::fs::PermissionsExt;
-    let _ = fs::set_permissions(path, fs::Permissions::from_mode(0o600));
+// ============================================
+// Writing files safely
+// ============================================
+
+/// Creates `dir` and any missing parents. On Unix they are made 0700: the ccn directory holds
+/// the token, prompts and tool inputs. The default ccn directory, if an older version made it
+/// 0755, is tightened too; a directory chosen with `CCN_HOME` is left as the user made it.
+pub fn ensure_dir(dir: &Path) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
+        if !dir.is_dir() {
+            return fs::DirBuilder::new()
+                .recursive(true)
+                .mode(0o700)
+                .create(dir);
+        }
+        let default_dir = std::env::var("CCN_HOME").map_or(true, |v| v.is_empty());
+        if default_dir && dir == ccn_dir() {
+            if let Ok(meta) = fs::metadata(dir) {
+                if meta.permissions().mode() & 0o077 != 0 {
+                    let _ = fs::set_permissions(dir, fs::Permissions::from_mode(0o700));
+                }
+            }
+        }
+        Ok(())
+    }
+    #[cfg(not(unix))]
+    {
+        fs::create_dir_all(dir)
+    }
 }
 
-#[cfg(not(unix))]
-fn restrict_permissions(_path: &std::path::Path) {}
+/// Replaces `path` with `contents` all at once. Hooks run concurrently (several Claude sessions,
+/// parallel hooks in one), and `fs::write` truncates first, so a reader could see an empty or
+/// half-written file. This writes a uniquely named temp file beside it (0600 on Unix from the
+/// start) and renames it over the target, which readers see as either the old file or the new.
+pub fn write_atomic(path: &Path, contents: &[u8]) -> std::io::Result<()> {
+    let dir = path.parent().unwrap_or(Path::new("."));
+    ensure_dir(dir)?;
+    let tmp = dir.join(temp_name(path));
+    let result = (|| {
+        let mut options = fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let mut file = options.open(&tmp)?;
+        file.write_all(contents)?;
+        // On disk before the rename, so a crash can't leave the new name on an empty file
+        file.sync_all()?;
+        drop(file);
+        rename_over(&tmp, path)
+    })();
+    if result.is_err() {
+        let _ = fs::remove_file(&tmp);
+    }
+    result
+}
+
+/// `.config.toml.<pid>-<random>.tmp`: hidden, unique per write, and recognisable by
+/// `is_temp_file` so uninstall can clear any a crash left behind.
+fn temp_name(path: &Path) -> String {
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let random = uuid::Uuid::new_v4().simple().to_string();
+    format!(".{name}.{}-{}.tmp", std::process::id(), &random[..8])
+}
+
+/// Whether `file_name` is a temp file `write_atomic` made for `target` (a file name).
+pub fn is_temp_file(file_name: &str, target: &str) -> bool {
+    file_name
+        .strip_prefix('.')
+        .and_then(|rest| rest.strip_prefix(target))
+        .is_some_and(|rest| rest.starts_with('.') && rest.ends_with(".tmp"))
+}
+
+/// `fs::rename` replaces an existing target on Unix and Windows alike (MoveFileEx with
+/// REPLACE_EXISTING). On Windows it can fail for a moment while another process (or a virus
+/// scanner) has the target open without sharing delete, so it is retried briefly.
+fn rename_over(from: &Path, to: &Path) -> std::io::Result<()> {
+    let mut attempt = 0;
+    loop {
+        match fs::rename(from, to) {
+            Ok(()) => return Ok(()),
+            Err(err) if attempt >= 4 || cfg!(unix) => return Err(err),
+            Err(_) => {
+                attempt += 1;
+                std::thread::sleep(std::time::Duration::from_millis(15));
+            }
+        }
+    }
+}
 
 pub fn now() -> i64 {
     chrono::Utc::now().timestamp()
@@ -758,5 +838,73 @@ mod locale_tests {
         assert_eq!(normalise_locale("POSIX"), "en");
         assert_eq!(normalise_locale(""), "en");
         assert_eq!(normalise_locale("xx-YY"), "en");
+    }
+}
+
+#[cfg(test)]
+mod write_tests {
+    use super::*;
+
+    fn temp_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("ccn-write-{name}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        dir
+    }
+
+    #[test]
+    fn an_atomic_write_replaces_the_file_and_leaves_no_temp_file() {
+        let dir = temp_dir("atomic");
+        let path = dir.join("nested").join("config.toml");
+        write_atomic(&path, b"first = 1\n").unwrap();
+        write_atomic(&path, b"second = 2\n").unwrap();
+        assert_eq!(fs::read_to_string(&path).unwrap(), "second = 2\n");
+        let names: Vec<String> = fs::read_dir(path.parent().unwrap())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, vec!["config.toml".to_string()]);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = |p: &Path| fs::metadata(p).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode(&path), 0o600);
+            assert_eq!(mode(path.parent().unwrap()), 0o700);
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Readers in other threads only ever see a whole file, never an empty or partial one.
+    #[test]
+    fn readers_never_see_a_partial_write() {
+        let dir = temp_dir("readers");
+        let path = dir.join("state.json");
+        let big = |c: char| c.to_string().repeat(256 * 1024);
+        write_atomic(&path, big('a').as_bytes()).unwrap();
+        let writer = {
+            let path = path.clone();
+            std::thread::spawn(move || {
+                for i in 0..40 {
+                    let c = if i % 2 == 0 { 'b' } else { 'a' };
+                    write_atomic(&path, big(c).as_bytes()).unwrap();
+                }
+            })
+        };
+        while !writer.is_finished() {
+            let text = fs::read_to_string(&path).unwrap();
+            assert_eq!(text.len(), 256 * 1024);
+            assert!(text == big('a') || text == big('b'));
+        }
+        writer.join().unwrap();
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn temp_files_are_recognised_by_their_target() {
+        let name = temp_name(Path::new("/x/config.toml"));
+        assert!(is_temp_file(&name, "config.toml"), "{name}");
+        assert!(!is_temp_file(&name, "credentials"));
+        assert!(!is_temp_file("config.toml", "config.toml"));
+        assert!(!is_temp_file(".config.toml", "config.toml"));
+        assert!(!is_temp_file(".config.tomlx.tmp", "config.toml"));
     }
 }
