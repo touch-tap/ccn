@@ -296,3 +296,15 @@ api:
   saving_settings: "儲存設定"
   sending_event: "傳送事件"
   waiting_response: "等待回應: %{error}"
+
+payload:
+  plan_waiting: "Claude 已擬定計畫，正在等你核准。"
+  plan_ready: "計畫待核准"
+  needs_permission: "%{tool} 需要權限"
+  permission_required: "需要權限"
+  has_questions: "Claude 有幾個問題"
+  finished_prompt: "已完成：%{prompt}"
+  question_header: "問題"
+  approve_plan: "核准計畫"
+  pattern: "模式：%{pattern}"
+  search: "搜尋：%{pattern}"

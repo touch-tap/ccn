@@ -294,3 +294,15 @@ api:
   saving_settings: "opslaan van instellingen"
   sending_event: "versturen van de gebeurtenis"
   waiting_response: "wachten op een antwoord: %{error}"
+
+payload:
+  plan_waiting: "Claude heeft een plan gemaakt en wacht op je goedkeuring."
+  plan_ready: "Plan klaar voor goedkeuring"
+  needs_permission: "%{tool} vraagt toestemming"
+  permission_required: "Toestemming nodig"
+  has_questions: "Claude heeft vragen"
+  finished_prompt: "Klaar: %{prompt}"
+  question_header: "Vraag"
+  approve_plan: "Plan goedkeuren"
+  pattern: "Patroon: %{pattern}"
+  search: "Zoeken: %{pattern}"

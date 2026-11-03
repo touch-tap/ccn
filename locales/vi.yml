@@ -297,3 +297,15 @@ api:
   saving_settings: "lưu cài đặt"
   sending_event: "gửi sự kiện"
   waiting_response: "chờ phản hồi: %{error}"
+
+payload:
+  plan_waiting: "Claude đã lập một kế hoạch và đang chờ bạn phê duyệt."
+  plan_ready: "Kế hoạch đang chờ phê duyệt"
+  needs_permission: "%{tool} cần quyền"
+  permission_required: "Cần cấp quyền"
+  has_questions: "Claude có vài câu hỏi"
+  finished_prompt: "Đã xong: %{prompt}"
+  question_header: "Câu hỏi"
+  approve_plan: "Phê duyệt kế hoạch"
+  pattern: "Mẫu: %{pattern}"
+  search: "Tìm kiếm: %{pattern}"

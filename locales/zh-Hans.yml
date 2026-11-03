@@ -296,3 +296,15 @@ api:
   saving_settings: "保存设置"
   sending_event: "发送事件"
   waiting_response: "等待响应: %{error}"
+
+payload:
+  plan_waiting: "Claude 已制定计划，正在等你批准。"
+  plan_ready: "计划待批准"
+  needs_permission: "%{tool} 需要权限"
+  permission_required: "需要权限"
+  has_questions: "Claude 有几个问题"
+  finished_prompt: "已完成：%{prompt}"
+  question_header: "问题"
+  approve_plan: "批准计划"
+  pattern: "模式：%{pattern}"
+  search: "搜索：%{pattern}"

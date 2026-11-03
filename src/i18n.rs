@@ -4,8 +4,9 @@
 //! the tests below keep the Rust and the YAML in step, and every translation in step with English.
 //!
 //! Not translated, on purpose: log lines, telemetry values, JSON field names, command and setting
-//! names, file paths and URLs, the strings sent to the phone (payload.rs: the apps render their
-//! own), and the anyhow contexts that wrap an OS error around a path or request ("reading X",
+//! names, file paths and URLs, the permission option labels sent to the phone (the apps match the
+//! English label and show their own translation; payload.rs translates the rest of a card), and
+//! the anyhow contexts that wrap an OS error around a path or request ("reading X",
 //! "GET url"), which are diagnostics and what `telemetry::failure_reason` classifies.
 
 /// Sets the process locale from `CCN_LANG` or the OS, and makes sure the console can show it.
@@ -235,6 +236,7 @@ mod tests {
         "it:licence.unlocks_no",
         "fr:pair.minutes_one",
         "fr:pair.minutes_other",
+        "fr:payload.question_header",
     ];
 
     #[test]

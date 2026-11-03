@@ -298,3 +298,15 @@ api:
   saving_settings: "שמירת ההגדרות"
   sending_event: "שליחת האירוע"
   waiting_response: "המתנה לתשובה: %{error}"
+
+payload:
+  plan_waiting: "Claude יצר תוכנית ומחכה לאישור שלכם."
+  plan_ready: "תוכנית מוכנה לאישור"
+  needs_permission: "%{tool} צריך הרשאה"
+  permission_required: "נדרשת הרשאה"
+  has_questions: "ל-Claude יש שאלות"
+  finished_prompt: "הסתיים: %{prompt}"
+  question_header: "שאלה"
+  approve_plan: "אישור התוכנית"
+  pattern: "תבנית: %{pattern}"
+  search: "חיפוש: %{pattern}"

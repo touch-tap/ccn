@@ -294,3 +294,15 @@ api:
   saving_settings: "сохранение настроек"
   sending_event: "отправка события"
   waiting_response: "ожидание ответа: %{error}"
+
+payload:
+  plan_waiting: "Claude составил план и ждёт вашего одобрения."
+  plan_ready: "План ждёт одобрения"
+  needs_permission: "%{tool}: нужно разрешение"
+  permission_required: "Нужно разрешение"
+  has_questions: "У Claude есть вопросы"
+  finished_prompt: "Готово: %{prompt}"
+  question_header: "Вопрос"
+  approve_plan: "Одобрить план"
+  pattern: "Шаблон: %{pattern}"
+  search: "Поиск: %{pattern}"

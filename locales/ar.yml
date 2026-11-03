@@ -298,3 +298,15 @@ api:
   saving_settings: "حفظ الإعدادات"
   sending_event: "إرسال الحدث"
   waiting_response: "انتظار الاستجابة: %{error}"
+
+payload:
+  plan_waiting: "أنشأ Claude خطة وينتظر موافقتك."
+  plan_ready: "الخطة جاهزة للموافقة"
+  needs_permission: "%{tool} يحتاج إلى إذن"
+  permission_required: "مطلوب إذن"
+  has_questions: "لدى Claude أسئلة"
+  finished_prompt: "انتهى: %{prompt}"
+  question_header: "سؤال"
+  approve_plan: "الموافقة على الخطة"
+  pattern: "النمط: %{pattern}"
+  search: "بحث: %{pattern}"

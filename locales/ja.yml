@@ -296,3 +296,15 @@ api:
   saving_settings: "設定の保存"
   sending_event: "イベントの送信"
   waiting_response: "応答の待機: %{error}"
+
+payload:
+  plan_waiting: "Claude がプランを作成し、承認を待っています。"
+  plan_ready: "プランの承認待ち"
+  needs_permission: "%{tool} の許可が必要です"
+  permission_required: "許可が必要です"
+  has_questions: "Claude から質問があります"
+  finished_prompt: "完了: %{prompt}"
+  question_header: "質問"
+  approve_plan: "プランを承認"
+  pattern: "パターン: %{pattern}"
+  search: "検索: %{pattern}"

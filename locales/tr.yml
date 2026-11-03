@@ -297,3 +297,15 @@ api:
   saving_settings: "ayarlar kaydedilirken"
   sending_event: "olay gönderilirken"
   waiting_response: "yanıt beklenirken: %{error}"
+
+payload:
+  plan_waiting: "Claude bir plan hazırladı ve onayınızı bekliyor."
+  plan_ready: "Plan onay bekliyor"
+  needs_permission: "%{tool} için izin gerekiyor"
+  permission_required: "İzin gerekiyor"
+  has_questions: "Claude'un soruları var"
+  finished_prompt: "Bitti: %{prompt}"
+  question_header: "Soru"
+  approve_plan: "Planı onaylayın"
+  pattern: "Desen: %{pattern}"
+  search: "Arama: %{pattern}"

@@ -296,3 +296,15 @@ api:
   saving_settings: "guardando los ajustes"
   sending_event: "enviando el evento"
   waiting_response: "esperando una respuesta: %{error}"
+
+payload:
+  plan_waiting: "Claude ha creado un plan y espera tu aprobación."
+  plan_ready: "Plan listo para aprobar"
+  needs_permission: "%{tool} necesita permiso"
+  permission_required: "Se necesita permiso"
+  has_questions: "Claude tiene preguntas"
+  finished_prompt: "Terminado: %{prompt}"
+  question_header: "Pregunta"
+  approve_plan: "Aprobar el plan"
+  pattern: "Patrón: %{pattern}"
+  search: "Búsqueda: %{pattern}"

@@ -295,3 +295,15 @@ api:
   saving_settings: "Speichern der Einstellungen"
   sending_event: "Senden des Ereignisses"
   waiting_response: "Warten auf eine Antwort: %{error}"
+
+payload:
+  plan_waiting: "Claude hat einen Plan erstellt und wartet auf deine Freigabe."
+  plan_ready: "Plan wartet auf Freigabe"
+  needs_permission: "%{tool} braucht eine Freigabe"
+  permission_required: "Freigabe erforderlich"
+  has_questions: "Claude hat Fragen"
+  finished_prompt: "Fertig: %{prompt}"
+  question_header: "Frage"
+  approve_plan: "Plan freigeben"
+  pattern: "Muster: %{pattern}"
+  search: "Suche: %{pattern}"

@@ -104,6 +104,9 @@ too), "unlock" for buying a licence; use the same words the app uses on screen.
   at most 200 characters after `%{...}` is filled in, and ideally one short sentence, because
   macOS and Windows cut notifications to two or three lines. `local.first_nudge` is appended to
   the end of another message, so keep it very short (English: 33 characters).
+- Phone cards (`payload.*`): shown on the phone's lock screen and in the app, and repeated in the
+  desktop notification, when Claude gave no text of its own. Keep them as short as English. The
+  phone shows them exactly as sent, in this computer's language.
 - `systemMessage` lines (`local.pair_message`, `hook.*_message`, `update.available_message`): one
   line that Claude Code shows in the terminal; aim for the English length, never more than about
   220 characters. They start with "Claude Code Notifier:" so the reader knows who is talking: keep
