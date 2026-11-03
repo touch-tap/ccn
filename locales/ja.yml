@@ -296,3 +296,6 @@ api:
   saving_settings: "設定の保存"
   sending_event: "イベントの送信"
   waiting_response: "応答の待機: %{error}"
+
+local_files:
+  config_unreadable: "%{path} を読み込めません（%{error}）。そのため ccn は上書きしません。ファイルを修正するか、削除してから `ccn pair` をもう一度実行してください。"

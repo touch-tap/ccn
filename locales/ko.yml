@@ -296,3 +296,6 @@ api:
   saving_settings: "설정 저장"
   sending_event: "이벤트 전송"
   waiting_response: "응답 대기: %{error}"
+
+local_files:
+  config_unreadable: "%{path} 파일을 읽을 수 없어요(%{error}). 그래서 ccn이 덮어쓰지 않아요. 파일을 고치거나, 삭제한 뒤 `ccn pair`를 다시 실행하세요."

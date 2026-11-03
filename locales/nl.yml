@@ -294,3 +294,6 @@ api:
   saving_settings: "opslaan van instellingen"
   sending_event: "versturen van de gebeurtenis"
   waiting_response: "wachten op een antwoord: %{error}"
+
+local_files:
+  config_unreadable: "%{path} kan niet worden gelezen (%{error}), dus ccn overschrijft het niet. Herstel het bestand, of verwijder het en voer `ccn pair` opnieuw uit."

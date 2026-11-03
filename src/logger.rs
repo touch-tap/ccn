@@ -9,6 +9,10 @@ use crate::config;
 const MAX_BYTES: u64 = 1024 * 1024;
 
 pub fn log(message: &str) {
+    // Unit tests run without CCN_HOME: they must not write to the real ccn directory
+    if cfg!(test) && std::env::var_os("CCN_HOME").is_none() {
+        return;
+    }
     let path = config::log_path();
     if let Some(parent) = path.parent() {
         let _ = config::ensure_dir(parent);

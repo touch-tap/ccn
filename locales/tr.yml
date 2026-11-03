@@ -297,3 +297,6 @@ api:
   saving_settings: "ayarlar kaydedilirken"
   sending_event: "olay gönderilirken"
   waiting_response: "yanıt beklenirken: %{error}"
+
+local_files:
+  config_unreadable: "%{path} okunamıyor (%{error}), bu yüzden ccn üzerine yazmayacak. Dosyayı düzeltin ya da silip `ccn pair` komutunu yeniden çalıştırın."

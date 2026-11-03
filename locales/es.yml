@@ -295,3 +295,6 @@ api:
   saving_settings: "guardando los ajustes"
   sending_event: "enviando el evento"
   waiting_response: "esperando una respuesta: %{error}"
+
+local_files:
+  config_unreadable: "No se puede leer %{path} (%{error}), así que ccn no lo sobrescribirá. Arregla el archivo, o bórralo y vuelve a ejecutar `ccn pair`."

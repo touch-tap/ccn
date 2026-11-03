@@ -297,3 +297,6 @@ api:
   saving_settings: "lưu cài đặt"
   sending_event: "gửi sự kiện"
   waiting_response: "chờ phản hồi: %{error}"
+
+local_files:
+  config_unreadable: "Không đọc được %{path} (%{error}), nên ccn sẽ không ghi đè lên nó. Hãy sửa tệp, hoặc xóa nó rồi chạy lại `ccn pair`."

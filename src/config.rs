@@ -308,6 +308,12 @@ pub struct Config {
     pub update_available: Option<String>,
     /// When `update_available` was last mentioned in Claude Code
     pub update_announced_at: Option<i64>,
+    /// The file as this process read it, to save only the fields it changed (see `save`)
+    #[serde(skip)]
+    loaded: Option<toml::Table>,
+    /// Why the file couldn't be read, when it exists but is damaged: `save` then refuses
+    #[serde(skip)]
+    unreadable: Option<String>,
 }
 
 impl Default for Config {
@@ -338,16 +344,108 @@ impl Default for Config {
             update_checked_at: None,
             update_available: None,
             update_announced_at: None,
+            loaded: None,
+            unreadable: None,
+        }
+    }
+}
+
+/// What reading the config file found.
+enum ConfigFile {
+    Missing,
+    /// The file's own table, keys this version doesn't know included, and what it parsed into
+    Read(toml::Table, Box<Config>),
+    /// It exists but can't be read or parsed, even after a moment
+    Unreadable(String),
+}
+
+/// Reads the config file. Hooks run concurrently and every write is atomic, but an older ccn
+/// (mid-upgrade) or an editor may still truncate and rewrite it in place, so a file that is
+/// empty or doesn't parse is read again a few times before it counts as damaged. One that stays
+/// empty is treated as missing: ccn never writes an empty config.
+fn read_config_file(path: &Path) -> ConfigFile {
+    let mut problem = String::new();
+    for attempt in 0..4 {
+        if attempt > 0 {
+            std::thread::sleep(std::time::Duration::from_millis(25));
+        }
+        let text = match fs::read_to_string(path) {
+            Ok(text) => text,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return ConfigFile::Missing,
+            Err(err) => {
+                problem = err.to_string();
+                continue;
+            }
+        };
+        if text.trim().is_empty() {
+            problem.clear();
+            continue;
+        }
+        let parsed = toml::from_str::<toml::Table>(&text).and_then(|table| {
+            let cfg = toml::Value::Table(table.clone()).try_into::<Config>()?;
+            Ok((table, cfg))
+        });
+        match parsed {
+            Ok((table, cfg)) => return ConfigFile::Read(table, Box::new(cfg)),
+            Err(err) => problem = err.message().to_string(),
+        }
+    }
+    if problem.is_empty() {
+        ConfigFile::Missing
+    } else {
+        ConfigFile::Unreadable(problem)
+    }
+}
+
+/// Holds an advisory lock on `<config>.lock` while a save reads and rewrites the config, so two
+/// processes saving at once can't lose each other's changes. Waits at most two seconds: a hook
+/// must never hang, and a save without the lock is still atomic, just last-writer-wins.
+fn lock_config(path: &Path) -> Option<fs::File> {
+    let lock_path = path.with_extension("lock");
+    let mut options = fs::OpenOptions::new();
+    options.create(true).truncate(false).write(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let file = options.open(&lock_path).ok()?;
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    loop {
+        match file.try_lock() {
+            Ok(()) => return Some(file),
+            Err(fs::TryLockError::WouldBlock) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(5))
+            }
+            Err(err) => {
+                crate::logger::log(&format!("config: saving without the lock ({err})"));
+                return None;
+            }
+        }
+    }
+}
+
+/// Puts onto `on_disk` the top-level keys this process changed since it read the file (`was` to
+/// `now`), and leaves every other key as the file has it now. Two hooks that loaded the same file
+/// and changed different fields then both keep their change, and a hook that loaded before
+/// `ccn pair` doesn't wipe the `client_id` pairing wrote. `skip` keys are never written.
+fn merge_changes(on_disk: &mut toml::Table, was: &toml::Table, now: &toml::Table, skip: &[&str]) {
+    for (key, value) in now {
+        if !skip.contains(&key.as_str()) && was.get(key) != Some(value) {
+            on_disk.insert(key.clone(), value.clone());
+        }
+    }
+    // A field set to None isn't serialised: its key going is the change
+    for key in was.keys() {
+        if !skip.contains(&key.as_str()) && !now.contains_key(key) {
+            on_disk.remove(key);
         }
     }
 }
 
 impl Config {
     pub fn load() -> Config {
-        let mut cfg = fs::read_to_string(config_path())
-            .ok()
-            .and_then(|text| toml::from_str::<Config>(&text).ok())
-            .unwrap_or_default();
+        let mut cfg = Config::load_from(&config_path());
         if let Ok(url) = std::env::var("CCN_SERVER_URL") {
             if !url.is_empty() {
                 cfg.server_url = url;
@@ -359,25 +457,76 @@ impl Config {
         cfg
     }
 
-    pub fn save(&self) -> Result<()> {
-        let path = config_path();
-        let mut to_write = self.clone();
-        if std::env::var("CCN_SERVER_URL").is_ok() {
-            // an override from the environment is not persisted
-            to_write.server_url =
-                Config::load_file_server_url().unwrap_or_else(|| DEFAULT_SERVER_URL.to_string());
+    /// The config in `path` as written, with no environment override. A damaged file gives the
+    /// defaults, so hooks keep working (in local mode), but marked so they never save over it.
+    fn load_from(path: &Path) -> Config {
+        match read_config_file(path) {
+            ConfigFile::Missing => Config::default(),
+            ConfigFile::Read(_, cfg) => {
+                let mut cfg = *cfg;
+                // Normalised through Config, so `save` compares like with like
+                cfg.loaded = toml::Table::try_from(&cfg).ok();
+                cfg
+            }
+            ConfigFile::Unreadable(problem) => {
+                crate::logger::log(&format!(
+                    "config: {} can't be read ({problem}); using defaults and not saving over it",
+                    path.display()
+                ));
+                Config {
+                    unreadable: Some(problem),
+                    ..Config::default()
+                }
+            }
         }
-        let text = toml::to_string_pretty(&to_write)?;
-        write_atomic(&path, text.as_bytes())
-            .with_context(|| format!("writing {}", path.display()))?;
-        Ok(())
     }
 
-    fn load_file_server_url() -> Option<String> {
-        fs::read_to_string(config_path())
-            .ok()
-            .and_then(|text| toml::from_str::<Config>(&text).ok())
-            .map(|c| c.server_url)
+    /// Saves the fields this process changed since `load`, merged into the file as it is now (see
+    /// `merge_changes`), atomically and under a lock. Never writes over a damaged file: doing so
+    /// would replace a `client_id` it may still hold with nothing, silently unpairing the computer.
+    pub fn save(&self) -> Result<()> {
+        // An override from the environment is not persisted
+        let env_url = std::env::var("CCN_SERVER_URL").is_ok_and(|v| !v.is_empty());
+        let skip: &[&str] = if env_url { &["server_url"] } else { &[] };
+        self.save_to(&config_path(), skip)
+    }
+
+    fn save_to(&self, path: &Path, skip: &[&str]) -> Result<()> {
+        let refuse = |problem: &str| {
+            anyhow::anyhow!(
+                "{}",
+                t!(
+                    "local_files.config_unreadable",
+                    path = path.display(),
+                    error = problem
+                )
+            )
+        };
+        if let Some(problem) = &self.unreadable {
+            return Err(refuse(problem));
+        }
+        if let Some(dir) = path.parent() {
+            ensure_dir(dir).with_context(|| format!("creating {}", dir.display()))?;
+        }
+        let _lock = lock_config(path);
+        let mut on_disk = match read_config_file(path) {
+            ConfigFile::Missing => toml::Table::new(),
+            ConfigFile::Read(table, _) => table,
+            ConfigFile::Unreadable(problem) => {
+                crate::logger::log(&format!(
+                    "config: {} became unreadable ({problem}); not saving over it",
+                    path.display()
+                ));
+                return Err(refuse(&problem));
+            }
+        };
+        let now = toml::Table::try_from(self)?;
+        let was = self.loaded.clone().unwrap_or_default();
+        merge_changes(&mut on_disk, &was, &now, skip);
+        let text = toml::to_string_pretty(&on_disk)?;
+        write_atomic(path, text.as_bytes())
+            .with_context(|| format!("writing {}", path.display()))?;
+        Ok(())
     }
 
     /// This computer has credentials: it is registered with the server (not necessarily with a
@@ -906,5 +1055,138 @@ mod write_tests {
         assert!(!is_temp_file("config.toml", "config.toml"));
         assert!(!is_temp_file(".config.toml", "config.toml"));
         assert!(!is_temp_file(".config.tomlx.tmp", "config.toml"));
+    }
+
+    #[test]
+    fn a_damaged_config_is_never_saved_over() {
+        let dir = temp_dir("damaged");
+        let path = dir.join("config.toml");
+        fs::create_dir_all(&dir).unwrap();
+        let damaged = "client_id = \"keep-me\"\nphones = [oops\n";
+        fs::write(&path, damaged).unwrap();
+        let mut cfg = Config::load_from(&path);
+        // Defaults, so hooks still run, but marked
+        assert!(cfg.client_id.is_none());
+        assert!(cfg.unreadable.is_some());
+        cfg.local_notifications = 5;
+        let err = cfg.save_to(&path, &[]).unwrap_err();
+        assert!(format!("{err}").contains("can't be read"), "{err}");
+        assert_eq!(fs::read_to_string(&path).unwrap(), damaged);
+        // Nor by a process that read it while it was fine
+        fs::remove_file(&path).unwrap();
+        let good = Config::default();
+        good.save_to(&path, &[]).unwrap();
+        let cfg = Config::load_from(&path);
+        fs::write(&path, damaged).unwrap();
+        assert!(cfg.save_to(&path, &[]).is_err());
+        assert_eq!(fs::read_to_string(&path).unwrap(), damaged);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_missing_or_empty_config_is_the_defaults_and_can_be_saved() {
+        let dir = temp_dir("missing");
+        let path = dir.join("config.toml");
+        let cfg = Config::load_from(&path);
+        assert!(cfg.unreadable.is_none() && cfg.loaded.is_none());
+        cfg.save_to(&path, &[]).unwrap();
+        let text = fs::read_to_string(&path).unwrap();
+        assert!(
+            text.contains("server_url") && text.contains("[settings]"),
+            "{text}"
+        );
+        fs::write(&path, "\n").unwrap();
+        let cfg = Config::load_from(&path);
+        assert!(cfg.unreadable.is_none());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Two processes load the same file and each changes a different field: both changes survive,
+    /// and one that loaded before pairing doesn't wipe the client_id pairing saved.
+    #[test]
+    fn concurrent_saves_keep_each_others_changes() {
+        let dir = temp_dir("merge");
+        let path = dir.join("config.toml");
+        Config::default().save_to(&path, &[]).unwrap();
+        let mut hook = Config::load_from(&path);
+        let mut pair = Config::load_from(&path);
+        pair.client_id = Some("computer-1".into());
+        pair.phones = Some(1);
+        pair.save_to(&path, &[]).unwrap();
+        hook.local_notifications = 3;
+        hook.save_to(&path, &[]).unwrap();
+        let cfg = Config::load_from(&path);
+        assert_eq!(cfg.client_id.as_deref(), Some("computer-1"));
+        assert_eq!(cfg.phones, Some(1));
+        assert_eq!(cfg.local_notifications, 3);
+        // Clearing a field is a change too
+        let mut reset = Config::load_from(&path);
+        reset.client_id = None;
+        reset.save_to(&path, &[]).unwrap();
+        assert!(Config::load_from(&path).client_id.is_none());
+        assert_eq!(Config::load_from(&path).local_notifications, 3);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn keys_from_a_newer_version_and_skipped_keys_are_kept() {
+        let dir = temp_dir("keep");
+        let path = dir.join("config.toml");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            &path,
+            "server_url = \"https://saved.example\"\nfuture_field = 7\n",
+        )
+        .unwrap();
+        let mut cfg = Config::load_from(&path);
+        // As Config::load does with CCN_SERVER_URL
+        cfg.server_url = "http://127.0.0.1:1".into();
+        cfg.pair_nudges = false;
+        cfg.save_to(&path, &["server_url"]).unwrap();
+        let text = fs::read_to_string(&path).unwrap();
+        assert!(text.contains("future_field = 7"), "{text}");
+        assert!(text.contains("https://saved.example"), "{text}");
+        assert!(text.contains("pair_nudges = false"), "{text}");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Many threads each set their own counter-like field at once; none is lost.
+    #[test]
+    fn simultaneous_saves_lose_nothing() {
+        let dir = temp_dir("simultaneous");
+        let path = dir.join("config.toml");
+        Config::default().save_to(&path, &[]).unwrap();
+        let handles: Vec<_> = (0..8)
+            .map(|i| {
+                let path = path.clone();
+                std::thread::spawn(move || {
+                    let mut cfg = Config::load_from(&path);
+                    match i {
+                        0 => cfg.client_id = Some("c".into()),
+                        1 => cfg.phones = Some(2),
+                        2 => cfg.paired_at = Some(1),
+                        3 => cfg.machine_name = Some("m".into()),
+                        4 => cfg.registered_at = Some(2),
+                        5 => cfg.update_checked_at = Some(3),
+                        6 => cfg.licence_checked_at = Some(4),
+                        _ => cfg.pair_nudge_last_at = Some(5),
+                    }
+                    cfg.save_to(&path, &[]).unwrap();
+                })
+            })
+            .collect();
+        for h in handles {
+            h.join().unwrap();
+        }
+        let cfg = Config::load_from(&path);
+        assert_eq!(cfg.client_id.as_deref(), Some("c"));
+        assert_eq!(cfg.phones, Some(2));
+        assert_eq!(cfg.paired_at, Some(1));
+        assert_eq!(cfg.machine_name.as_deref(), Some("m"));
+        assert_eq!(cfg.registered_at, Some(2));
+        assert_eq!(cfg.update_checked_at, Some(3));
+        assert_eq!(cfg.licence_checked_at, Some(4));
+        assert_eq!(cfg.pair_nudge_last_at, Some(5));
+        let _ = fs::remove_dir_all(&dir);
     }
 }
