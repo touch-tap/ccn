@@ -12,7 +12,8 @@ use std::time::{Duration, Instant};
 const PROBE_TIMEOUT: Duration = Duration::from_millis(500);
 
 pub fn idle_seconds() -> Option<f64> {
-    // Test hook: CCN_PRESENCE=away|present pins the answer; file:<path> reads it from a file each time
+    // Test hook: CCN_PRESENCE=away|present|unknown pins the answer (unknown: as where idle time
+    // can't be read); file:<path> reads it from a file each time
     if let Ok(value) = std::env::var("CCN_PRESENCE") {
         let value = match value.strip_prefix("file:") {
             Some(path) => std::fs::read_to_string(path)
@@ -24,6 +25,7 @@ pub fn idle_seconds() -> Option<f64> {
         match value.as_str() {
             "away" => return Some(1e9),
             "present" => return Some(0.0),
+            "unknown" => return None,
             _ => {}
         }
     }
