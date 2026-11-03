@@ -7,7 +7,11 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-pub const DEFAULT_SERVER_URL: &str = "https://ccnotifier-api.touchtap.workers.dev";
+pub const DEFAULT_SERVER_URL: &str = "https://api.claudecodenotifier.com";
+/// The server's first address, saved in the config of older installs. It is the same
+/// Worker and stays up, but *.workers.dev is blocked or unreliable in mainland China, so a saved copy
+/// of it is read as the default.
+pub const LEGACY_SERVER_URL: &str = "https://ccnotifier-api.touchtap.workers.dev";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const KEYRING_SERVICE: &str = "com.touchtap.ccn";
 pub const KEYRING_USER: &str = "auth_token";
@@ -447,6 +451,16 @@ fn merge_changes(on_disk: &mut toml::Table, was: &toml::Table, now: &toml::Table
     }
 }
 
+/// The server to talk to for a saved `server_url`: empty or the legacy workers.dev address mean the
+/// default; anything else (a staging or local server) is kept.
+fn effective_server_url(saved: &str) -> String {
+    if saved.is_empty() || saved.trim_end_matches('/') == LEGACY_SERVER_URL {
+        DEFAULT_SERVER_URL.to_string()
+    } else {
+        saved.to_string()
+    }
+}
+
 impl Config {
     pub fn load() -> Config {
         let mut cfg = Config::load_from(&config_path());
@@ -455,9 +469,7 @@ impl Config {
                 cfg.server_url = url;
             }
         }
-        if cfg.server_url.is_empty() {
-            cfg.server_url = DEFAULT_SERVER_URL.to_string();
-        }
+        cfg.server_url = effective_server_url(&cfg.server_url);
         cfg
     }
 
@@ -1068,6 +1080,24 @@ mod locale_tests {
 #[cfg(test)]
 mod write_tests {
     use super::*;
+
+    #[test]
+    fn legacy_server_url_reads_as_the_default() {
+        assert_eq!(effective_server_url(""), DEFAULT_SERVER_URL);
+        assert_eq!(effective_server_url(LEGACY_SERVER_URL), DEFAULT_SERVER_URL);
+        assert_eq!(
+            effective_server_url("https://ccnotifier-api.touchtap.workers.dev/"),
+            DEFAULT_SERVER_URL
+        );
+        assert_eq!(
+            effective_server_url("https://ccnotifier-api-staging.touchtap.workers.dev"),
+            "https://ccnotifier-api-staging.touchtap.workers.dev"
+        );
+        assert_eq!(
+            effective_server_url("http://127.0.0.1:8799"),
+            "http://127.0.0.1:8799"
+        );
+    }
 
     fn temp_dir(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("ccn-write-{name}-{}", std::process::id()));

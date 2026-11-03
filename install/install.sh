@@ -43,7 +43,7 @@ case "$(uname -m)" in arm64|aarch64) model="$model-aarch64" ;; x86_64|amd64) mod
 track() {
   case "${CCN_NO_ANALYTICS:-}${DO_NOT_TRACK:-}" in ""|0|00) ;; *) return 0 ;; esac
   body="{\"context\":{\"platform\":\"cli\",\"deviceModel\":\"$model\",\"environment\":\"production\"},\"events\":[{\"name\":\"$1\",\"properties\":{\"method\":\"script\",\"source\":\"$source_tag\"${2:+,$2}}}]}"
-  url="${CCN_SERVER_URL:-https://ccnotifier-api.touchtap.workers.dev}/api/events"
+  url="${CCN_SERVER_URL:-https://api.claudecodenotifier.com}/api/events"
   if command -v curl >/dev/null 2>&1; then
     curl -fsS -m 3 -H 'Content-Type: application/json' -d "$body" "$url" >/dev/null 2>&1 || true
   elif command -v wget >/dev/null 2>&1; then
