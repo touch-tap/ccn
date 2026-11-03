@@ -314,6 +314,10 @@ local_files:
 payload:
   plan_waiting: "Claude가 계획을 세우고 승인을 기다리고 있어요."
   plan_ready: "승인을 기다리는 계획"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "예, 편집 자동 승인"
+  plan_manual_edits: "예, 편집을 직접 승인"
+  plan_keep_planning: "아니요, 계속 계획하기"
   needs_permission: "%{tool} 권한이 필요해요"
   permission_required: "권한이 필요해요"
   has_questions: "Claude가 질문이 있어요"

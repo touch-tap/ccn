@@ -316,6 +316,10 @@ local_files:
 payload:
   plan_waiting: "Claude יצר תוכנית ומחכה לאישור שלכם."
   plan_ready: "תוכנית מוכנה לאישור"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "כן, לאשר עריכות אוטומטית"
+  plan_manual_edits: "כן, לאשר כל עריכה ידנית"
+  plan_keep_planning: "לא, להמשיך לתכנן"
   needs_permission: "%{tool} צריך הרשאה"
   permission_required: "נדרשת הרשאה"
   has_questions: "ל-Claude יש שאלות"

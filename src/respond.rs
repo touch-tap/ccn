@@ -412,8 +412,7 @@ mod tests {
             ] })
         };
         // The options sent now
-        let values: Vec<&str> = crate::payload::PLAN_OPTIONS.iter().map(|o| o.1).collect();
-        assert_eq!(values, ["3", "4", "n"]);
+        assert_eq!(crate::payload::PLAN_VALUES, ["3", "4", "n"]);
         assert_eq!(decision("3", &plan), mode("acceptEdits"));
         assert_eq!(decision("4", &plan), mode("default"));
         let keep = decision("n", &plan);

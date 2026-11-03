@@ -314,6 +314,10 @@ local_files:
 payload:
   plan_waiting: "Claude 已制定计划，正在等你批准。"
   plan_ready: "计划待批准"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "是，自动接受编辑"
+  plan_manual_edits: "是，手动批准编辑"
+  plan_keep_planning: "否，继续规划"
   needs_permission: "%{tool} 需要权限"
   permission_required: "需要权限"
   has_questions: "Claude 有几个问题"

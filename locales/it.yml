@@ -313,6 +313,10 @@ local_files:
 payload:
   plan_waiting: "Claude ha preparato un piano e aspetta la tua approvazione."
   plan_ready: "Piano pronto da approvare"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "Sì, accetta le modifiche automaticamente"
+  plan_manual_edits: "Sì, approva ogni modifica a mano"
+  plan_keep_planning: "No, continua a pianificare"
   needs_permission: "%{tool} chiede un permesso"
   permission_required: "Permesso richiesto"
   has_questions: "Claude ha delle domande"

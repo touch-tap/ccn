@@ -318,6 +318,10 @@ local_files:
 payload:
   plan_waiting: "Claude has created a plan and is waiting for your approval."
   plan_ready: "Plan ready for approval"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "Yes, auto-accept edits"
+  plan_manual_edits: "Yes, manually approve edits"
+  plan_keep_planning: "No, keep planning"
   # %{tool} is Claude Code's tool name: Bash, Edit, WebFetch...
   needs_permission: "%{tool} needs permission"
   permission_required: "Permission required"

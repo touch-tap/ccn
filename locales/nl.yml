@@ -312,6 +312,10 @@ local_files:
 payload:
   plan_waiting: "Claude heeft een plan gemaakt en wacht op je goedkeuring."
   plan_ready: "Plan klaar voor goedkeuring"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "Ja, wijzigingen automatisch accepteren"
+  plan_manual_edits: "Ja, wijzigingen zelf goedkeuren"
+  plan_keep_planning: "Nee, verder plannen"
   needs_permission: "%{tool} vraagt toestemming"
   permission_required: "Toestemming nodig"
   has_questions: "Claude heeft vragen"

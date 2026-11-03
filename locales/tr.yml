@@ -315,6 +315,10 @@ local_files:
 payload:
   plan_waiting: "Claude bir plan hazırladı ve onayınızı bekliyor."
   plan_ready: "Plan onay bekliyor"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "Evet, düzenlemeleri otomatik kabul et"
+  plan_manual_edits: "Evet, düzenlemeleri tek tek onayla"
+  plan_keep_planning: "Hayır, planlamaya devam et"
   needs_permission: "%{tool} için izin gerekiyor"
   permission_required: "İzin gerekiyor"
   has_questions: "Claude'un soruları var"

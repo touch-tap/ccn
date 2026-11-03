@@ -314,6 +314,10 @@ local_files:
 payload:
   plan_waiting: "Claude がプランを作成し、承認を待っています。"
   plan_ready: "プランの承認待ち"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "はい、編集を自動で承認"
+  plan_manual_edits: "はい、編集を手動で承認"
+  plan_keep_planning: "いいえ、計画を続ける"
   needs_permission: "%{tool} の許可が必要です"
   permission_required: "許可が必要です"
   has_questions: "Claude から質問があります"

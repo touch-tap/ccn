@@ -312,6 +312,10 @@ local_files:
 payload:
   plan_waiting: "Claude составил план и ждёт вашего одобрения."
   plan_ready: "План ждёт одобрения"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "Да, принимать правки автоматически"
+  plan_manual_edits: "Да, подтверждать правки вручную"
+  plan_keep_planning: "Нет, продолжить планирование"
   needs_permission: "%{tool}: нужно разрешение"
   permission_required: "Нужно разрешение"
   has_questions: "У Claude есть вопросы"

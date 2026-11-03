@@ -15,14 +15,22 @@ pub const PERMISSION_OPTIONS: &[(&str, &str)] = &[
     ("Allow for session", "a"),
     ("Deny", "n"),
 ];
-/// `3` and `4` keep the values earlier versions sent for these two. The "clear context" choices
-/// (`1`, `2`) are gone: a hook can't clear context, so offering them would be untrue. `n` keeps
-/// Claude planning; the phone shows it as the deny button. respond.rs maps each value.
-pub const PLAN_OPTIONS: &[(&str, &str)] = &[
-    ("Yes, auto-accept edits", "3"),
-    ("Yes, manually approve edits", "4"),
-    ("No, keep planning", "n"),
-];
+/// The plan-approval choices' values. `3` and `4` keep the values earlier versions sent for these
+/// two. The "clear context" choices (`1`, `2`) are gone: a hook can't clear context, so offering
+/// them would be untrue. `n` keeps Claude planning; the phone shows it as the deny button.
+/// respond.rs maps each value.
+pub const PLAN_VALUES: [&str; 3] = ["3", "4", "n"];
+
+/// The plan-approval choices with their labels in the computer's language. Unlike the permission
+/// options, whose English labels the phone apps recognise and translate themselves, the apps show
+/// these labels exactly as sent.
+fn plan_options() -> Value {
+    json!([
+        { "label": t!("payload.plan_accept_edits"), "value": PLAN_VALUES[0] },
+        { "label": t!("payload.plan_manual_edits"), "value": PLAN_VALUES[1] },
+        { "label": t!("payload.plan_keep_planning"), "value": PLAN_VALUES[2] },
+    ])
+}
 
 pub struct Input<'a>(pub &'a Value);
 
@@ -179,7 +187,7 @@ pub fn permission_card(input: &Input, remote: bool) -> (Value, &'static str, Str
             "plan_approval",
             t!("payload.plan_ready").into_owned(),
             plan,
-            options(PLAN_OPTIONS),
+            plan_options(),
         )
     } else {
         let description = tool_input["description"].as_str().unwrap_or("");

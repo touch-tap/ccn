@@ -315,6 +315,10 @@ local_files:
 payload:
   plan_waiting: "Claude đã lập một kế hoạch và đang chờ bạn phê duyệt."
   plan_ready: "Kế hoạch đang chờ phê duyệt"
+  # The plan-approval buttons on the phone
+  plan_accept_edits: "Có, tự động chấp nhận chỉnh sửa"
+  plan_manual_edits: "Có, duyệt từng chỉnh sửa"
+  plan_keep_planning: "Không, tiếp tục lập kế hoạch"
   needs_permission: "%{tool} cần quyền"
   permission_required: "Cần cấp quyền"
   has_questions: "Claude có vài câu hỏi"
