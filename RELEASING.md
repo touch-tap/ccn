@@ -15,7 +15,11 @@
    `releases/latest/download/…`, so they serve the new version the moment it is published, and
    `ccn upgrade` (and the daily background check behind it) picks it up the same way: it asks the
    server's `GET /api/cli/latest`, or GitHub's releases API, for the latest published release and
-   verifies the download against its `SHA256SUMS`. A draft is invisible to both.
+   verifies the download against its `SHA256SUMS`. A draft is invisible to both. The server only
+   names the version: `ccn upgrade` always downloads from
+   `https://github.com/touch-tap/ccn/releases/download/<tag>/` and ignores any other
+   `downloadBase` (`CCN_DOWNLOAD_BASE` overrides it for tests and CI only), so the release assets
+   must stay at that path. `SHA256SUMS` lines may be `<hash>  <name>` or `<hash> *<name>`.
    The repository must be public for the scripts, Homebrew and npm to reach the assets.
 4. Homebrew: copy `ccn.rb` from the release to `touch-tap/homebrew-tap` as `Formula/ccn.rb`, push.
 5. winget: `scripts/winget-manifests.sh 0.2.0` downloads the release's `SHA256SUMS` and writes the
@@ -39,7 +43,9 @@
    `touchtap` org; npm asks for the passkey in the browser). It skips versions already on npm, so
    an interrupted run can be repeated.
 8. Website: `install/install.sh` and `install/install.ps1` are served from claudecodenotifier.com.
-   Copy them to the CCNotifier_Website repo root when they change.
+   Copy them to the CCNotifier_Website repo root when they change, byte for byte: the site's
+   `functions/_install-source.js` rewrites one marker line in each (`source_tag="${CCN_INSTALL_SOURCE:-direct}"`
+   and the `$sourceTag = if ($env:CCN_INSTALL_SOURCE) ...` line), so keep those exactly as they are.
 
 The phone apps read the install lines from `GET /api/cli/install` on the server
 (`CCNotifier_Server/src/routes/install.ts`), so a change of install method needs no app release.
