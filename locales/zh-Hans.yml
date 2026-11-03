@@ -312,3 +312,14 @@ payload:
 net:
   unreachable: "无法连接 Claude Code Notifier 服务器。请检查网络连接后重试。"
   doctor_unreachable: "服务器: 无法连接 %{url}。请检查网络连接、代理或防火墙"
+
+clap:
+  usage: "用法:"
+  commands: "命令:"
+  arguments: "参数:"
+  options: "选项:"
+  help: "显示帮助"
+  version: "显示版本"
+  help_command: "显示 ccn 或其某个命令的帮助"
+  help_command_arg: "要查看帮助的命令"
+  error_hint: "运行 `ccn --help` 查看所有命令和选项。"

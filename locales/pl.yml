@@ -310,3 +310,14 @@ payload:
 net:
   unreachable: "Nie udało się połączyć z serwerem Claude Code Notifier. Sprawdź połączenie z internetem i spróbuj ponownie."
   doctor_unreachable: "serwer: nie udało się połączyć z %{url}. Sprawdź połączenie z internetem, proxy lub zaporę"
+
+clap:
+  usage: "Użycie:"
+  commands: "Polecenia:"
+  arguments: "Argumenty:"
+  options: "Opcje:"
+  help: "Pokaż pomoc"
+  version: "Pokaż wersję"
+  help_command: "Pokaż pomoc dla ccn lub jednego z jego poleceń"
+  help_command_arg: "Polecenie, dla którego pokazać pomoc"
+  error_hint: "Uruchom `ccn --help`, aby zobaczyć polecenia i opcje."

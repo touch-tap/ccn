@@ -312,3 +312,14 @@ payload:
 net:
   unreachable: "Claude Code Notifier のサーバーに接続できませんでした。インターネット接続を確認して、もう一度お試しください。"
   doctor_unreachable: "サーバー: %{url} に接続できません。インターネット接続、プロキシ、ファイアウォールを確認してください"
+
+clap:
+  usage: "使い方:"
+  commands: "コマンド:"
+  arguments: "引数:"
+  options: "オプション:"
+  help: "ヘルプを表示"
+  version: "バージョンを表示"
+  help_command: "ccn またはそのコマンドのヘルプを表示"
+  help_command_arg: "ヘルプを表示するコマンド"
+  error_hint: "`ccn --help` でコマンドとオプションの一覧を確認できます。"

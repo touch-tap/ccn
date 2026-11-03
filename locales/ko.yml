@@ -312,3 +312,14 @@ payload:
 net:
   unreachable: "Claude Code Notifier 서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요."
   doctor_unreachable: "서버: %{url}에 연결할 수 없어요. 인터넷 연결, 프록시, 방화벽을 확인해 주세요"
+
+clap:
+  usage: "사용법:"
+  commands: "명령:"
+  arguments: "인수:"
+  options: "옵션:"
+  help: "도움말 보기"
+  version: "버전 보기"
+  help_command: "ccn 또는 명령의 도움말 보기"
+  help_command_arg: "도움말을 볼 명령"
+  error_hint: "`ccn --help`를 실행하면 명령과 옵션을 볼 수 있어요."

@@ -313,3 +313,14 @@ payload:
 net:
   unreachable: "Claude Code Notifier sunucusuna ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin."
   doctor_unreachable: "sunucu: %{url} adresine ulaşılamıyor. İnternet bağlantınızı, proxy'yi veya güvenlik duvarını kontrol edin"
+
+clap:
+  usage: "Kullanım:"
+  commands: "Komutlar:"
+  arguments: "Argümanlar:"
+  options: "Seçenekler:"
+  help: "Yardımı göster"
+  version: "Sürümü göster"
+  help_command: "ccn'nin veya komutlarından birinin yardımını göster"
+  help_command_arg: "Yardımı gösterilecek komut"
+  error_hint: "Komutları ve seçenekleri görmek için `ccn --help` çalıştırın."

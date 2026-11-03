@@ -312,3 +312,14 @@ payload:
 net:
   unreachable: "無法連線到 Claude Code Notifier 伺服器。請檢查網路連線後再試一次。"
   doctor_unreachable: "伺服器: 無法連線到 %{url}。請檢查網路連線、Proxy 或防火牆"
+
+clap:
+  usage: "用法:"
+  commands: "命令:"
+  arguments: "引數:"
+  options: "選項:"
+  help: "顯示說明"
+  version: "顯示版本"
+  help_command: "顯示 ccn 或其某個命令的說明"
+  help_command_arg: "要查看說明的命令"
+  error_hint: "執行 `ccn --help` 查看所有命令和選項。"

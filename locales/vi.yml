@@ -313,3 +313,14 @@ payload:
 net:
   unreachable: "Không kết nối được tới máy chủ Claude Code Notifier. Hãy kiểm tra kết nối internet rồi thử lại."
   doctor_unreachable: "máy chủ: không kết nối được tới %{url}. Hãy kiểm tra kết nối internet, proxy hoặc tường lửa"
+
+clap:
+  usage: "Cách dùng:"
+  commands: "Lệnh:"
+  arguments: "Đối số:"
+  options: "Tùy chọn:"
+  help: "Hiện trợ giúp"
+  version: "Hiện phiên bản"
+  help_command: "Hiện trợ giúp của ccn hoặc của một lệnh"
+  help_command_arg: "Lệnh cần xem trợ giúp"
+  error_hint: "Chạy `ccn --help` để xem các lệnh và tùy chọn."
