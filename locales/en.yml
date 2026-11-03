@@ -302,3 +302,9 @@ api:
 # A second upgrader found the first one still running
 update_lock:
   busy: "another ccn upgrade is already running. Try again in a few minutes"
+
+local_files:
+  config_unreadable: "%{path} can't be read (%{error}), so ccn won't write over it. Fix the file, or delete it and run `ccn pair` again."
+  slot_not_freed: "Couldn't free this computer's licence slot (%{error}). If it has a licence, free the slot at claudecodenotifier.com/licence with your key."
+  kept_dir: "Removed ccn's files from %{path}. The folder holds other files too, so it was left in place."
+  remove_binary: "ccn itself is still installed. To remove it: %{command}"

@@ -302,3 +302,9 @@ api:
 # A second upgrader found the first one still running
 update_lock:
   busy: "עדכון אחר של ccn כבר פועל. נסו שוב בעוד כמה דקות"
+
+local_files:
+  config_unreadable: "אי אפשר לקרוא את %{path} (%{error}), ולכן ccn לא יכתוב מעליו. תקנו את הקובץ, או מחקו אותו והריצו שוב `ccn pair`."
+  slot_not_freed: "לא ניתן היה לשחרר את מקום הרישיון של המחשב הזה (%{error}). אם יש לו רישיון, שחררו את המקום ב-claudecodenotifier.com/licence בעזרת המפתח שלכם."
+  kept_dir: "הקבצים של ccn הוסרו מ-%{path}. בתיקייה יש גם קבצים אחרים, ולכן היא נשארה במקומה."
+  remove_binary: "ccn עצמו עדיין מותקן. כדי להסיר אותו: %{command}"

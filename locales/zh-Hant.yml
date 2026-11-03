@@ -300,3 +300,9 @@ api:
 # A second upgrader found the first one still running
 update_lock:
   busy: "另一個 ccn 升級正在執行。請幾分鐘後再試"
+
+local_files:
+  config_unreadable: "無法讀取 %{path}（%{error}），所以 ccn 不會覆寫它。請修復這個檔案，或刪除它後再執行一次 `ccn pair`。"
+  slot_not_freed: "無法釋放這台電腦的授權名額（%{error}）。如果它有授權，請用你的金鑰在 claudecodenotifier.com/licence 釋放名額。"
+  kept_dir: "已從 %{path} 移除 ccn 的檔案。這個資料夾裡還有其他檔案，所以保留了資料夾本身。"
+  remove_binary: "ccn 本身仍已安裝。要移除它，請執行：%{command}"

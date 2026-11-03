@@ -299,3 +299,9 @@ api:
 # A second upgrader found the first one still running
 update_lock:
   busy: "une autre mise à jour de ccn est déjà en cours. Réessayez dans quelques minutes"
+
+local_files:
+  config_unreadable: "Impossible de lire %{path} (%{error}), donc ccn ne l'écrasera pas. Corrige le fichier, ou supprime-le et relance `ccn pair`."
+  slot_not_freed: "Impossible de libérer la place de cet ordinateur sur la licence (%{error}). S'il a une licence, libère sa place sur claudecodenotifier.com/licence avec ta clé."
+  kept_dir: "Fichiers de ccn supprimés de %{path}. Le dossier contient d'autres fichiers, il a donc été conservé."
+  remove_binary: "ccn lui-même est toujours installé. Pour le supprimer : %{command}"

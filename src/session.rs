@@ -75,11 +75,11 @@ impl SessionState {
 
     pub fn save(&mut self) -> Result<()> {
         self.updated_at = config::now();
-        let path = path_for(&self.session_id);
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        fs::write(path, serde_json::to_string(self)?)?;
+        // Parallel hooks in one session read this while another writes it
+        config::write_atomic(
+            &path_for(&self.session_id),
+            serde_json::to_string(self)?.as_bytes(),
+        )?;
         Ok(())
     }
 
@@ -112,6 +112,33 @@ impl SessionState {
             format!("{cut}...")
         }
     }
+}
+
+/// Deletes every session file (and any temp file a crash left), then the sessions directory if
+/// that leaves it empty. Only files that look like ccn's: uninstall must not empty a `sessions`
+/// folder of someone else's when `CCN_HOME` points somewhere shared.
+pub fn remove_all() {
+    let dir = config::sessions_dir();
+    let Ok(entries) = fs::read_dir(&dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let ours = if name.starts_with('.') {
+            name.ends_with(".tmp") && name.contains(".json.")
+        } else {
+            name.ends_with(".json")
+                && fs::read_to_string(&path)
+                    .ok()
+                    .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+                    .is_some_and(|v| v.get("session_id").is_some() && v.get("updated_at").is_some())
+        };
+        if ours {
+            let _ = fs::remove_file(path);
+        }
+    }
+    let _ = fs::remove_dir(dir);
 }
 
 /// Deletes session files untouched for longer than `days`.

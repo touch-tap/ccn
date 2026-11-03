@@ -298,3 +298,9 @@ api:
 # A second upgrader found the first one still running
 update_lock:
   busy: "другое обновление ccn уже выполняется. Повторите попытку через несколько минут"
+
+local_files:
+  config_unreadable: "Не удаётся прочитать %{path} (%{error}), поэтому ccn не будет его перезаписывать. Исправьте файл или удалите его и снова выполните `ccn pair`."
+  slot_not_freed: "Не удалось освободить место этого компьютера в лицензии (%{error}). Если у него есть лицензия, освободите место на claudecodenotifier.com/licence с помощью своего ключа."
+  kept_dir: "Файлы ccn удалены из %{path}. В папке есть и другие файлы, поэтому она оставлена."
+  remove_binary: "Сам ccn всё ещё установлен. Чтобы удалить его: %{command}"

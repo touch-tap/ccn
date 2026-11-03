@@ -301,3 +301,9 @@ api:
 # A second upgrader found the first one still running
 update_lock:
   busy: "một bản nâng cấp ccn khác đang chạy. Hãy thử lại sau vài phút"
+
+local_files:
+  config_unreadable: "Không đọc được %{path} (%{error}), nên ccn sẽ không ghi đè lên nó. Hãy sửa tệp, hoặc xóa nó rồi chạy lại `ccn pair`."
+  slot_not_freed: "Không giải phóng được chỗ của máy tính này trong giấy phép (%{error}). Nếu máy có giấy phép, hãy giải phóng chỗ tại claudecodenotifier.com/licence bằng khóa của bạn."
+  kept_dir: "Đã xóa các tệp của ccn khỏi %{path}. Thư mục còn chứa tệp khác nên được giữ lại."
+  remove_binary: "Bản thân ccn vẫn còn được cài đặt. Để gỡ nó: %{command}"
