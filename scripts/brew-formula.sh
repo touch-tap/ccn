@@ -4,8 +4,22 @@
 set -eu
 version=$1
 sums=$2
-sha() { awk -v f="ccn-$1.tar.gz" '$2 == f { print $1 }' "$sums"; }
+[ -r "$sums" ] || { echo "brew-formula: cannot read $sums" >&2; exit 1; }
+# `<hash>  <name>` or `<hash> *<name>`. Each is read here, not inside the heredoc, where a missing
+# one would print an empty sha256 and still exit 0
+sha() {
+  s=$(awk -v f="ccn-$1.tar.gz" '{ n = $2; sub(/^\*/, "", n) } n == f { print $1; exit }' "$sums")
+  case "$s" in
+    [0-9a-fA-F]*) [ ${#s} -eq 64 ] && { echo "$s"; return; } ;;
+  esac
+  echo "brew-formula: no sha256 for ccn-$1.tar.gz in $sums" >&2
+  exit 1
+}
 base="https://github.com/touch-tap/ccn/releases/download/v$version"
+mac_arm=$(sha aarch64-apple-darwin)
+mac_intel=$(sha x86_64-apple-darwin)
+linux_arm=$(sha aarch64-unknown-linux-musl)
+linux_intel=$(sha x86_64-unknown-linux-musl)
 
 cat <<RUBY
 class Ccn < Formula
@@ -16,22 +30,22 @@ class Ccn < Formula
   on_macos do
     on_arm do
       url "$base/ccn-aarch64-apple-darwin.tar.gz"
-      sha256 "$(sha aarch64-apple-darwin)"
+      sha256 "$mac_arm"
     end
     on_intel do
       url "$base/ccn-x86_64-apple-darwin.tar.gz"
-      sha256 "$(sha x86_64-apple-darwin)"
+      sha256 "$mac_intel"
     end
   end
 
   on_linux do
     on_arm do
       url "$base/ccn-aarch64-unknown-linux-musl.tar.gz"
-      sha256 "$(sha aarch64-unknown-linux-musl)"
+      sha256 "$linux_arm"
     end
     on_intel do
       url "$base/ccn-x86_64-unknown-linux-musl.tar.gz"
-      sha256 "$(sha x86_64-unknown-linux-musl)"
+      sha256 "$linux_intel"
     end
   end
 

@@ -84,7 +84,7 @@ for target in aarch64-apple-darwin x86_64-apple-darwin; do
   codesign -dv "$mac/$target/ccn" 2>&1 | grep -q "TeamIdentifier=4ABJZNGY79" || fail "$target isn't signed by TouchTap"
   tar czf "$mac/ccn-$target.tar.gz" -C "$mac/$target" ccn
   sum=$(shasum -a 256 "$mac/ccn-$target.tar.gz" | cut -d' ' -f1)
-  awk -v f="ccn-$target.tar.gz" -v s="$sum" '$2 == f { print s "  " f; next } { print }' "$mac/SHA256SUMS" > "$mac/SHA256SUMS.new"
+  awk -v f="ccn-$target.tar.gz" -v s="$sum" '{ n = $2; sub(/^\*/, "", n) } n == f { print s "  " f; next } { print }' "$mac/SHA256SUMS" > "$mac/SHA256SUMS.new"
   mv "$mac/SHA256SUMS.new" "$mac/SHA256SUMS"
 done
 scripts/brew-formula.sh "$version" "$mac/SHA256SUMS" > "$mac/ccn.rb"

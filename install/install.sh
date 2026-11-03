@@ -91,7 +91,8 @@ fetch "$base/$asset" "$tmp/$asset" || fail "could not download $base/$asset"
 fetch "$base/SHA256SUMS" "$tmp/SHA256SUMS" || fail "could not download the checksums"
 
 stage="checksum"
-expected="$(awk -v f="$asset" '$2 == f { print $1 }' "$tmp/SHA256SUMS")"
+# `<hash>  <name>`, or `<hash> *<name>` from a binary-mode sha256sum
+expected="$(awk -v f="$asset" '{ n = $2; sub(/^\*/, "", n) } n == f { print $1; exit }' "$tmp/SHA256SUMS")"
 if command -v sha256sum >/dev/null 2>&1; then
   actual="$(sha256sum "$tmp/$asset" | awk '{ print $1 }')"
 else
@@ -102,12 +103,14 @@ fi
 stage="unpack"
 tar xzf "$tmp/$asset" -C "$tmp" || fail "could not unpack $asset"
 mkdir -p "$dir"
-# Write beside the target and rename, so a hook running the old binary is never half-overwritten
-cp "$tmp/ccn" "$dir/.ccn.new"
-chmod 755 "$dir/.ccn.new"
-mv "$dir/.ccn.new" "$dir/ccn"
+# Write beside the target, check it runs, then rename: a hook running the old binary never sees a
+# half-written file, and a download that doesn't run leaves the old one in place
+new="$dir/.ccn.new.$$"
+cp "$tmp/ccn" "$new"
+chmod 755 "$new"
 stage="run"
-version="$("$dir/ccn" --version)" || fail "the downloaded ccn did not run"
+version="$("$new" --version)" || { rm -f "$new"; fail "the downloaded ccn did not run, so nothing was changed"; }
+mv "$new" "$dir/ccn" || { rm -f "$new"; fail "could not replace $dir/ccn"; }
 say "Installed $version to $dir/ccn"
 
 ccn="ccn"
@@ -137,6 +140,9 @@ if [ -n "$licence" ]; then
   say ""
   "$dir/ccn" activate "$licence" < /dev/null || say "The licence wasn't applied. Try again later: $ccn activate $licence"
 fi
+# exec replaces this shell, so the EXIT trap never runs: clear the download first
+rm -rf "$tmp"
+trap - EXIT
 if [ -n "$code" ]; then
   say ""
   # stdin is the piped script, so give pair the terminal for any question it asks

@@ -52,17 +52,31 @@ try {
 
     $stage = 'unpack'
     Expand-Archive (Join-Path $tmp $asset) -DestinationPath $tmp -Force
+    # Run the download before it replaces anything, so one that doesn't run leaves the old ccn
+    $stage = 'run'
+    $new = Join-Path $tmp 'ccn.exe'
+    $version = & $new --version
+    if ($LASTEXITCODE -ne 0 -or -not $version) { throw "the downloaded ccn did not run, so nothing was changed" }
+
+    $stage = 'install'
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
-    # A running ccn.exe cannot be overwritten but can be renamed, so move it aside first
+    # A running ccn.exe cannot be overwritten but can be renamed, so move it aside first, and put
+    # it back if the new one cannot take its place
     $target = Join-Path $dir 'ccn.exe'
+    $old = Join-Path $dir 'ccn.old.exe'
+    $movedAside = $false
     if (Test-Path $target) {
-        $old = Join-Path $dir 'ccn.old.exe'
         Remove-Item $old -Force -ErrorAction SilentlyContinue
         Move-Item $target $old -Force
+        $movedAside = $true
     }
-    Move-Item (Join-Path $tmp 'ccn.exe') $target
-    $stage = 'run'
-    Write-Host "Installed $(& $target --version) to $target"
+    try {
+        Move-Item $new $target
+    } catch {
+        if ($movedAside) { Move-Item $old $target -Force -ErrorAction SilentlyContinue }
+        throw
+    }
+    Write-Host "Installed $version to $target"
 } catch {
     Send-SetupEvent 'cli_install_failed' @{ stage = $stage }
     throw
