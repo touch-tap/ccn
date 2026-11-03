@@ -77,11 +77,18 @@ struct Ctx {
     started: Instant,
 }
 
-/// The Claude Code plugin calls `ccn hook --plugin` for every event. It stands aside when a
-/// settings file Claude Code reads for this session already has ccn's hooks or the Mac app's (the
-/// user's, or the project's `.claude/settings.json` / `settings.local.json`), so no event is
-/// handled twice.
+/// The Claude Code plugin calls `ccn hook --plugin` for every event. It stands aside:
+/// - when a settings file Claude Code reads for this session already has ccn's hooks or the Mac
+///   app's (the user's, or the project's `.claude/settings.json` / `settings.local.json`), so no
+///   event is handled twice;
+/// - when ccn has no config file. That is before `ccn pair` (the plugin says ccn stays quiet
+///   until then; `ccn setup` puts hooks in the user's settings, which take over anyway) and after
+///   `ccn uninstall`, which deletes it: the plugin outlives an uninstall and still finds the
+///   binary, and notifications must not come back. `ccn pair` writes it again.
 fn plugin_stands_aside(input: &Value) -> bool {
+    if !config::config_path().exists() {
+        return true;
+    }
     // Claude Code tells hooks the project's root; the event's cwd can be a folder inside it
     let project = std::env::var_os("CLAUDE_PROJECT_DIR")
         .filter(|dir| !dir.is_empty())

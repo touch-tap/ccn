@@ -112,6 +112,14 @@ impl Drop for Sandbox {
 }
 
 #[test]
+fn the_plugin_does_nothing_without_a_config() {
+    // Never set up, or uninstalled: the binary is there but ccn has no config
+    let sandbox = Sandbox::new("noconfig");
+    assert!(!sandbox.plugin_ran(false));
+    assert!(!sandbox.ccn_dir().exists(), "nothing was written");
+}
+
+#[test]
 fn the_plugin_runs_when_no_settings_file_has_the_hooks() {
     let sandbox = Sandbox::new("runs");
     sandbox.write_config();
