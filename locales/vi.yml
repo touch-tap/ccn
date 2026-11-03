@@ -342,3 +342,7 @@ clap:
   help_command: "Hiện trợ giúp của ccn hoặc của một lệnh"
   help_command_arg: "Lệnh cần xem trợ giúp"
   error_hint: "Chạy `ccn --help` để xem các lệnh và tùy chọn."
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "chữ ký của bản phát hành không hợp lệ nên không có gì bị thay đổi. Hãy thử lại sau hoặc cài lại từ claudecodenotifier.com/cli"

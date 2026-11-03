@@ -340,3 +340,7 @@ clap:
   help_command: "Mostra l'aiuto di ccn o di uno dei suoi comandi"
   help_command_arg: "Il comando di cui mostrare l'aiuto"
   error_hint: "Esegui `ccn --help` per vedere i comandi e le opzioni."
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "la firma della versione non è valida, quindi non è stato modificato nulla. Riprova più tardi o reinstalla da claudecodenotifier.com/cli"

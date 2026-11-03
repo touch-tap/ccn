@@ -341,3 +341,7 @@ clap:
   help_command: "ccn 또는 명령의 도움말 보기"
   help_command_arg: "도움말을 볼 명령"
   error_hint: "`ccn --help`를 실행하면 명령과 옵션을 볼 수 있어요."
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "릴리스 서명을 확인할 수 없어 아무것도 변경하지 않았습니다. 나중에 다시 시도하거나 claudecodenotifier.com/cli에서 다시 설치하세요"

@@ -355,3 +355,7 @@ clap:
   help_command_arg: "The command to show the help for"
   # Printed under clap's own (English) message when a command line can't be parsed
   error_hint: "Run `ccn --help` to see the commands and options."
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "the release's signature doesn't check out, so nothing was changed. Try again later, or reinstall from claudecodenotifier.com/cli"

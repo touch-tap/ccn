@@ -16,7 +16,9 @@
 //! release's `downloadBase`: `ccn-<triple>.tar.gz` (Unix) or `ccn-<triple>.zip` (Windows), plus
 //! `SHA256SUMS`. That base is pinned to this repository's GitHub releases over https whatever the
 //! server says (`CCN_DOWNLOAD_BASE` overrides it for tests), because SHA256SUMS comes from the same
-//! place as the archive: a base anyone else chose could vouch for its own binary. The download is
+//! place as the archive: a base anyone else chose could vouch for its own binary. SHA256SUMS must
+//! also carry `SHA256SUMS.sig`, an ed25519 signature by a key in `RELEASE_KEYS`, made on the
+//! release Mac, so changing the files on GitHub isn't enough either. The download is
 //! checked against SHA256SUMS before anything is written, the new
 //! binary is written beside the old one and must run before it is renamed over it, so a hook
 //! running mid-update never sees a half-written file.
@@ -49,6 +51,12 @@ const MAX_DOWNLOAD: u64 = 64 * 1024 * 1024;
 const STALE_LOCK: Duration = Duration::from_secs(10 * 60);
 /// How long the new binary's `--version` may take before it counts as not running.
 const PROBE_TIMEOUT: Duration = Duration::from_secs(10);
+/// The ed25519 public keys a release's `SHA256SUMS.sig` must verify against. The private key is
+/// in the release Mac's keychain (scripts/release.sh signs with it; RELEASING.md, "The update
+/// signing key"). Pinning the download to GitHub stops anyone with the server choosing the files;
+/// the signature also stops anyone who could change the release's files on GitHub. To rotate,
+/// ship a release that lists both keys, then sign with the new one.
+const RELEASE_KEYS: &[&str] = &["9af037468a4b22787da3e45609bcacb9421648ef17e8694e815793e02317380a"];
 
 pub struct Mode {
     /// Only report whether a newer release exists
@@ -223,6 +231,14 @@ fn run_inner(mode: &Mode) -> Result<i32> {
         download(&format!("{base}/{asset}"), https_only).map_err(|e| failed("download", e))?;
     let sums =
         download(&format!("{base}/SHA256SUMS"), https_only).map_err(|e| failed("download", e))?;
+    let signature = download(&format!("{base}/SHA256SUMS.sig"), https_only)
+        .map_err(|e| failed("signature", e))?;
+    if !signature_valid(&sums, &signature, &release_keys()) {
+        return Err(failed(
+            "signature",
+            anyhow::anyhow!("{}", t!("update_signature.invalid")),
+        ));
+    }
     let expected = checksum_for(&String::from_utf8_lossy(&sums), &asset)
         .with_context(|| t!("update.no_checksum", asset = asset).into_owned())
         .map_err(|e| failed("checksum", e))?;
@@ -501,6 +517,47 @@ fn checksum_for(sums: &str, asset: &str) -> Option<String> {
         let hash = parts.next()?;
         let name = parts.next()?.trim_start_matches('*');
         (name == asset && hash.len() == 64).then(|| hash.to_ascii_lowercase())
+    })
+}
+
+/// The keys a release signature may verify against. A debug build (the tests) also accepts
+/// `CCN_UPDATE_PUBLIC_KEY`, so tests can sign with a key of their own; a release build never does,
+/// or the variable would let anyone who can set it vouch for their own binary.
+fn release_keys() -> Vec<String> {
+    let mut keys: Vec<String> = RELEASE_KEYS.iter().map(|k| k.to_string()).collect();
+    if cfg!(debug_assertions)
+        && let Ok(key) = std::env::var("CCN_UPDATE_PUBLIC_KEY")
+        && !key.is_empty()
+    {
+        keys.push(key);
+    }
+    keys
+}
+
+fn unhex<const N: usize>(text: &str) -> Option<[u8; N]> {
+    let text = text.trim();
+    if text.len() != N * 2 || !text.is_ascii() {
+        return None;
+    }
+    let mut out = [0u8; N];
+    for (i, byte) in out.iter_mut().enumerate() {
+        *byte = u8::from_str_radix(&text[i * 2..i * 2 + 2], 16).ok()?;
+    }
+    Some(out)
+}
+
+/// Whether `signature` (128 hex characters, as release-sign writes it) is an ed25519 signature of
+/// `sums` by one of `keys` (64 hex characters each).
+fn signature_valid(sums: &[u8], signature: &[u8], keys: &[String]) -> bool {
+    use ed25519_dalek::{Signature, VerifyingKey};
+    let Some(bytes) = std::str::from_utf8(signature).ok().and_then(unhex::<64>) else {
+        return false;
+    };
+    let signature = Signature::from_bytes(&bytes);
+    keys.iter().any(|key| {
+        unhex::<32>(key)
+            .and_then(|key| VerifyingKey::from_bytes(&key).ok())
+            .is_some_and(|key| key.verify_strict(sums, &signature).is_ok())
     })
 }
 
@@ -842,6 +899,41 @@ fn swap(tmp: &Path, target: &Path) -> Result<()> {
     }
     let _ = fs::remove_file(&old);
     Ok(())
+}
+
+#[cfg(test)]
+mod signature_tests {
+    use super::*;
+    use ed25519_dalek::{Signer, SigningKey};
+
+    fn hex(bytes: &[u8]) -> String {
+        bytes.iter().map(|b| format!("{b:02x}")).collect()
+    }
+
+    #[test]
+    fn accepts_only_a_signature_by_a_listed_key_over_these_exact_sums() {
+        let key = SigningKey::from_bytes(&[1; 32]);
+        let other = SigningKey::from_bytes(&[2; 32]);
+        let keys = vec![hex(key.verifying_key().as_bytes())];
+        let sums = b"abc  ccn-x86_64-unknown-linux-gnu.tar.gz\n";
+        let good = format!("{}\n", hex(&key.sign(sums).to_bytes()));
+        assert!(signature_valid(sums, good.as_bytes(), &keys));
+        // Another key, other contents, and things that aren't signatures
+        let wrong = hex(&other.sign(sums).to_bytes());
+        assert!(!signature_valid(sums, wrong.as_bytes(), &keys));
+        assert!(!signature_valid(b"changed", good.as_bytes(), &keys));
+        assert!(!signature_valid(sums, b"", &keys));
+        assert!(!signature_valid(sums, b"<html>Not Found</html>", &keys));
+        assert!(!signature_valid(sums, good.as_bytes(), &[]));
+    }
+
+    #[test]
+    fn the_built_in_release_keys_are_valid_public_keys() {
+        for key in RELEASE_KEYS {
+            let bytes = unhex::<32>(key).expect("64 hex characters");
+            assert!(ed25519_dalek::VerifyingKey::from_bytes(&bytes).is_ok());
+        }
+    }
 }
 
 #[cfg(test)]

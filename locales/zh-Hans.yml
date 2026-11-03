@@ -341,3 +341,7 @@ clap:
   help_command: "显示 ccn 或其某个命令的帮助"
   help_command_arg: "要查看帮助的命令"
   error_hint: "运行 `ccn --help` 查看所有命令和选项。"
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "版本签名校验失败，因此未做任何更改。请稍后再试，或从 claudecodenotifier.com/cli 重新安装"

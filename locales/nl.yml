@@ -339,3 +339,7 @@ clap:
   help_command: "Help tonen voor ccn of een van zijn opdrachten"
   help_command_arg: "De opdracht waarvoor je de help wilt zien"
   error_hint: "Voer `ccn --help` uit om de opdrachten en opties te zien."
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "de handtekening van de release klopt niet, dus er is niets gewijzigd. Probeer het later opnieuw of installeer opnieuw via claudecodenotifier.com/cli"

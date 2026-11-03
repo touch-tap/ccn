@@ -339,3 +339,7 @@ clap:
   help_command: "Pokaż pomoc dla ccn lub jednego z jego poleceń"
   help_command_arg: "Polecenie, dla którego pokazać pomoc"
   error_hint: "Uruchom `ccn --help`, aby zobaczyć polecenia i opcje."
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "podpis wydania jest nieprawidłowy, więc nic nie zostało zmienione. Spróbuj później lub zainstaluj ponownie z claudecodenotifier.com/cli"

@@ -342,3 +342,7 @@ clap:
   help_command: "ccn'nin veya komutlarından birinin yardımını göster"
   help_command_arg: "Yardımı gösterilecek komut"
   error_hint: "Komutları ve seçenekleri görmek için `ccn --help` çalıştırın."
+
+# `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
+update_signature:
+  invalid: "sürümün imzası doğrulanamadı, bu yüzden hiçbir şey değiştirilmedi. Daha sonra yeniden dene veya claudecodenotifier.com/cli adresinden yeniden yükle"

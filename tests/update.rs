@@ -14,6 +14,25 @@ use std::sync::{Arc, Mutex};
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const NEW_VERSION: &str = "9.9.9";
 const SCRIPT: &str = "#!/bin/sh\necho \"ccn 9.9.9\"\n";
+/// The key the fake releases are signed with, and one ccn doesn't trust
+const TEST_SEED: [u8; 32] = [7; 32];
+const OTHER_SEED: [u8; 32] = [9; 32];
+
+fn test_key(seed: [u8; 32]) -> ed25519_dalek::SigningKey {
+    ed25519_dalek::SigningKey::from_bytes(&seed)
+}
+
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+/// How the fake release signs its SHA256SUMS.
+#[derive(Clone, Copy)]
+enum Sig {
+    Good,
+    WrongKey,
+    Missing,
+}
 
 fn asset_name() -> String {
     let arch = std::env::consts::ARCH;
@@ -69,6 +88,8 @@ impl Sandbox {
             // The server's downloadBase is ignored (only GitHub's releases are trusted), so the
             // fake release is reached the way CI's is
             .env("CCN_DOWNLOAD_BASE", format!("{server}/dl"))
+            // A debug build also trusts this key, so the fake release can be signed here
+            .env("CCN_UPDATE_PUBLIC_KEY", hex(test_key(TEST_SEED).verifying_key().as_bytes()))
             .env_remove("CCN_INSTALL_METHOD")
             .env_remove("CCN_EPHEMERAL")
             .stdin(Stdio::null())
@@ -171,14 +192,30 @@ fn release_server(
     version: &str,
     correct_checksum: bool,
 ) -> (String, Arc<Mutex<Vec<String>>>) {
+    release_server_signed(dir, version, correct_checksum, Sig::Good)
+}
+
+fn release_server_signed(
+    dir: &Path,
+    version: &str,
+    correct_checksum: bool,
+    sig: Sig,
+) -> (String, Arc<Mutex<Vec<String>>>) {
+    use ed25519_dalek::Signer;
     let (archive, sums) = release(dir, correct_checksum);
+    let signature = match sig {
+        Sig::Good => Some(test_key(TEST_SEED).sign(sums.as_bytes())),
+        Sig::WrongKey => Some(test_key(OTHER_SEED).sign(sums.as_bytes())),
+        Sig::Missing => None,
+    }
+    .map(|s| format!("{}\n", hex(&s.to_bytes())));
     let version = version.to_string();
     serve(move |url| {
         let latest = format!(
             r#"{{"version":"{version}","tag":"v{version}","publishedAt":1761800000,"downloadBase":"{url}/evil","assets":["{}","SHA256SUMS"]}}"#,
             asset_name()
         );
-        HashMap::from([
+        let mut routes = HashMap::from([
             (
                 "/api/cli/latest".to_string(),
                 ("application/json", latest.into_bytes()),
@@ -191,7 +228,14 @@ fn release_server(
                 "/dl/SHA256SUMS".to_string(),
                 ("text/plain", sums.into_bytes()),
             ),
-        ])
+        ]);
+        if let Some(signature) = signature {
+            routes.insert(
+                "/dl/SHA256SUMS.sig".to_string(),
+                ("text/plain", signature.into_bytes()),
+            );
+        }
+        routes
     })
 }
 
@@ -219,6 +263,7 @@ fn replaces_the_binary_with_the_verified_release() {
             "/api/cli/latest".to_string(),
             format!("/dl/{}", asset_name()),
             "/dl/SHA256SUMS".to_string(),
+            "/dl/SHA256SUMS.sig".to_string(),
         ]
     );
 
@@ -443,4 +488,28 @@ fn a_second_upgrader_leaves_the_binary_to_the_first() {
     assert!(out.status.success(), "{}", text(&out.stderr));
     assert_eq!(text(&std::fs::read(sandbox.exe()).unwrap()), SCRIPT);
     assert!(!lock.exists());
+}
+
+#[test]
+fn refuses_a_release_signed_by_another_key_or_not_at_all() {
+    for sig in [Sig::WrongKey, Sig::Missing] {
+        let sandbox = Sandbox::new("unsigned", "bin/ccn");
+        let original = std::fs::read(sandbox.exe()).unwrap();
+        let (url, requested) = release_server_signed(&sandbox.root, NEW_VERSION, true, sig);
+
+        let out = sandbox.run(&url, &["upgrade"]);
+        assert!(!out.status.success(), "an unsigned release was installed");
+        // Nothing was replaced, and the archive was never unpacked into place
+        assert_eq!(std::fs::read(sandbox.exe()).unwrap(), original);
+        assert_eq!(
+            std::fs::read_dir(sandbox.root.join("bin")).unwrap().count(),
+            1
+        );
+        assert!(
+            requested
+                .lock()
+                .unwrap()
+                .contains(&"/dl/SHA256SUMS.sig".to_string())
+        );
+    }
 }
