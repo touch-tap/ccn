@@ -1,8 +1,12 @@
-//! Anonymous setup events: where installing and pairing get stuck, so it can be fixed.
+//! Anonymous setup events: where installing, pairing, licensing and updating get stuck, so it can
+//! be fixed.
 //!
-//! Only `ccn pair` and the install scripts send these, never the hooks, and never anything about
-//! sessions, prompts or the computer's name. Each event is a name plus a few short words (the
-//! stage that failed, how ccn was installed), posted once with a short timeout and no retry.
+//! Sent by the install scripts and by commands people type (`ccn pair`, `ccn activate`, the
+//! pitch), by the detached background updater (`cli_updated`, `cli_update_failed`), and from one
+//! hook: SessionStart posts `cli_nudge_shown` when it shows a licence nudge, at most once a day.
+//! Never anything about sessions, prompts or the computer's name. Each event is a name plus a few
+//! short words (the stage that failed, how ccn was installed), posted once with a short timeout
+//! and no retry: 3 s, or 1 s inside a hook, which Claude Code waits on.
 //! `CCN_NO_ANALYTICS=1` or `DO_NOT_TRACK=1` turns them off.
 
 use serde_json::{Map, Value, json};
@@ -81,6 +85,16 @@ pub fn remember_install_source() {
     }
 }
 
+/// How long an event may take. A hook holds up Claude Code while it runs, so an event sent from
+/// one gets a third of the usual time: a slow server costs the user at most a second.
+fn timeout() -> Duration {
+    if std::env::args().nth(1).as_deref() == Some("hook") {
+        Duration::from_secs(1)
+    } else {
+        Duration::from_secs(3)
+    }
+}
+
 pub fn event(name: &str, properties: &[(&str, &str)]) {
     if !enabled() {
         return;
@@ -111,7 +125,7 @@ pub fn event(name: &str, properties: &[(&str, &str)]) {
     });
     let url = format!("{}/api/events", cfg.server_url.trim_end_matches('/'));
     let agent = ureq::Agent::config_builder()
-        .timeout_global(Some(Duration::from_secs(3)))
+        .timeout_global(Some(timeout()))
         .http_status_as_error(false)
         .build()
         .new_agent();
