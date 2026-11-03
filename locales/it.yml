@@ -107,7 +107,7 @@ sync:
 
 doctor:
   header: "ccn %{version} su %{platform}"
-  config: "config: %{path}"
+  config: "configurazione: %{path}"
   credentials_present: "credenziali: presenti (%{store})"
   credentials_missing: "credenziali: mancanti: esegui `ccn pair <codice>`"
   server_reachable: "server: %{url} raggiungibile"

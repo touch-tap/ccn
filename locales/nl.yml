@@ -106,7 +106,7 @@ sync:
 
 doctor:
   header: "ccn %{version} op %{platform}"
-  config: "config: %{path}"
+  config: "configuratie: %{path}"
   credentials_present: "inloggegevens: aanwezig (%{store})"
   credentials_missing: "inloggegevens: ontbreken: voer `ccn pair <code>` uit"
   server_reachable: "server: %{url} bereikbaar"

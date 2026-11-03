@@ -52,7 +52,7 @@ cli:
 common:
   your_phone: "điện thoại của bạn"
   not_paired: "máy tính này chưa được ghép nối. Chạy `ccn pair <mã>` với mã trong ứng dụng."
-  store_keychain: "keychain"
+  store_keychain: "chuỗi khóa"
   store_file: "tệp"
   date_format: "%d/%m/%Y"
 

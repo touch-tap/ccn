@@ -129,7 +129,7 @@ doctor:
   replies_tmux: "działa (tmux)"
   replies_no_tmux: "wymaga tmux"
   desktop: "powiadomienia na pulpicie: %{line}"
-  log: "log: %{path}"
+  log: "dziennik: %{path}"
 
 test:
   none_paired: "żaden telefon nie jest sparowany. Uruchom `ccn pair <code>`."

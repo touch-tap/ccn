@@ -218,7 +218,7 @@ licence:
   slots_full: "هذا الترخيص مستخدم بالفعل على %{count} أجهزة كمبيوتر:"
   free_one: "أفرغ مكانًا بتشغيل `ccn deactivate` على ذلك الكمبيوتر، أو استبدله من هنا:"
   replace_example: "  ccn activate %{key} --replace \"%{name}\""
-  old_laptop: "Old laptop"
+  old_laptop: "حاسوب محمول قديم"
   no_free_slot: "لا يوجد مكان شاغر لكمبيوتر"
   computers_on_licence: "أجهزة الكمبيوتر على هذا الترخيص:"
   activated: "✓ مرخّص (%{licence}). المستخدم: %{count} من 3 أجهزة كمبيوتر."

@@ -218,7 +218,7 @@ licence:
   slots_full: "הרישיון הזה כבר בשימוש ב-%{count} מחשבים:"
   free_one: "שחררו מקום עם `ccn deactivate` באותו מחשב, או החליפו אותו מכאן:"
   replace_example: "  ccn activate %{key} --replace \"%{name}\""
-  old_laptop: "Old laptop"
+  old_laptop: "מחשב נייד ישן"
   no_free_slot: "אין מקום פנוי למחשב"
   computers_on_licence: "מחשבים ברישיון הזה:"
   activated: "✓ יש רישיון (%{licence}). %{count} מתוך 3 מחשבים בשימוש."

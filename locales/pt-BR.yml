@@ -49,7 +49,7 @@ cli:
 common:
   your_phone: "seu celular"
   not_paired: "este computador ainda não está pareado. Rode `ccn pair <code>` com o código do app."
-  store_keychain: "keychain"
+  store_keychain: "chaveiro"
   store_file: "arquivo"
   date_format: "%d/%m/%Y"
 
@@ -106,7 +106,7 @@ sync:
 
 doctor:
   header: "ccn %{version} em %{platform}"
-  config: "config: %{path}"
+  config: "configuração: %{path}"
   credentials_present: "credenciais: presentes (%{store})"
   credentials_missing: "credenciais: ausentes: rode `ccn pair <code>`"
   server_reachable: "servidor: %{url} acessível"

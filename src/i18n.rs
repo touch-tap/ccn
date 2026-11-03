@@ -204,6 +204,64 @@ mod tests {
         assert_eq!(text, "Paired with Pixel (android).");
     }
 
+    /// Keys whose value may be the same as English in some languages: format strings, command
+    /// columns and words such as "file" or "Licence" that the language borrows. Anything else that
+    /// matches English word for word was most likely missed by the translator.
+    /// A bare `module.key` is allowed in every language; `lang:module.key` in that one only.
+    const SAME_AS_ENGLISH_ALLOWED: &[&str] = &[
+        // Format only: placeholders, commands and punctuation
+        "hook.nudge_message",
+        "licence.computer_row",
+        "licence.describe_other",
+        "licence.replace_example",
+        "licence.status_unlicensed",
+        "licence.yes_no",
+        "licence.no_initial",
+        "test.failed",
+        // "hooks" is Claude Code's name for the feature, kept in hooks_all of the same files
+        "ar:doctor.hooks_error",
+        "he:doctor.hooks_error",
+        "es:doctor.hooks_error",
+        "nl:doctor.hooks_error",
+        "pt-BR:doctor.hooks_error",
+        // The everyday word in the language is the English one
+        "it:doctor.server_error",
+        "nl:doctor.server_error",
+        "it:doctor.log",
+        "nl:doctor.log",
+        "pt-BR:doctor.log",
+        "it:common.store_file",
+        "es:licence.unlocks_no",
+        "it:licence.unlocks_no",
+        "fr:pair.minutes_one",
+        "fr:pair.minutes_other",
+    ];
+
+    #[test]
+    fn translations_are_not_left_in_english() {
+        let en = load(Path::new(LOCALES).join("en.yml").as_path());
+        let allowed: BTreeSet<&str> = SAME_AS_ENGLISH_ALLOWED.iter().copied().collect();
+        let mut untranslated = vec![];
+        for file in locale_files() {
+            let name = file.file_stem().unwrap().to_str().unwrap();
+            if name == "en" {
+                continue;
+            }
+            for (key, value) in load(&file) {
+                let allowed_here = allowed.contains(key.as_str())
+                    || allowed.contains(format!("{name}:{key}").as_str());
+                if en.get(&key) == Some(&value) && !allowed_here {
+                    untranslated.push(format!("{name}:{key} = {value:?}"));
+                }
+            }
+        }
+        assert!(
+            untranslated.is_empty(),
+            "values identical to English (translate them, or add the key to SAME_AS_ENGLISH_ALLOWED):\n{}",
+            untranslated.join("\n")
+        );
+    }
+
     #[test]
     fn placeholders_are_found() {
         assert_eq!(
