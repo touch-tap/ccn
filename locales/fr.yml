@@ -305,3 +305,30 @@ local_files:
   slot_not_freed: "Impossible de libérer la place de cet ordinateur sur la licence (%{error}). S'il a une licence, libère sa place sur claudecodenotifier.com/licence avec ta clé."
   kept_dir: "Fichiers de ccn supprimés de %{path}. Le dossier contient d'autres fichiers, il a donc été conservé."
   remove_binary: "ccn lui-même est toujours installé. Pour le supprimer : %{command}"
+
+payload:
+  plan_waiting: "Claude a préparé un plan et attend ton approbation."
+  plan_ready: "Plan prêt à approuver"
+  needs_permission: "%{tool} demande une autorisation"
+  permission_required: "Autorisation requise"
+  has_questions: "Claude a des questions"
+  finished_prompt: "Terminé : %{prompt}"
+  question_header: "Question"
+  approve_plan: "Approuver le plan"
+  pattern: "Motif : %{pattern}"
+  search: "Recherche : %{pattern}"
+
+net:
+  unreachable: "Impossible de joindre le serveur de Claude Code Notifier. Vérifie ta connexion internet et réessaie."
+  doctor_unreachable: "serveur : impossible de joindre %{url}. Vérifie ta connexion internet, ton proxy ou ton pare-feu"
+
+clap:
+  usage: "Utilisation :"
+  commands: "Commandes :"
+  arguments: "Arguments :"
+  options: "Options :"
+  help: "Afficher l'aide"
+  version: "Afficher la version"
+  help_command: "Afficher l'aide de ccn ou de l'une de ses commandes"
+  help_command_arg: "La commande dont afficher l'aide"
+  error_hint: "Lance `ccn --help` pour voir les commandes et les options."

@@ -308,3 +308,42 @@ local_files:
   slot_not_freed: "Couldn't free this computer's licence slot (%{error}). If it has a licence, free the slot at claudecodenotifier.com/licence with your key."
   kept_dir: "Removed ccn's files from %{path}. The folder holds other files too, so it was left in place."
   remove_binary: "ccn itself is still installed. To remove it: %{command}"
+
+# What the phone shows, and the desktop notification repeats, when Claude gives no text of its
+# own. The apps display it as sent, so it is in the computer's language.
+payload:
+  plan_waiting: "Claude has created a plan and is waiting for your approval."
+  plan_ready: "Plan ready for approval"
+  # %{tool} is Claude Code's tool name: Bash, Edit, WebFetch...
+  needs_permission: "%{tool} needs permission"
+  permission_required: "Permission required"
+  has_questions: "Claude has questions"
+  # %{prompt} is what the user asked Claude to do
+  finished_prompt: "Finished: %{prompt}"
+  question_header: "Question"
+  approve_plan: "Approve the plan"
+  # A file pattern such as src/**/*.rs
+  pattern: "Pattern: %{pattern}"
+  # A search pattern for file contents
+  search: "Search: %{pattern}"
+
+# When the server can't be reached at all (no connection, DNS, timeout). The raw error follows
+# on the next line.
+net:
+  unreachable: "Couldn't reach the Claude Code Notifier server. Check your internet connection and try again."
+  # A `ccn doctor` line, in the same label: text style as the doctor.* lines
+  doctor_unreachable: "server: couldn't reach %{url}. Check your internet connection, proxy or firewall"
+
+# The frame around the cli.* descriptions: `ccn --help` headings and the -h / -V flags
+clap:
+  # Headings: a word and a colon, as other command-line tools in your language write them
+  usage: "Usage:"
+  commands: "Commands:"
+  arguments: "Arguments:"
+  options: "Options:"
+  help: "Print help"
+  version: "Print version"
+  help_command: "Show the help for ccn or for one of its commands"
+  help_command_arg: "The command to show the help for"
+  # Printed under clap's own (English) message when a command line can't be parsed
+  error_hint: "Run `ccn --help` to see the commands and options."

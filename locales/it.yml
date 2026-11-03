@@ -107,7 +107,7 @@ sync:
 
 doctor:
   header: "ccn %{version} su %{platform}"
-  config: "config: %{path}"
+  config: "configurazione: %{path}"
   credentials_present: "credenziali: presenti (%{store})"
   credentials_missing: "credenziali: mancanti: esegui `ccn pair <codice>`"
   server_reachable: "server: %{url} raggiungibile"
@@ -305,3 +305,30 @@ local_files:
   slot_not_freed: "Impossibile liberare il posto di questo computer sulla licenza (%{error}). Se ha una licenza, libera il posto su claudecodenotifier.com/licence con la tua chiave."
   kept_dir: "Rimossi i file di ccn da %{path}. La cartella contiene anche altri file, quindi è stata lasciata al suo posto."
   remove_binary: "ccn è ancora installato. Per rimuoverlo: %{command}"
+
+payload:
+  plan_waiting: "Claude ha preparato un piano e aspetta la tua approvazione."
+  plan_ready: "Piano pronto da approvare"
+  needs_permission: "%{tool} chiede un permesso"
+  permission_required: "Permesso richiesto"
+  has_questions: "Claude ha delle domande"
+  finished_prompt: "Finito: %{prompt}"
+  question_header: "Domanda"
+  approve_plan: "Approva il piano"
+  pattern: "Modello: %{pattern}"
+  search: "Ricerca: %{pattern}"
+
+net:
+  unreachable: "Impossibile raggiungere il server di Claude Code Notifier. Controlla la connessione a internet e riprova."
+  doctor_unreachable: "server: impossibile raggiungere %{url}. Controlla la connessione a internet, il proxy o il firewall"
+
+clap:
+  usage: "Uso:"
+  commands: "Comandi:"
+  arguments: "Argomenti:"
+  options: "Opzioni:"
+  help: "Mostra l'aiuto"
+  version: "Mostra la versione"
+  help_command: "Mostra l'aiuto di ccn o di uno dei suoi comandi"
+  help_command_arg: "Il comando di cui mostrare l'aiuto"
+  error_hint: "Esegui `ccn --help` per vedere i comandi e le opzioni."

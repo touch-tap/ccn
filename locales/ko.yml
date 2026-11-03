@@ -306,3 +306,30 @@ local_files:
   slot_not_freed: "이 컴퓨터의 라이선스 자리를 비우지 못했어요(%{error}). 라이선스가 있다면 claudecodenotifier.com/licence에서 키로 자리를 비우세요."
   kept_dir: "%{path}에서 ccn 파일을 제거했어요. 폴더에 다른 파일도 있어서 폴더는 그대로 두었어요."
   remove_binary: "ccn 자체는 아직 설치되어 있어요. 제거하려면: %{command}"
+
+payload:
+  plan_waiting: "Claude가 계획을 세우고 승인을 기다리고 있어요."
+  plan_ready: "승인을 기다리는 계획"
+  needs_permission: "%{tool} 권한이 필요해요"
+  permission_required: "권한이 필요해요"
+  has_questions: "Claude가 질문이 있어요"
+  finished_prompt: "완료: %{prompt}"
+  question_header: "질문"
+  approve_plan: "계획 승인"
+  pattern: "패턴: %{pattern}"
+  search: "검색: %{pattern}"
+
+net:
+  unreachable: "Claude Code Notifier 서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요."
+  doctor_unreachable: "서버: %{url}에 연결할 수 없어요. 인터넷 연결, 프록시, 방화벽을 확인해 주세요"
+
+clap:
+  usage: "사용법:"
+  commands: "명령:"
+  arguments: "인수:"
+  options: "옵션:"
+  help: "도움말 보기"
+  version: "버전 보기"
+  help_command: "ccn 또는 명령의 도움말 보기"
+  help_command_arg: "도움말을 볼 명령"
+  error_hint: "`ccn --help`를 실행하면 명령과 옵션을 볼 수 있어요."

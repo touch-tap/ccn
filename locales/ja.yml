@@ -306,3 +306,30 @@ local_files:
   slot_not_freed: "このコンピュータのライセンス枠を空けられませんでした（%{error}）。ライセンスがある場合は、claudecodenotifier.com/licence でキーを使って枠を空けてください。"
   kept_dir: "%{path} から ccn のファイルを削除しました。フォルダにはほかのファイルもあるため、フォルダ自体は残しています。"
   remove_binary: "ccn 本体はまだインストールされています。削除するには: %{command}"
+
+payload:
+  plan_waiting: "Claude がプランを作成し、承認を待っています。"
+  plan_ready: "プランの承認待ち"
+  needs_permission: "%{tool} の許可が必要です"
+  permission_required: "許可が必要です"
+  has_questions: "Claude から質問があります"
+  finished_prompt: "完了: %{prompt}"
+  question_header: "質問"
+  approve_plan: "プランを承認"
+  pattern: "パターン: %{pattern}"
+  search: "検索: %{pattern}"
+
+net:
+  unreachable: "Claude Code Notifier のサーバーに接続できませんでした。インターネット接続を確認して、もう一度お試しください。"
+  doctor_unreachable: "サーバー: %{url} に接続できません。インターネット接続、プロキシ、ファイアウォールを確認してください"
+
+clap:
+  usage: "使い方:"
+  commands: "コマンド:"
+  arguments: "引数:"
+  options: "オプション:"
+  help: "ヘルプを表示"
+  version: "バージョンを表示"
+  help_command: "ccn またはそのコマンドのヘルプを表示"
+  help_command_arg: "ヘルプを表示するコマンド"
+  error_hint: "`ccn --help` でコマンドとオプションの一覧を確認できます。"

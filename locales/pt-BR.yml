@@ -49,7 +49,7 @@ cli:
 common:
   your_phone: "seu celular"
   not_paired: "este computador ainda não está pareado. Rode `ccn pair <code>` com o código do app."
-  store_keychain: "keychain"
+  store_keychain: "chaveiro"
   store_file: "arquivo"
   date_format: "%d/%m/%Y"
 
@@ -106,7 +106,7 @@ sync:
 
 doctor:
   header: "ccn %{version} em %{platform}"
-  config: "config: %{path}"
+  config: "configuração: %{path}"
   credentials_present: "credenciais: presentes (%{store})"
   credentials_missing: "credenciais: ausentes: rode `ccn pair <code>`"
   server_reachable: "servidor: %{url} acessível"
@@ -304,3 +304,30 @@ local_files:
   slot_not_freed: "Não foi possível liberar a vaga de licença deste computador (%{error}). Se ele tiver licença, libere a vaga em claudecodenotifier.com/licence com a sua chave."
   kept_dir: "Os arquivos do ccn foram removidos de %{path}. A pasta tem outros arquivos também, então ela foi mantida."
   remove_binary: "O ccn em si continua instalado. Para removê-lo: %{command}"
+
+payload:
+  plan_waiting: "O Claude criou um plano e está esperando sua aprovação."
+  plan_ready: "Plano pronto para aprovação"
+  needs_permission: "%{tool} precisa de permissão"
+  permission_required: "Permissão necessária"
+  has_questions: "O Claude tem perguntas"
+  finished_prompt: "Concluído: %{prompt}"
+  question_header: "Pergunta"
+  approve_plan: "Aprovar o plano"
+  pattern: "Padrão: %{pattern}"
+  search: "Busca: %{pattern}"
+
+net:
+  unreachable: "Não foi possível acessar o servidor do Claude Code Notifier. Verifique sua conexão com a internet e tente de novo."
+  doctor_unreachable: "servidor: não foi possível acessar %{url}. Verifique sua conexão com a internet, o proxy ou o firewall"
+
+clap:
+  usage: "Uso:"
+  commands: "Comandos:"
+  arguments: "Argumentos:"
+  options: "Opções:"
+  help: "Mostrar a ajuda"
+  version: "Mostrar a versão"
+  help_command: "Mostrar a ajuda do ccn ou de um dos comandos dele"
+  help_command_arg: "O comando cuja ajuda será mostrada"
+  error_hint: "Execute `ccn --help` para ver os comandos e as opções."

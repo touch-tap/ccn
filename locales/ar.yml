@@ -218,7 +218,7 @@ licence:
   slots_full: "هذا الترخيص مستخدم بالفعل على %{count} أجهزة كمبيوتر:"
   free_one: "أفرغ مكانًا بتشغيل `ccn deactivate` على ذلك الكمبيوتر، أو استبدله من هنا:"
   replace_example: "  ccn activate %{key} --replace \"%{name}\""
-  old_laptop: "Old laptop"
+  old_laptop: "حاسوب محمول قديم"
   no_free_slot: "لا يوجد مكان شاغر لكمبيوتر"
   computers_on_licence: "أجهزة الكمبيوتر على هذا الترخيص:"
   activated: "✓ مرخّص (%{licence}). المستخدم: %{count} من 3 أجهزة كمبيوتر."
@@ -308,3 +308,30 @@ local_files:
   slot_not_freed: "تعذّر إفراغ مكان هذا الكمبيوتر على الترخيص (%{error}). إن كان له ترخيص، فأفرغ مكانه من claudecodenotifier.com/licence باستخدام مفتاحك."
   kept_dir: "أُزيلت ملفات ccn من %{path}. يحتوي المجلد على ملفات أخرى أيضًا، لذا تُرك في مكانه."
   remove_binary: "ما زال ccn نفسه مثبّتًا. لإزالته: %{command}"
+
+payload:
+  plan_waiting: "أنشأ Claude خطة وينتظر موافقتك."
+  plan_ready: "الخطة جاهزة للموافقة"
+  needs_permission: "%{tool} يحتاج إلى إذن"
+  permission_required: "مطلوب إذن"
+  has_questions: "لدى Claude أسئلة"
+  finished_prompt: "انتهى: %{prompt}"
+  question_header: "سؤال"
+  approve_plan: "الموافقة على الخطة"
+  pattern: "النمط: %{pattern}"
+  search: "بحث: %{pattern}"
+
+net:
+  unreachable: "تعذّر الوصول إلى خادم Claude Code Notifier. تحقّق من اتصالك بالإنترنت وحاول مرة أخرى."
+  doctor_unreachable: "الخادم: تعذّر الوصول إلى %{url}. تحقّق من اتصالك بالإنترنت أو الوكيل أو جدار الحماية"
+
+clap:
+  usage: "الاستخدام:"
+  commands: "الأوامر:"
+  arguments: "الوسائط:"
+  options: "الخيارات:"
+  help: "عرض المساعدة"
+  version: "عرض الإصدار"
+  help_command: "عرض المساعدة لـ ccn أو لأحد أوامره"
+  help_command_arg: "الأمر الذي تريد عرض مساعدته"
+  error_hint: "شغّل `ccn --help` لعرض الأوامر والخيارات."

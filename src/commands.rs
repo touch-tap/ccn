@@ -581,6 +581,11 @@ pub fn doctor() -> Result<()> {
             "{yes}{}",
             t!("doctor.server_reachable", url = cfg.server_url)
         ),
+        // Unreachable: say so in the user's language, with the raw error underneath
+        Err(err) if crate::is_network_error(&err) => println!(
+            "{no}{}\n   {err:#}",
+            t!("net.doctor_unreachable", url = cfg.server_url)
+        ),
         Err(err) => println!(
             "{no}{}",
             t!("doctor.server_error", error = format!("{err:#}"))

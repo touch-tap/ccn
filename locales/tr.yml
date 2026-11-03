@@ -307,3 +307,30 @@ local_files:
   slot_not_freed: "Bu bilgisayarın lisans yeri boşaltılamadı (%{error}). Lisansı varsa, anahtarınızla claudecodenotifier.com/licence adresinden yeri boşaltın."
   kept_dir: "ccn dosyaları %{path} konumundan kaldırıldı. Klasörde başka dosyalar da olduğu için klasör yerinde bırakıldı."
   remove_binary: "ccn'in kendisi hâlâ yüklü. Kaldırmak için: %{command}"
+
+payload:
+  plan_waiting: "Claude bir plan hazırladı ve onayınızı bekliyor."
+  plan_ready: "Plan onay bekliyor"
+  needs_permission: "%{tool} için izin gerekiyor"
+  permission_required: "İzin gerekiyor"
+  has_questions: "Claude'un soruları var"
+  finished_prompt: "Bitti: %{prompt}"
+  question_header: "Soru"
+  approve_plan: "Planı onaylayın"
+  pattern: "Desen: %{pattern}"
+  search: "Arama: %{pattern}"
+
+net:
+  unreachable: "Claude Code Notifier sunucusuna ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin."
+  doctor_unreachable: "sunucu: %{url} adresine ulaşılamıyor. İnternet bağlantınızı, proxy'yi veya güvenlik duvarını kontrol edin"
+
+clap:
+  usage: "Kullanım:"
+  commands: "Komutlar:"
+  arguments: "Argümanlar:"
+  options: "Seçenekler:"
+  help: "Yardımı göster"
+  version: "Sürümü göster"
+  help_command: "ccn'nin veya komutlarından birinin yardımını göster"
+  help_command_arg: "Yardımı gösterilecek komut"
+  error_hint: "Komutları ve seçenekleri görmek için `ccn --help` çalıştırın."

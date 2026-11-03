@@ -106,7 +106,7 @@ sync:
 
 doctor:
   header: "ccn %{version} op %{platform}"
-  config: "config: %{path}"
+  config: "configuratie: %{path}"
   credentials_present: "inloggegevens: aanwezig (%{store})"
   credentials_missing: "inloggegevens: ontbreken: voer `ccn pair <code>` uit"
   server_reachable: "server: %{url} bereikbaar"
@@ -304,3 +304,30 @@ local_files:
   slot_not_freed: "De licentieplek van deze computer kon niet worden vrijgemaakt (%{error}). Als hij een licentie heeft, maak de plek dan vrij op claudecodenotifier.com/licence met je sleutel."
   kept_dir: "De bestanden van ccn zijn uit %{path} verwijderd. De map bevat ook andere bestanden en is daarom blijven staan."
   remove_binary: "ccn zelf is nog geïnstalleerd. Zo verwijder je het: %{command}"
+
+payload:
+  plan_waiting: "Claude heeft een plan gemaakt en wacht op je goedkeuring."
+  plan_ready: "Plan klaar voor goedkeuring"
+  needs_permission: "%{tool} vraagt toestemming"
+  permission_required: "Toestemming nodig"
+  has_questions: "Claude heeft vragen"
+  finished_prompt: "Klaar: %{prompt}"
+  question_header: "Vraag"
+  approve_plan: "Plan goedkeuren"
+  pattern: "Patroon: %{pattern}"
+  search: "Zoeken: %{pattern}"
+
+net:
+  unreachable: "De server van Claude Code Notifier is niet bereikbaar. Controleer je internetverbinding en probeer het opnieuw."
+  doctor_unreachable: "server: %{url} niet bereikbaar. Controleer je internetverbinding, proxy of firewall"
+
+clap:
+  usage: "Gebruik:"
+  commands: "Opdrachten:"
+  arguments: "Argumenten:"
+  options: "Opties:"
+  help: "Help tonen"
+  version: "Versie tonen"
+  help_command: "Help tonen voor ccn of een van zijn opdrachten"
+  help_command_arg: "De opdracht waarvoor je de help wilt zien"
+  error_hint: "Voer `ccn --help` uit om de opdrachten en opties te zien."

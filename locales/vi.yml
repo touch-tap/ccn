@@ -52,7 +52,7 @@ cli:
 common:
   your_phone: "điện thoại của bạn"
   not_paired: "máy tính này chưa được ghép nối. Chạy `ccn pair <mã>` với mã trong ứng dụng."
-  store_keychain: "keychain"
+  store_keychain: "chuỗi khóa"
   store_file: "tệp"
   date_format: "%d/%m/%Y"
 
@@ -307,3 +307,30 @@ local_files:
   slot_not_freed: "Không giải phóng được chỗ của máy tính này trong giấy phép (%{error}). Nếu máy có giấy phép, hãy giải phóng chỗ tại claudecodenotifier.com/licence bằng khóa của bạn."
   kept_dir: "Đã xóa các tệp của ccn khỏi %{path}. Thư mục còn chứa tệp khác nên được giữ lại."
   remove_binary: "Bản thân ccn vẫn còn được cài đặt. Để gỡ nó: %{command}"
+
+payload:
+  plan_waiting: "Claude đã lập một kế hoạch và đang chờ bạn phê duyệt."
+  plan_ready: "Kế hoạch đang chờ phê duyệt"
+  needs_permission: "%{tool} cần quyền"
+  permission_required: "Cần cấp quyền"
+  has_questions: "Claude có vài câu hỏi"
+  finished_prompt: "Đã xong: %{prompt}"
+  question_header: "Câu hỏi"
+  approve_plan: "Phê duyệt kế hoạch"
+  pattern: "Mẫu: %{pattern}"
+  search: "Tìm kiếm: %{pattern}"
+
+net:
+  unreachable: "Không kết nối được tới máy chủ Claude Code Notifier. Hãy kiểm tra kết nối internet rồi thử lại."
+  doctor_unreachable: "máy chủ: không kết nối được tới %{url}. Hãy kiểm tra kết nối internet, proxy hoặc tường lửa"
+
+clap:
+  usage: "Cách dùng:"
+  commands: "Lệnh:"
+  arguments: "Đối số:"
+  options: "Tùy chọn:"
+  help: "Hiện trợ giúp"
+  version: "Hiện phiên bản"
+  help_command: "Hiện trợ giúp của ccn hoặc của một lệnh"
+  help_command_arg: "Lệnh cần xem trợ giúp"
+  error_hint: "Chạy `ccn --help` để xem các lệnh và tùy chọn."
