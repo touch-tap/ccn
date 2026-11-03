@@ -18,6 +18,15 @@ use crate::{live, local, notify, presence, respond};
 
 const EVENT_TIMEOUT: Duration = Duration::from_secs(3);
 const QUICK_TIMEOUT: Duration = Duration::from_secs(2);
+
+/// Best-effort updates (the lock-screen card, settling a card answered at the keyboard) run on
+/// every prompt and tool call, so a slow server would slow every one of them. Each gets this
+/// long, and all of them in one hook together get `BEST_EFFORT_BUDGET`.
+const BEST_EFFORT_TIMEOUT: Duration = Duration::from_millis(1000);
+const BEST_EFFORT_BUDGET: Duration = Duration::from_millis(1500);
+/// After a best-effort update fails, the next ones are skipped for this long, so an unreachable
+/// server costs one timeout a minute rather than one per tool call
+const BEST_EFFORT_BACKOFF: i64 = 60;
 const SETTINGS_MAX_AGE: i64 = 60 * 60;
 const REGISTER_MAX_AGE: i64 = 24 * 60 * 60;
 
@@ -65,12 +74,14 @@ struct Ctx {
     api: Api,
     input: Value,
     state: SessionState,
+    started: Instant,
 }
 
 fn run_inner() -> Result<Option<Value>> {
     let mut raw = String::new();
     std::io::stdin().read_to_string(&mut raw)?;
     let input: Value = serde_json::from_str(&raw).context("hook input is not JSON")?;
+    let started = Instant::now();
     let event = input["hook_event_name"].as_str().unwrap_or("").to_string();
     let session_id = Input(&input).session_id();
 
@@ -117,6 +128,7 @@ fn run_inner() -> Result<Option<Value>> {
         api,
         input,
         state,
+        started,
     };
     let result = ctx.dispatch(&event);
     if ctx.api.was_rejected() {
@@ -457,7 +469,7 @@ impl Ctx {
                 &self.state.turn,
                 config::now(),
             );
-            if let Err(err) = self.api.post_event(&update, QUICK_TIMEOUT) {
+            if let Err(err) = self.best_effort(&update) {
                 log(&format!("could not send the done update: {err:#}"));
             }
         }
@@ -477,10 +489,7 @@ impl Ctx {
 
     fn session_end(&mut self) -> Result<Option<Value>> {
         let session_id = self.input().session_id();
-        let _ = self.api.post_event(
-            &payload::session_update(&session_id, "ended"),
-            QUICK_TIMEOUT,
-        );
+        let _ = self.best_effort(&payload::session_update(&session_id, "ended"));
         SessionState::remove(&session_id);
         Ok(None)
     }
@@ -506,25 +515,35 @@ impl Ctx {
             self.state.turn.progress,
             self.state.turn.started_at,
         );
-        if let Err(err) = self.api.post_event(&update, QUICK_TIMEOUT) {
+        if let Err(err) = self.best_effort(&update) {
             log(&format!("could not send the working update: {err:#}"));
         }
     }
 
     /// Tells the server the previous request in this session was answered at the keyboard.
     fn settle_last_card(&mut self) {
-        let Some(card) = &mut self.state.last_card else {
-            return;
-        };
-        if card.settled {
+        if self
+            .state
+            .last_card
+            .as_ref()
+            .is_none_or(|card| card.settled)
+        {
             return;
         }
         let update = payload::session_update(&self.state.session_id, "responded");
-        match self.api.post_event(&update, QUICK_TIMEOUT) {
+        let result = best_effort_post(&self.api, &update, self.started);
+        let Some(card) = &mut self.state.last_card else {
+            return;
+        };
+        match result {
             Ok(_) => card.settled = true,
             Err(err) => log(&format!("could not settle card: {err:#}")),
         }
         let _ = self.state.save();
+    }
+
+    fn best_effort(&self, update: &Value) -> Result<Option<String>> {
+        best_effort_post(&self.api, update, self.started)
     }
 
     fn send_card(
@@ -651,9 +670,74 @@ impl Ctx {
     }
 }
 
+/// Where the time of the last failed best-effort update is kept. One file for every session,
+/// since a server that is down is down for all of them.
+fn backoff_path() -> std::path::PathBuf {
+    config::ccn_dir().join("offline_at")
+}
+
+/// How long a best-effort update may take, given when the hook started and when the last one
+/// failed. None skips it.
+fn best_effort_timeout(elapsed: Duration, failed_at: Option<i64>, now: i64) -> Option<Duration> {
+    if failed_at.is_some_and(|at| (0..BEST_EFFORT_BACKOFF).contains(&(now - at))) {
+        return None;
+    }
+    let left = BEST_EFFORT_BUDGET.saturating_sub(elapsed);
+    (left >= Duration::from_millis(100)).then(|| left.min(BEST_EFFORT_TIMEOUT))
+}
+
+/// Posts an update nothing waits on, within the budget, and remembers a failure so the next
+/// hooks skip theirs for a while. A rejection still reaches `Api::was_rejected`.
+fn best_effort_post(api: &Api, update: &Value, started: Instant) -> Result<Option<String>> {
+    let path = backoff_path();
+    let failed_at = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|s| s.trim().parse().ok());
+    let Some(timeout) = best_effort_timeout(started.elapsed(), failed_at, config::now()) else {
+        anyhow::bail!("skipped: the server was slow or unreachable a moment ago");
+    };
+    let result = api.post_event(update, timeout);
+    match &result {
+        Ok(_) if failed_at.is_some() => {
+            let _ = std::fs::remove_file(&path);
+        }
+        Err(err) if !api::is_rejected(err) => {
+            let _ = std::fs::write(&path, config::now().to_string());
+        }
+        _ => {}
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn best_effort_updates_share_a_budget_and_back_off() {
+        let now = 1_700_000_000;
+        let ms = Duration::from_millis;
+        // Fresh hook, no recent failure: the per-update timeout
+        assert_eq!(
+            best_effort_timeout(ms(0), None, now),
+            Some(BEST_EFFORT_TIMEOUT)
+        );
+        // A second update gets what is left of the budget
+        assert_eq!(best_effort_timeout(ms(1100), None, now), Some(ms(400)));
+        // Too little left: skip
+        assert_eq!(best_effort_timeout(ms(1450), None, now), None);
+        // A failure a moment ago skips, one over a minute ago doesn't
+        assert_eq!(best_effort_timeout(ms(0), Some(now - 10), now), None);
+        assert_eq!(
+            best_effort_timeout(ms(0), Some(now - BEST_EFFORT_BACKOFF), now),
+            Some(BEST_EFFORT_TIMEOUT)
+        );
+        // A clock that went backwards doesn't block updates for good
+        assert_eq!(
+            best_effort_timeout(ms(0), Some(now + 3600), now),
+            Some(BEST_EFFORT_TIMEOUT)
+        );
+    }
 
     #[test]
     fn licence_nudges_on_day_two_and_six_then_weekly() {
