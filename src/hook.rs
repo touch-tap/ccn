@@ -402,7 +402,7 @@ impl Ctx {
             self.state.turn.record_approval();
             let _ = self.state.save();
         }
-        Ok(answer.map(|text| respond::permission_output(&text)))
+        Ok(answer.map(|text| respond::permission_output(&text, &self.input)))
     }
 
     fn notification(&mut self) -> Result<Option<Value>> {

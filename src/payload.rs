@@ -10,11 +10,13 @@ pub const PERMISSION_OPTIONS: &[(&str, &str)] = &[
     ("Allow for session", "a"),
     ("Deny", "n"),
 ];
+/// `3` and `4` keep the values earlier versions sent for these two. The "clear context" choices
+/// (`1`, `2`) are gone: a hook can't clear context, so offering them would be untrue. `n` keeps
+/// Claude planning; the phone shows it as the deny button. respond.rs maps each value.
 pub const PLAN_OPTIONS: &[(&str, &str)] = &[
-    ("Yes, clear context and auto-accept", "1"),
-    ("Yes, and manually approve edits", "2"),
     ("Yes, auto-accept edits", "3"),
     ("Yes, manually approve edits", "4"),
+    ("No, keep planning", "n"),
 ];
 
 pub struct Input<'a>(pub &'a Value);
