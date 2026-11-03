@@ -19,8 +19,8 @@ fn enabled() -> bool {
     !set("CCN_NO_ANALYTICS") && !set("DO_NOT_TRACK")
 }
 
-/// How this binary got here: the install script tells it, npx sets CCN_EPHEMERAL, Homebrew's
-/// binaries live under its prefix.
+/// How this binary got here: the install script tells it, npx sets CCN_EPHEMERAL, Homebrew, npm,
+/// scoop and winget from where the binary really lives.
 pub fn install_method() -> &'static str {
     if let Ok(method) = std::env::var("CCN_INSTALL_METHOD") {
         match method.as_str() {
@@ -32,16 +32,12 @@ pub fn install_method() -> &'static str {
     if std::env::var("CCN_EPHEMERAL").is_ok() {
         return "npx";
     }
-    let exe = std::env::current_exe()
-        .map(|p| p.display().to_string())
-        .unwrap_or_default();
-    if exe.contains("/Cellar/") || exe.contains("/homebrew/") || exe.contains("linuxbrew") {
-        "homebrew"
-    } else if exe.contains("node_modules") {
-        "npm"
-    } else {
-        "other"
-    }
+    // macOS reports the path ccn was started by, so brew's `/usr/local/bin/ccn` link must be
+    // resolved to its Cellar before the path can say anything; update.rs decides it the same way
+    std::env::current_exe()
+        .ok()
+        .and_then(|exe| crate::update::method_from_path_resolved(&exe))
+        .unwrap_or("other")
 }
 
 /// The install scripts' CCN_INSTALL_SOURCE, if it is one of the known values.

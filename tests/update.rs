@@ -365,3 +365,42 @@ fn auto_update_is_a_local_setting() {
     );
     assert!(!out.status.success());
 }
+
+#[test]
+#[cfg(unix)]
+fn an_intel_mac_homebrew_link_is_left_to_brew() {
+    // As Homebrew lays it out under /usr/local: the binary in the Cellar, a relative symlink in
+    // bin, and hooks and the shell running the link. Nothing in the link's path says Homebrew.
+    let sandbox = Sandbox::new("brewlink", "usr/local/Cellar/ccn/0.1.0/bin/ccn");
+    let cellar = sandbox.root.join("usr/local/Cellar/ccn/0.1.0/bin/ccn");
+    let link = sandbox.root.join("usr/local/bin/ccn");
+    std::fs::create_dir_all(link.parent().unwrap()).unwrap();
+    std::os::unix::fs::symlink("../Cellar/ccn/0.1.0/bin/ccn", &link).unwrap();
+    let original = std::fs::read(&cellar).unwrap();
+    let (url, _) = release_server(&sandbox.root, NEW_VERSION, true);
+
+    let out = sandbox.run_exe(&link, &url, &["upgrade"]);
+    assert!(out.status.success(), "{}", text(&out.stderr));
+    assert_eq!(
+        text(&out.stdout).trim(),
+        format!("ccn {NEW_VERSION} is available: brew upgrade touch-tap/tap/ccn")
+    );
+
+    let out = sandbox.run_exe(&link, &url, &["upgrade", "--quiet", "--background"]);
+    assert!(out.status.success(), "{}", text(&out.stderr));
+    assert!(
+        std::fs::symlink_metadata(&link)
+            .unwrap()
+            .file_type()
+            .is_symlink(),
+        "brew's link is still a link"
+    );
+    assert_eq!(std::fs::read(&cellar).unwrap(), original);
+    assert!(
+        sandbox
+            .config()
+            .contains(&format!("update_available = \"{NEW_VERSION}\"")),
+        "{}",
+        sandbox.config()
+    );
+}

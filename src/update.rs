@@ -360,18 +360,32 @@ fn spawn_background() {
 
 /// "homebrew", "npm", "scoop", "winget" from the binary's path; otherwise what the install
 /// scripts and npx told telemetry ("script", "powershell", "npx") or "other".
+///
+/// Decided from the resolved path: `hookcfg::exe_path` maps a Cellar binary back to brew's link,
+/// and on an Intel Mac that link is `/usr/local/bin/ccn`, which says nothing about Homebrew. Taken
+/// at face value, the daily upgrade would replace brew's symlink with a file of its own.
 fn detect_method(exe: &Path) -> &'static str {
-    method_from_path(exe).unwrap_or_else(telemetry::install_method)
+    method_from_path_resolved(exe).unwrap_or_else(telemetry::install_method)
+}
+
+/// The method from where `exe` really is (following brew's and winget's links, scoop's `current`
+/// junction), falling back to the path as given when it cannot be resolved.
+pub(crate) fn method_from_path_resolved(exe: &Path) -> Option<&'static str> {
+    exe.canonicalize()
+        .ok()
+        .and_then(|real| method_from_path(&real))
+        .or_else(|| method_from_path(exe))
 }
 
 fn method_from_path(exe: &Path) -> Option<&'static str> {
     let path = exe.to_string_lossy().replace('\\', "/");
     let lower = path.to_ascii_lowercase();
-    if path.contains("/Cellar/") || path.contains("/homebrew/") || path.contains("linuxbrew") {
+    // `/Cellar/ccn/` under any prefix: /opt/homebrew, /usr/local, ~/.linuxbrew or a custom one
+    if path.contains("/Cellar/ccn/") || path.contains("/homebrew/") || path.contains("linuxbrew") {
         Some("homebrew")
     } else if lower.contains("/scoop/apps/ccn/") {
         Some("scoop")
-    } else if lower.contains("/winget/packages/") {
+    } else if lower.contains("/winget/packages/") || lower.contains("/winget/links/") {
         Some("winget")
     } else if path.contains("node_modules") {
         Some("npm")
@@ -801,6 +815,17 @@ deadbeef  ccn-x86_64-apple-darwin.tar.gz
         assert_eq!(
             method_from_path(&p(
                 r"C:\Users\jack\AppData\Local\Microsoft\WinGet\Packages\TouchTap.ccn_x\ccn.exe"
+            )),
+            Some("winget")
+        );
+        assert_eq!(
+            method_from_path(&p("/usr/local/Cellar/ccn/0.2.0/bin/ccn")),
+            Some("homebrew"),
+            "an Intel Mac's prefix has no `homebrew` in it"
+        );
+        assert_eq!(
+            method_from_path(&p(
+                r"C:\Users\jack\AppData\Local\Microsoft\WinGet\Links\ccn.exe"
             )),
             Some("winget")
         );
