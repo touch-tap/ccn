@@ -298,3 +298,7 @@ api:
   saving_settings: "שמירת ההגדרות"
   sending_event: "שליחת האירוע"
   waiting_response: "המתנה לתשובה: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "עדכון אחר של ccn כבר פועל. נסו שוב בעוד כמה דקות"

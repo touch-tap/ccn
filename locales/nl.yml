@@ -294,3 +294,7 @@ api:
   saving_settings: "opslaan van instellingen"
   sending_event: "versturen van de gebeurtenis"
   waiting_response: "wachten op een antwoord: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "er loopt al een andere ccn-upgrade. Probeer het over een paar minuten opnieuw"

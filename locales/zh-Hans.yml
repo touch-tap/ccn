@@ -296,3 +296,7 @@ api:
   saving_settings: "保存设置"
   sending_event: "发送事件"
   waiting_response: "等待响应: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "另一个 ccn 升级正在运行。请几分钟后重试"

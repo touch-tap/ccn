@@ -44,6 +44,11 @@ const GITHUB_LATEST: &str = "https://api.github.com/repos/touch-tap/ccn/releases
 const RELEASES_BASE: &str = "https://github.com/touch-tap/ccn/releases/download";
 /// Release archives are about 2 MB; anything near this is not one of ours.
 const MAX_DOWNLOAD: u64 = 64 * 1024 * 1024;
+/// An update lock older than this was left by an upgrader that died: two 120 s downloads and the
+/// version probe fit well inside it.
+const STALE_LOCK: Duration = Duration::from_secs(10 * 60);
+/// How long the new binary's `--version` may take before it counts as not running.
+const PROBE_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub struct Mode {
     /// Only report whether a newer release exists
@@ -174,6 +179,15 @@ fn run_inner(mode: &Mode) -> Result<i32> {
             )
         );
     }
+
+    // Two SessionStarts a moment apart can each start an upgrader: only one downloads and swaps
+    let Some(_lock) = UpdateLock::acquire().map_err(|e| failed("install", e))? else {
+        if mode.background {
+            log("update: another ccn upgrade is already running");
+            return Ok(0);
+        }
+        bail!("{}", t!("update_lock.busy"));
+    };
 
     let asset = this_asset()
         .with_context(|| {
@@ -675,8 +689,66 @@ fn extract_binary(archive: &[u8]) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
-/// Writes `<target>.new` beside the target, checks it runs, then swaps it in. On any failure the
-/// `.new` file is removed and the target is as it was.
+/// `update.lock` in ccn's folder, made with create_new so exactly one upgrader holds it; removed
+/// when dropped. A lock older than STALE_LOCK is taken over.
+struct UpdateLock(PathBuf);
+
+impl UpdateLock {
+    /// None when another upgrader holds it.
+    fn acquire() -> Result<Option<UpdateLock>> {
+        let dir = config::ccn_dir();
+        fs::create_dir_all(&dir).with_context(|| format!("creating {}", dir.display()))?;
+        Self::acquire_at(dir.join("update.lock"), STALE_LOCK)
+    }
+
+    fn acquire_at(path: PathBuf, stale: Duration) -> Result<Option<UpdateLock>> {
+        use std::io::{ErrorKind, Write};
+        for _ in 0..2 {
+            match fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&path)
+            {
+                Ok(mut file) => {
+                    let _ = writeln!(file, "{}", std::process::id());
+                    return Ok(Some(UpdateLock(path)));
+                }
+                Err(err) if err.kind() == ErrorKind::AlreadyExists => {
+                    let age = fs::metadata(&path)
+                        .and_then(|m| m.modified())
+                        .ok()
+                        .and_then(|t| t.elapsed().ok());
+                    match age {
+                        // A crashed upgrader's: clear it and try once more. If two of us race
+                        // here, create_new still lets only one in.
+                        Some(age) if age > stale => {
+                            log(&format!(
+                                "update: taking over a lock left {}s ago",
+                                age.as_secs()
+                            ));
+                            let _ = fs::remove_file(&path);
+                        }
+                        _ => return Ok(None),
+                    }
+                }
+                Err(err) => {
+                    return Err(err).with_context(|| format!("creating {}", path.display()));
+                }
+            }
+        }
+        Ok(None)
+    }
+}
+
+impl Drop for UpdateLock {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.0);
+    }
+}
+
+/// Writes `<target>.<pid>.new` beside the target, checks it runs, then swaps it in. On any
+/// failure that file is removed and the target is as it was. The pid keeps two upgraders that
+/// got past the lock (a stale takeover) from writing into each other's file.
 fn install_binary(bytes: &[u8], target: &Path) -> Result<()> {
     let dir = target
         .parent()
@@ -687,7 +759,7 @@ fn install_binary(bytes: &[u8], target: &Path) -> Result<()> {
         .file_name()
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_else(|| "ccn".to_string());
-    let tmp = dir.join(format!("{name}.new"));
+    let tmp = dir.join(format!("{name}.{}.new", std::process::id()));
     let result = write_and_swap(bytes, &tmp, target);
     if result.is_err() {
         let _ = fs::remove_file(&tmp);
@@ -708,17 +780,46 @@ fn write_and_swap(bytes: &[u8], tmp: &Path, target: &Path) -> Result<()> {
         use std::os::unix::fs::PermissionsExt;
         fs::set_permissions(tmp, fs::Permissions::from_mode(0o755))?;
     }
-    let runs = Command::new(tmp)
-        .arg("--version")
-        .stdin(Stdio::null())
-        .stderr(Stdio::null())
-        .output()
-        .map(|o| o.status.success() && !o.stdout.is_empty())
-        .unwrap_or(false);
-    if !runs {
+    if !runs_within(tmp, PROBE_TIMEOUT) {
         bail!("{}", t!("update.did_not_run"));
     }
     swap(tmp, target)
+}
+
+/// Whether `exe --version` prints something and succeeds within `timeout`. A binary that hangs
+/// (or waits on something it should not) is killed and counts as not running, so a background
+/// upgrader can never be left waiting on it.
+fn runs_within(exe: &Path, timeout: Duration) -> bool {
+    use std::io::Read;
+    let Ok(mut child) = Command::new(exe)
+        .arg("--version")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+    else {
+        return false;
+    };
+    let deadline = std::time::Instant::now() + timeout;
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(25));
+            }
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return false;
+            }
+        }
+    };
+    // `--version` is one short line, far below a pipe's buffer, so it is all there once it exits
+    let mut stdout = Vec::new();
+    if let Some(mut pipe) = child.stdout.take() {
+        let _ = pipe.read_to_end(&mut stdout);
+    }
+    status.success() && !stdout.is_empty()
 }
 
 #[cfg(unix)]
@@ -1008,6 +1109,70 @@ deadbeef  ccn-x86_64-apple-darwin.tar.gz
             (false, None),
             "older is never announced"
         );
+    }
+
+    #[test]
+    fn only_one_upgrader_holds_the_lock_and_a_stale_one_is_taken_over() {
+        let dir = std::env::temp_dir().join(format!("ccn-update-lock-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("update.lock");
+
+        let first = UpdateLock::acquire_at(path.clone(), STALE_LOCK).unwrap();
+        assert!(first.is_some());
+        assert!(
+            UpdateLock::acquire_at(path.clone(), STALE_LOCK)
+                .unwrap()
+                .is_none(),
+            "a second upgrader waits its turn"
+        );
+        drop(first);
+        assert!(!path.exists(), "released when dropped");
+
+        // Left behind by an upgrader that died
+        fs::write(&path, "1\n").unwrap();
+        let old = std::time::SystemTime::now() - Duration::from_secs(3600);
+        fs::File::options()
+            .write(true)
+            .open(&path)
+            .unwrap()
+            .set_modified(old)
+            .unwrap();
+        let taken = UpdateLock::acquire_at(path.clone(), STALE_LOCK).unwrap();
+        assert!(taken.is_some(), "a stale lock is taken over");
+        drop(taken);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn a_new_binary_that_hangs_does_not_count_as_running() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("ccn-update-probe-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let script = |name: &str, body: &str| {
+            let path = dir.join(name);
+            fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+            path
+        };
+        let ok = script("ok", "echo ccn 9.9.9");
+        let hangs = script("hangs", "exec sleep 30");
+        let silent = script("silent", "exit 0");
+        let fails = script("fails", "echo ccn; exit 1");
+
+        assert!(runs_within(&ok, Duration::from_secs(5)));
+        let started = std::time::Instant::now();
+        assert!(!runs_within(&hangs, Duration::from_millis(300)));
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "killed, not waited for"
+        );
+        assert!(!runs_within(&silent, Duration::from_secs(5)));
+        assert!(!runs_within(&fails, Duration::from_secs(5)));
+        assert!(!runs_within(&dir.join("missing"), Duration::from_secs(5)));
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

@@ -296,3 +296,7 @@ api:
   saving_settings: "설정 저장"
   sending_event: "이벤트 전송"
   waiting_response: "응답 대기: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "다른 ccn 업그레이드가 이미 실행 중입니다. 몇 분 후에 다시 시도하세요"

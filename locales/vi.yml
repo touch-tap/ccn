@@ -297,3 +297,7 @@ api:
   saving_settings: "lưu cài đặt"
   sending_event: "gửi sự kiện"
   waiting_response: "chờ phản hồi: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "một bản nâng cấp ccn khác đang chạy. Hãy thử lại sau vài phút"

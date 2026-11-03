@@ -294,3 +294,7 @@ api:
   saving_settings: "gravação das configurações"
   sending_event: "envio do evento"
   waiting_response: "espera por uma resposta: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "outra atualização do ccn já está em andamento. Tente novamente em alguns minutos"

@@ -298,3 +298,7 @@ api:
   saving_settings: "حفظ الإعدادات"
   sending_event: "إرسال الحدث"
   waiting_response: "انتظار الاستجابة: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "هناك ترقية أخرى لـ ccn قيد التشغيل بالفعل. حاول مرة أخرى بعد بضع دقائق"

@@ -297,3 +297,7 @@ api:
   saving_settings: "ayarlar kaydedilirken"
   sending_event: "olay gönderilirken"
   waiting_response: "yanıt beklenirken: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "başka bir ccn yükseltmesi zaten çalışıyor. Birkaç dakika sonra yeniden deneyin"

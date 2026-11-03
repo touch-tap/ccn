@@ -407,3 +407,40 @@ fn an_intel_mac_homebrew_link_is_left_to_brew() {
         sandbox.config()
     );
 }
+
+#[test]
+fn a_second_upgrader_leaves_the_binary_to_the_first() {
+    let sandbox = Sandbox::new("locked", "bin/ccn");
+    let original = std::fs::read(sandbox.exe()).unwrap();
+    let (url, requested) = release_server(&sandbox.root, NEW_VERSION, true);
+    // Another upgrader, started a moment ago, holds the lock
+    let lock = sandbox.root.join("ccn/update.lock");
+    std::fs::write(&lock, "1\n").unwrap();
+
+    let out = sandbox.run(&url, &["upgrade"]);
+    assert!(!out.status.success());
+    assert!(
+        text(&out.stderr).contains("already running"),
+        "{}",
+        text(&out.stderr)
+    );
+    let out = sandbox.run(&url, &["upgrade", "--quiet", "--background"]);
+    assert!(out.status.success(), "the background run just stops");
+    assert_eq!(std::fs::read(sandbox.exe()).unwrap(), original);
+    assert!(
+        requested
+            .lock()
+            .unwrap()
+            .iter()
+            .all(|p| !p.starts_with("/dl/")),
+        "nothing was downloaded"
+    );
+    assert!(lock.exists(), "the other upgrader's lock is left alone");
+
+    // Once it is done, the next upgrade goes ahead and releases the lock after
+    std::fs::remove_file(&lock).unwrap();
+    let out = sandbox.run(&url, &["upgrade"]);
+    assert!(out.status.success(), "{}", text(&out.stderr));
+    assert_eq!(text(&std::fs::read(sandbox.exe()).unwrap()), SCRIPT);
+    assert!(!lock.exists());
+}

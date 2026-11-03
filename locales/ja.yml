@@ -296,3 +296,7 @@ api:
   saving_settings: "設定の保存"
   sending_event: "イベントの送信"
   waiting_response: "応答の待機: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "別の ccn のアップグレードがすでに実行中です。数分後にもう一度お試しください"

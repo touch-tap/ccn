@@ -295,3 +295,7 @@ api:
   saving_settings: "Speichern der Einstellungen"
   sending_event: "Senden des Ereignisses"
   waiting_response: "Warten auf eine Antwort: %{error}"
+
+# A second upgrader found the first one still running
+update_lock:
+  busy: "es läuft bereits ein anderes ccn-Upgrade. Versuche es in ein paar Minuten noch einmal"
