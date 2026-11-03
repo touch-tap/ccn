@@ -308,3 +308,7 @@ payload:
   approve_plan: "核准計畫"
   pattern: "模式：%{pattern}"
   search: "搜尋：%{pattern}"
+
+net:
+  unreachable: "無法連線到 Claude Code Notifier 伺服器。請檢查網路連線後再試一次。"
+  doctor_unreachable: "伺服器: 無法連線到 %{url}。請檢查網路連線、Proxy 或防火牆"

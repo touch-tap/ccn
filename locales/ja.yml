@@ -308,3 +308,7 @@ payload:
   approve_plan: "プランを承認"
   pattern: "パターン: %{pattern}"
   search: "検索: %{pattern}"
+
+net:
+  unreachable: "Claude Code Notifier のサーバーに接続できませんでした。インターネット接続を確認して、もう一度お試しください。"
+  doctor_unreachable: "サーバー: %{url} に接続できません。インターネット接続、プロキシ、ファイアウォールを確認してください"

@@ -316,3 +316,10 @@ payload:
   pattern: "Pattern: %{pattern}"
   # A search pattern for file contents
   search: "Search: %{pattern}"
+
+# When the server can't be reached at all (no connection, DNS, timeout). The raw error follows
+# on the next line.
+net:
+  unreachable: "Couldn't reach the Claude Code Notifier server. Check your internet connection and try again."
+  # A `ccn doctor` line, in the same label: text style as the doctor.* lines
+  doctor_unreachable: "server: couldn't reach %{url}. Check your internet connection, proxy or firewall"

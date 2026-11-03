@@ -309,3 +309,7 @@ payload:
   approve_plan: "Phê duyệt kế hoạch"
   pattern: "Mẫu: %{pattern}"
   search: "Tìm kiếm: %{pattern}"
+
+net:
+  unreachable: "Không kết nối được tới máy chủ Claude Code Notifier. Hãy kiểm tra kết nối internet rồi thử lại."
+  doctor_unreachable: "máy chủ: không kết nối được tới %{url}. Hãy kiểm tra kết nối internet, proxy hoặc tường lửa"

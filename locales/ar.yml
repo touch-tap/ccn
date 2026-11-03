@@ -310,3 +310,7 @@ payload:
   approve_plan: "الموافقة على الخطة"
   pattern: "النمط: %{pattern}"
   search: "بحث: %{pattern}"
+
+net:
+  unreachable: "تعذّر الوصول إلى خادم Claude Code Notifier. تحقّق من اتصالك بالإنترنت وحاول مرة أخرى."
+  doctor_unreachable: "الخادم: تعذّر الوصول إلى %{url}. تحقّق من اتصالك بالإنترنت أو الوكيل أو جدار الحماية"

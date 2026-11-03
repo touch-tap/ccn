@@ -306,3 +306,7 @@ payload:
   approve_plan: "Plan goedkeuren"
   pattern: "Patroon: %{pattern}"
   search: "Zoeken: %{pattern}"
+
+net:
+  unreachable: "De server van Claude Code Notifier is niet bereikbaar. Controleer je internetverbinding en probeer het opnieuw."
+  doctor_unreachable: "server: %{url} niet bereikbaar. Controleer je internetverbinding, proxy of firewall"

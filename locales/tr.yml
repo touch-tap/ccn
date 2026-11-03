@@ -309,3 +309,7 @@ payload:
   approve_plan: "Planı onaylayın"
   pattern: "Desen: %{pattern}"
   search: "Arama: %{pattern}"
+
+net:
+  unreachable: "Claude Code Notifier sunucusuna ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin."
+  doctor_unreachable: "sunucu: %{url} adresine ulaşılamıyor. İnternet bağlantınızı, proxy'yi veya güvenlik duvarını kontrol edin"

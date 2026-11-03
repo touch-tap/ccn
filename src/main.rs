@@ -135,7 +135,7 @@ fn main() {
     let cli = Cli::parse();
     let Some(command) = cli.command else {
         if let Err(err) = commands::default_command() {
-            eprintln!("ccn: {err:#}");
+            report(&err);
             std::process::exit(1);
         }
         return;
@@ -186,7 +186,75 @@ fn main() {
         Command::Forget { yes } => commands::forget(yes),
     };
     if let Err(err) = result {
-        eprintln!("ccn: {err:#}");
+        report(&err);
         std::process::exit(1);
+    }
+}
+
+/// Prints a command's error. When the server couldn't be reached at all, a translated line says
+/// so first; the raw chain ("POST /api/...: io: Connection refused") follows as the detail.
+fn report(err: &anyhow::Error) {
+    if is_network_error(err) {
+        eprintln!("ccn: {}", t!("net.unreachable"));
+        eprintln!("     {err:#}");
+    } else {
+        eprintln!("ccn: {err:#}");
+    }
+}
+
+/// Whether the error chain holds a transport failure (no connection, DNS, timeout, TLS) rather
+/// than an answer from the server.
+pub fn is_network_error(err: &anyhow::Error) -> bool {
+    use std::io::ErrorKind;
+    err.chain().any(|cause| {
+        if let Some(e) = cause.downcast_ref::<ureq::Error>() {
+            return matches!(
+                e,
+                ureq::Error::Io(_)
+                    | ureq::Error::Timeout(_)
+                    | ureq::Error::HostNotFound
+                    | ureq::Error::ConnectionFailed
+                    | ureq::Error::Tls(_)
+                    | ureq::Error::ConnectProxyFailed(_)
+                    | ureq::Error::BodyStalled
+            );
+        }
+        cause.downcast_ref::<std::io::Error>().is_some_and(|e| {
+            matches!(
+                e.kind(),
+                ErrorKind::ConnectionRefused
+                    | ErrorKind::ConnectionReset
+                    | ErrorKind::ConnectionAborted
+                    | ErrorKind::NotConnected
+                    | ErrorKind::TimedOut
+                    | ErrorKind::HostUnreachable
+                    | ErrorKind::NetworkUnreachable
+                    | ErrorKind::NetworkDown
+            )
+        })
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_network_error;
+    use anyhow::Context;
+
+    #[test]
+    fn transport_failures_are_network_errors() {
+        let refused: anyhow::Result<()> = Err(ureq::Error::Io(std::io::Error::from(
+            std::io::ErrorKind::ConnectionRefused,
+        )))
+        .context("POST /api/pairing/claim-by-client");
+        assert!(is_network_error(&refused.unwrap_err()));
+        let dns: anyhow::Result<()> = Err(ureq::Error::HostNotFound).context("GET /health");
+        assert!(is_network_error(&dns.unwrap_err()));
+    }
+
+    #[test]
+    fn server_answers_are_not_network_errors() {
+        assert!(!is_network_error(&anyhow::anyhow!("server returned 500")));
+        let status: anyhow::Result<()> = Err(ureq::Error::StatusCode(502)).context("GET /health");
+        assert!(!is_network_error(&status.unwrap_err()));
     }
 }

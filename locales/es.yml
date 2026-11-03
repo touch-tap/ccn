@@ -308,3 +308,7 @@ payload:
   approve_plan: "Aprobar el plan"
   pattern: "Patrón: %{pattern}"
   search: "Búsqueda: %{pattern}"
+
+net:
+  unreachable: "No se pudo conectar con el servidor de Claude Code Notifier. Revisa tu conexión a internet y vuelve a intentarlo."
+  doctor_unreachable: "servidor: no se pudo conectar con %{url}. Revisa tu conexión a internet, el proxy o el cortafuegos"

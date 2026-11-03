@@ -307,3 +307,7 @@ payload:
   approve_plan: "Plan freigeben"
   pattern: "Muster: %{pattern}"
   search: "Suche: %{pattern}"
+
+net:
+  unreachable: "Der Claude Code Notifier-Server ist nicht erreichbar. Prüfe deine Internetverbindung und versuch es noch einmal."
+  doctor_unreachable: "Server: %{url} nicht erreichbar. Prüfe Internetverbindung, Proxy oder Firewall"
