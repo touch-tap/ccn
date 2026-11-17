@@ -101,14 +101,19 @@ pub fn pair(
     replace_mac_app: bool,
     no_wait: bool,
 ) -> Result<()> {
+    // With no code, someone at a terminal is asked for the phone's code first: the app shows one,
+    // and a QR code here would leave them with two codes and no way to join them
+    let asks = code.is_none() && !no_wait && std::io::IsTerminal::is_terminal(&std::io::stdin());
     let mut flow = if code.is_some() {
         "phone_code"
+    } else if asks {
+        "ask"
     } else {
         "computer_code"
     };
     let method = telemetry::install_method();
     telemetry::event("cli_pair_started", &[("flow", flow), ("method", method)]);
-    let result = pair_inner(code, name, replace_mac_app, no_wait, &mut flow);
+    let result = pair_inner(code, name, replace_mac_app, no_wait, asks, &mut flow);
     match &result {
         Ok(PairOutcome::Paired) => {
             telemetry::event("cli_paired", &[("flow", flow), ("method", method)])
@@ -134,6 +139,7 @@ fn pair_inner(
     name: Option<String>,
     replace_mac_app: bool,
     no_wait: bool,
+    asks: bool,
     flow: &mut &'static str,
 ) -> Result<PairOutcome> {
     // Hooks first: a computer that never finishes pairing still gets desktop notifications
@@ -170,6 +176,17 @@ fn pair_inner(
         "clientVersion": config::VERSION,
         "capabilities": config::CAPABILITIES,
     });
+
+    let mut code = code;
+    if asks {
+        code = ask_for_phone_code()?;
+        // `flow` on the finished or failed event says which way it went
+        *flow = if code.is_some() {
+            "phone_code"
+        } else {
+            "computer_code"
+        };
+    }
 
     let mut paired_with: Option<PairedPhone> = None;
     if let Some(code) = code {
@@ -333,6 +350,52 @@ fn print_paired(name: Option<&str>, platform: &str) {
             platform = platform
         )
     );
+}
+
+/// Asks for the code the phone shows. None (show a QR code instead) for an empty line or end of
+/// input. A pasted install line or `ccn pair 123456` counts too: any line holding six digits.
+fn ask_for_phone_code() -> Result<Option<String>> {
+    println!();
+    println!("{}", t!("pair.ask_code"));
+    loop {
+        print!("  > ");
+        std::io::Write::flush(&mut std::io::stdout())?;
+        let mut line = String::new();
+        if std::io::stdin().read_line(&mut line)? == 0 {
+            return Ok(None);
+        }
+        match six_digits_in(&line) {
+            Answer::Empty => return Ok(None),
+            Answer::Code(code) => return Ok(Some(code)),
+            Answer::NotACode => println!("{}", t!("pair.ask_code_again")),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+enum Answer {
+    Empty,
+    Code(String),
+    NotACode,
+}
+
+/// The phone's code in what was typed: the only run of six digits ("482 913" and "482-913" too)
+fn six_digits_in(line: &str) -> Answer {
+    let line = line.trim();
+    if line.is_empty() {
+        return Answer::Empty;
+    }
+    let grouped: String = line
+        .split(|c: char| !(c.is_ascii_digit() || c == ' ' || c == '-'))
+        .map(|part| part.chars().filter(char::is_ascii_digit).collect::<String>())
+        .filter(|digits| digits.len() == 6)
+        .collect::<Vec<_>>()
+        .join("|");
+    if grouped.len() == 6 {
+        Answer::Code(grouped)
+    } else {
+        Answer::NotACode
+    }
 }
 
 /// The server didn't know the code (or it had expired), or it wasn't six digits
@@ -1091,6 +1154,24 @@ mod tests {
         assert!(code_was_refused(&malformed));
         assert!(!code_was_refused(&network));
         assert!(!code_was_refused(&limited));
+    }
+
+    #[test]
+    fn typed_phone_codes() {
+        assert_eq!(six_digits_in("\n"), Answer::Empty);
+        assert_eq!(six_digits_in("  "), Answer::Empty);
+        assert_eq!(six_digits_in("482913\n"), Answer::Code("482913".into()));
+        assert_eq!(six_digits_in("482 913"), Answer::Code("482913".into()));
+        assert_eq!(six_digits_in("482-913"), Answer::Code("482913".into()));
+        assert_eq!(six_digits_in("ccn pair 482913"), Answer::Code("482913".into()));
+        assert_eq!(
+            six_digits_in("curl -fsSL https://claudecodenotifier.com/install.sh | sh -s 482913"),
+            Answer::Code("482913".into())
+        );
+        assert_eq!(six_digits_in("48291"), Answer::NotACode);
+        assert_eq!(six_digits_in("4829130"), Answer::NotACode);
+        assert_eq!(six_digits_in("yes"), Answer::NotACode);
+        assert_eq!(six_digits_in("123456 654321"), Answer::NotACode);
     }
 
     #[test]
