@@ -4,7 +4,8 @@
 //! Sent by the install scripts and by commands people type (`ccn pair`, `ccn activate`, the
 //! pitch), by the detached background updater (`cli_updated`, `cli_update_failed`), and from one
 //! hook: SessionStart posts `cli_nudge_shown` when it shows a licence nudge, at most once a day,
-//! and `cli_cross_promo_shown` (where = session) the twice at most it suggests codex-notifier.
+//! and `cli_cross_promo_shown` / `cli_rate_prompt_shown` when it suggests codex-notifier or a
+//! rating; those, and the `ccn`/`ccn doctor` hints, go through a detached `ccn telemetry` process.
 //! Never anything about sessions, prompts or the computer's name. Each event is a name plus a few
 //! short words (the stage that failed, how ccn was installed), posted once with a short timeout
 //! and no retry: 3 s, or 1 s inside a hook, which Claude Code waits on.
@@ -94,6 +95,29 @@ fn timeout() -> Duration {
     } else {
         Duration::from_secs(3)
     }
+}
+
+/// `event`, sent by a detached `ccn telemetry` process so nothing waits for it, not even for the
+/// short timeout: what a hook, or a hint in `ccn` and `ccn doctor`, uses.
+pub fn event_detached(name: &str, properties: &[(&str, &str)]) {
+    if !enabled() {
+        return;
+    }
+    let pairs: Vec<String> = properties.iter().map(|(k, v)| format!("{k}={v}")).collect();
+    let mut args = vec!["telemetry", name];
+    args.extend(pairs.iter().map(String::as_str));
+    if let Err(err) = crate::update::spawn_detached(&args) {
+        crate::logger::log(&format!("telemetry: {name} could not start: {err}"));
+    }
+}
+
+/// `ccn telemetry <name> [key=value...]`, the detached half of `event_detached`.
+pub fn event_from_args(name: &str, properties: &[String]) {
+    let pairs: Vec<(&str, &str)> = properties
+        .iter()
+        .filter_map(|p| p.split_once('='))
+        .collect();
+    event(name, &pairs);
 }
 
 pub fn event(name: &str, properties: &[(&str, &str)]) {

@@ -116,7 +116,12 @@ pub fn print_hint(cfg: &Config, place: &str) {
     }
     println!();
     println!("{}", line());
-    crate::telemetry::event("cli_cross_promo_shown", &[("where", place)]);
+    // `ccn pair` waits on the network anyway; the hints in `ccn` and `ccn doctor` don't
+    if place == "pair" {
+        crate::telemetry::event("cli_cross_promo_shown", &[("where", place)]);
+    } else {
+        crate::telemetry::event_detached("cli_cross_promo_shown", &[("where", place)]);
+    }
 }
 
 /// Whether a SessionStart may mention codex-notifier: at most twice ever, the first no sooner than
@@ -166,7 +171,7 @@ pub fn session_message(cfg: &mut Config, now: i64) -> Option<Value> {
     cfg.cross_promo_count += 1;
     cfg.cross_promo_last_at = Some(now);
     let _ = cfg.save();
-    crate::telemetry::event("cli_cross_promo_shown", &[("where", "session")]);
+    crate::telemetry::event_detached("cli_cross_promo_shown", &[("where", "session")]);
     Some(json!({ "systemMessage": t!("crosspromo.session_message", line = line()) }))
 }
 

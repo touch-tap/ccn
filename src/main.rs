@@ -121,6 +121,12 @@ enum Command {
         #[arg(long)]
         plugin: bool,
     },
+    // Sends one anonymous event, started detached by telemetry::event_detached
+    #[command(hide = true)]
+    Telemetry {
+        name: String,
+        properties: Vec<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -151,6 +157,10 @@ fn main() {
     let result = match command {
         // The plugin's stand-aside check needs the event's cwd, so hook.rs makes it
         Command::Hook { plugin } => hook::run(plugin),
+        Command::Telemetry { name, properties } => {
+            telemetry::event_from_args(&name, &properties);
+            Ok(())
+        }
         Command::Pair {
             code,
             name,

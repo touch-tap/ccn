@@ -366,15 +366,20 @@ pub fn daily_check(cfg: &mut Config) -> Option<Value> {
     }))
 }
 
-/// Runs this same binary as `ccn upgrade --quiet --background`, with no terminal, no standard
-/// streams and its own session, so neither Claude Code nor the shell waits for it or stops it.
+/// Runs this same binary as `ccn upgrade --quiet --background`, detached (`spawn_detached`).
 fn spawn_background() {
-    let Ok(exe) = std::env::current_exe() else {
-        return;
-    };
+    if let Err(err) = spawn_detached(&["upgrade", "--quiet", "--background"]) {
+        log(&format!("update check could not start: {err}"));
+    }
+}
+
+/// Runs this same binary with `args`, with no terminal, no standard streams and its own session,
+/// so neither Claude Code nor the shell waits for it or stops it.
+pub fn spawn_detached(args: &[&str]) -> std::io::Result<()> {
+    let exe = std::env::current_exe()?;
     let mut command = Command::new(exe);
     command
-        .args(["upgrade", "--quiet", "--background"])
+        .args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
@@ -395,9 +400,7 @@ fn spawn_background() {
         use windows_sys::Win32::System::Threading::{CREATE_NO_WINDOW, DETACHED_PROCESS};
         command.creation_flags(CREATE_NO_WINDOW | DETACHED_PROCESS);
     }
-    if let Err(err) = command.spawn() {
-        log(&format!("update check could not start: {err}"));
-    }
+    command.spawn().map(|_| ())
 }
 
 // ============================================
