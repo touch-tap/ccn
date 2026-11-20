@@ -352,3 +352,5 @@ crosspromo:
   line: "也在用 Codex？codex-notifier 也能把 Codex 的核准請求和提問傳到你的手機：%{command}  ·  %{url}"
   # Shown in Claude Code at SessionStart; %{line} is crosspromo.line
   session_message: "Claude Code Notifier: %{line}"
+  # The SessionStart desktop notification; a click opens the website
+  notification_body: "也在用 Codex？codex-notifier 也能把 Codex 的核准請求傳到你的手機。"

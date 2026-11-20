@@ -312,6 +312,16 @@ pub struct Config {
     /// The first paired SessionStart that looked, standing in for `paired_at` on installs that
     /// paired before it was recorded
     pub cross_promo_first_seen_at: Option<i64>,
+    /// Whether to ask for a store rating once, after `RATE_AFTER_ANSWERS` answers from the phone
+    /// (`ccn config set rate_prompt off`; default on). See rate.rs
+    pub rate_prompt: bool,
+    /// When the rating prompt was shown (it is shown once per install)
+    pub rate_prompt_shown_at: Option<i64>,
+    /// Requests held for the phone and answered there
+    pub phone_answers: u64,
+    /// The platforms (ios, android) of the phones paired with this computer, as of the last time
+    /// the server said
+    pub phone_platforms: Vec<String>,
     /// Look for a newer ccn once a day from the SessionStart hook and install it when ccn owns its
     /// own binary (`ccn config set auto_update off`, or `CCN_NO_AUTO_UPDATE=1`, turns it off)
     pub auto_update: bool,
@@ -361,6 +371,10 @@ impl Default for Config {
             cross_promo_last_at: None,
             cross_promo_count: 0,
             cross_promo_first_seen_at: None,
+            rate_prompt: true,
+            rate_prompt_shown_at: None,
+            phone_answers: 0,
+            phone_platforms: Vec::new(),
             auto_update: true,
             update_checked_at: None,
             update_available: None,

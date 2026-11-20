@@ -350,3 +350,5 @@ crosspromo:
   line: "Também usa o Codex? O codex-notifier manda as aprovações e perguntas do Codex para o seu celular também: %{command}  ·  %{url}"
   # Shown in Claude Code at SessionStart; %{line} is crosspromo.line
   session_message: "Claude Code Notifier: %{line}"
+  # The SessionStart desktop notification; a click opens the website
+  notification_body: "Também usa o Codex? O codex-notifier manda as aprovações do Codex para o seu celular também."

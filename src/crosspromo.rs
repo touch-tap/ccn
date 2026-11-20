@@ -1,6 +1,7 @@
 //! Suggests codex-notifier, the same notifier for OpenAI's Codex CLI, to people who also use
 //! Codex and don't have it yet. Shown once at the end of `ccn pair`, as a passive line in `ccn`
-//! (status) and `ccn doctor`, and at most twice ever in Claude Code at SessionStart.
+//! (status) and `ccn doctor`, and at most twice ever at SessionStart: a desktop notification
+//! (most people never run ccn themselves, so that is the one they see) plus a line in Claude Code.
 //!
 //! Detection is a handful of stat calls and one small file read: no network, so hooks stay fast.
 //! `ccn config set cross_promo off`, or `CCN_NO_NUDGE=1`, keeps it quiet.
@@ -11,11 +12,13 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use crate::config::{self, Config};
-use crate::local;
+use crate::{local, notify};
 
 /// Not translated: a command and a URL
 pub const COMMAND: &str = "npm install -g @touchtap/codex-notifier";
 pub const URL: &str = "https://notifierforcodex.com/?ref=ccn-cli";
+/// What a click on the SessionStart desktop notification opens
+pub const NOTIFICATION_URL: &str = "https://notifierforcodex.com/?ref=ccn-notification";
 
 const DAY: i64 = 24 * 60 * 60;
 /// The first SessionStart mention waits this long after pairing
@@ -126,15 +129,15 @@ pub fn print_hint(cfg: &Config, place: &str) {
 
 /// Whether a SessionStart may mention codex-notifier: at most twice ever, the first no sooner than
 /// three days after pairing (`since`), the second 30 days after the first, and never within a
-/// day of the licence nudge.
+/// day of another nudge (`other_nudges`: the licence nudge, the rating prompt).
 pub fn session_due(
     now: i64,
     since: i64,
     count: u32,
     last_at: Option<i64>,
-    licence_last_at: Option<i64>,
+    other_nudges: &[Option<i64>],
 ) -> bool {
-    if licence_last_at.is_some_and(|last| now - last < DAY) {
+    if other_nudges.iter().flatten().any(|last| now - last < DAY) {
         return false;
     }
     match count {
@@ -144,7 +147,8 @@ pub fn session_due(
     }
 }
 
-/// The SessionStart `systemMessage`, when it is due (paired mode only). Call it only when no other
+/// The SessionStart `systemMessage`, when it is due (paired mode only), and the desktop
+/// notification unless desktop notifications are off. Call it only when no other
 /// message is being shown this SessionStart, the licence nudge included.
 pub fn session_message(cfg: &mut Config, now: i64) -> Option<Value> {
     let since = match cfg.paired_at.or(cfg.cross_promo_first_seen_at) {
@@ -162,7 +166,7 @@ pub fn session_message(cfg: &mut Config, now: i64) -> Option<Value> {
             since,
             cfg.cross_promo_count,
             cfg.cross_promo_last_at,
-            cfg.licence_nudge_last_at,
+            &[cfg.licence_nudge_last_at, cfg.rate_prompt_shown_at],
         )
         || !should_suggest(cfg)
     {
@@ -171,6 +175,13 @@ pub fn session_message(cfg: &mut Config, now: i64) -> Option<Value> {
     cfg.cross_promo_count += 1;
     cfg.cross_promo_last_at = Some(now);
     let _ = cfg.save();
+    if cfg.desktop_notifications && notify::available() {
+        notify::show_link(
+            notify::APP_NAME,
+            &t!("crosspromo.notification_body"),
+            NOTIFICATION_URL,
+        );
+    }
     crate::telemetry::event_detached("cli_cross_promo_shown", &[("where", "session")]);
     Some(json!({ "systemMessage": t!("crosspromo.session_message", line = line()) }))
 }
@@ -269,23 +280,18 @@ mod tests {
     fn session_cadence() {
         let paired = 1_000_000_000;
         // Not before three days after pairing
-        assert!(!session_due(paired + 3 * DAY - 1, paired, 0, None, None));
-        assert!(session_due(paired + 3 * DAY, paired, 0, None, None));
+        assert!(!session_due(paired + 3 * DAY - 1, paired, 0, None, &[]));
+        assert!(session_due(paired + 3 * DAY, paired, 0, None, &[]));
         // The second 30 days after the first
         let first = paired + 4 * DAY;
-        assert!(!session_due(first + 29 * DAY, paired, 1, Some(first), None));
-        assert!(session_due(first + 30 * DAY, paired, 1, Some(first), None));
+        assert!(!session_due(first + 29 * DAY, paired, 1, Some(first), &[]));
+        assert!(session_due(first + 30 * DAY, paired, 1, Some(first), &[]));
         // Never a third
-        assert!(!session_due(
-            first + 400 * DAY,
-            paired,
-            2,
-            Some(first),
-            None
-        ));
-        // Never within a day of the licence nudge
+        assert!(!session_due(first + 400 * DAY, paired, 2, Some(first), &[]));
+        // Never within a day of the licence nudge or the rating prompt
         let now = paired + 10 * DAY;
-        assert!(!session_due(now, paired, 0, None, Some(now - 60)));
-        assert!(session_due(now, paired, 0, None, Some(now - DAY)));
+        assert!(!session_due(now, paired, 0, None, &[Some(now - 60)]));
+        assert!(!session_due(now, paired, 0, None, &[None, Some(now - 60)]));
+        assert!(session_due(now, paired, 0, None, &[Some(now - DAY), None]));
     }
 }
