@@ -105,7 +105,8 @@ Settings: `notify_on_done`, `notify_on_permission`, `notify_on_question`, `quiet
 `presence_threshold_seconds` (default 30), `stop_hold_seconds` (0–600, default 120), `sound`, and
 the local-only `desktop_notifications`, `pair_nudges` (suggest pairing while no phone is; default
 on), `cross_promo` (if you also use Codex, mention [codex-notifier](https://notifierforcodex.com),
-the same notifier for Codex; default on), `credential_store` (`keychain` or `file`) and
+the same notifier for Codex; default on), `rate_prompt` (one desktop notification asking for a
+store rating, after 20 answers from the phone; default on), `credential_store` (`keychain` or `file`) and
 `auto_update`.
 
 ## Updating
@@ -175,8 +176,8 @@ echo '{"hook_event_name":"Stop","session_id":"s1","cwd":"/tmp","last_assistant_m
 ```
 
 `CCN_PRESENCE=away|present|file:<path>` pins the presence check for tests, `CCN_NOTIFY=off` keeps
-desktop notifications quiet, and `CCN_NO_NUDGE=1` turns off every reminder to pair or to unlock,
-and the codex-notifier suggestion.
+desktop notifications quiet (`CCN_NOTIFY=log` writes them to ccn.log instead), and `CCN_NO_NUDGE=1` turns off every reminder to pair or to unlock,
+the codex-notifier suggestion and the rating prompt.
 
 Releasing: see [RELEASING.md](RELEASING.md).
 
