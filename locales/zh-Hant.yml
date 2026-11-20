@@ -354,3 +354,7 @@ crosspromo:
   session_message: "Claude Code Notifier: %{line}"
   # The SessionStart desktop notification; a click opens the website
   notification_body: "也在用 Codex？codex-notifier 也能把 Codex 的核准請求傳到你的手機。"
+
+rate:
+  notification_body: "喜歡 Claude Code Notifier 嗎？花幾秒評個分，能幫其他開發者找到它。"
+  session_message: "喜歡 Claude Code Notifier 嗎？花幾秒評個分，能幫其他開發者找到它：%{url}"

@@ -163,11 +163,15 @@ fn run_inner(plugin: bool) -> Result<Option<Value>> {
     match announce {
         Some(message) => Ok(Some(message)),
         None => result.map(|message| {
-            // Claude Code shows one message: codex-notifier is mentioned only when nothing else
-            // is, so never beside (or on the same day as) the licence nudge
+            // Claude Code shows one message: codex-notifier and the rating prompt are mentioned
+            // only when nothing else is, so never beside (or on the same day as) the licence nudge
             message.or(update_message).or_else(|| {
                 (event == "SessionStart")
-                    .then(|| crate::crosspromo::session_message(&mut ctx.cfg, config::now()))
+                    .then(|| {
+                        let now = config::now();
+                        crate::crosspromo::session_message(&mut ctx.cfg, now)
+                            .or_else(|| crate::rate::session_message(&mut ctx.cfg, now))
+                    })
                     .flatten()
             })
         }),
@@ -185,6 +189,7 @@ fn check_phones(cfg: &mut Config, api: &Api) -> Option<Value> {
         }
     };
     cfg.record_phones(devices.len());
+    crate::rate::record_platforms(cfg, devices.iter().map(|d| d.platform.as_str()));
     let mut message = None;
     if !devices.is_empty() && !cfg.paired_message_shown {
         cfg.paired_message_shown = true;
@@ -304,6 +309,12 @@ impl Ctx {
             {
                 Ok(Some(result)) => {
                     accepted = true;
+                    if let Some(platforms) = &result.phone_platforms {
+                        crate::rate::record_platforms(
+                            &mut self.cfg,
+                            platforms.iter().map(String::as_str),
+                        );
+                    }
                     self.cfg.settings = result.settings;
                     self.cfg.settings_updated_at = result.updated_at;
                     self.cfg.settings_etag = result.etag;
@@ -351,6 +362,9 @@ impl Ctx {
                 return None;
             }
         };
+        if let Some(platforms) = &status.phone_platforms {
+            crate::rate::record_platforms(&mut self.cfg, platforms.iter().map(String::as_str));
+        }
         if !status.nudge {
             return None;
         }
@@ -696,6 +710,7 @@ impl Ctx {
                     }
                     let _ = self.state.save();
                     log(&format!("{id} answered from the phone"));
+                    crate::rate::record_answer(&mut self.cfg);
                     return Ok(Some(text));
                 }
                 Ok(None) => return Ok(None),

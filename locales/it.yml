@@ -353,3 +353,7 @@ crosspromo:
   session_message: "Claude Code Notifier: %{line}"
   # The SessionStart desktop notification; a click opens the website
   notification_body: "Usi anche Codex? codex-notifier invia al telefono anche le approvazioni di Codex."
+
+rate:
+  notification_body: "Ti piace Claude Code Notifier? Una valutazione veloce aiuta altri sviluppatori a trovarlo."
+  session_message: "Ti piace Claude Code Notifier? Una valutazione veloce aiuta altri sviluppatori a trovarlo: %{url}"

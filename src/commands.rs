@@ -441,6 +441,7 @@ pub fn duration_text(secs: u64) -> String {
 pub fn list_phones(cfg: &mut Config, api: &Api) -> Result<Vec<api::PairedDevice>> {
     let devices = api.pairings()?;
     cfg.record_phones(devices.len());
+    crate::rate::record_platforms(cfg, devices.iter().map(|d| d.platform.as_str()));
     let _ = cfg.save();
     Ok(devices)
 }
@@ -932,6 +933,10 @@ pub fn config_show() -> Result<()> {
         if cfg.cross_promo { "on" } else { "off" }
     );
     println!(
+        "rate_prompt                {} {local_only}",
+        if cfg.rate_prompt { "on" } else { "off" }
+    );
+    println!(
         "hold_without_presence      {} {local_only}",
         if cfg.hold_without_presence {
             "on"
@@ -972,6 +977,14 @@ pub fn config_set(key: &str, value: &str) -> Result<()> {
     }
     if key == "pair_nudges" {
         cfg.pair_nudges = matches!(
+            value.to_ascii_lowercase().as_str(),
+            "on" | "true" | "yes" | "1"
+        );
+        cfg.save()?;
+        return config_show();
+    }
+    if key == "rate_prompt" {
+        cfg.rate_prompt = matches!(
             value.to_ascii_lowercase().as_str(),
             "on" | "true" | "yes" | "1"
         );

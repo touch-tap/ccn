@@ -109,6 +109,8 @@ pub struct CodeResponse {
 #[allow(dead_code)]
 pub struct SettingsResult {
     pub settings: Settings,
+    /// The paired phones' platforms (ios, android), from a server that sends them
+    pub phone_platforms: Option<Vec<String>>,
     pub updated_at: Option<i64>,
     pub etag: Option<String>,
 }
@@ -351,11 +353,14 @@ impl Api {
         struct Body {
             settings: Settings,
             updated_at: Option<i64>,
+            #[serde(default)]
+            phone_platforms: Option<Vec<String>>,
         }
         let parsed: Body =
             serde_json::from_str(&reply.body).context("unexpected settings response")?;
         Ok(SettingsResult {
             settings: parsed.settings,
+            phone_platforms: parsed.phone_platforms,
             updated_at: parsed.updated_at,
             etag: reply.etag,
         })
@@ -446,6 +451,9 @@ pub struct LicenceStatus {
     /// The server-authored nudge for `nudge: true`, with its A/B id. None from an older server.
     #[serde(default)]
     pub nudge_message: Option<NudgeMessage>,
+    /// The paired phones' platforms (ios, android), from a server that sends them
+    #[serde(default)]
+    pub phone_platforms: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
