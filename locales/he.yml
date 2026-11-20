@@ -349,3 +349,8 @@ clap:
 # `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
 update_signature:
   invalid: "לא ניתן לאמת את החתימה של הגרסה, ולכן שום דבר לא שונה. נסה שוב מאוחר יותר, או התקן מחדש מ-claudecodenotifier.com/cli"
+
+crosspromo:
+  line: "משתמשים גם ב-Codex? codex-notifier שולח גם את האישורים והשאלות של Codex לטלפון: %{command}  ·  %{url}"
+  # Shown in Claude Code at SessionStart; %{line} is crosspromo.line
+  session_message: "Claude Code Notifier: %{line}"

@@ -7,6 +7,7 @@
 mod api;
 mod commands;
 mod config;
+mod crosspromo;
 mod hook;
 mod hookcfg;
 mod i18n;

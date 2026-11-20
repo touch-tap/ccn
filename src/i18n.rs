@@ -212,6 +212,7 @@ mod tests {
     const SAME_AS_ENGLISH_ALLOWED: &[&str] = &[
         // Format only: placeholders, commands and punctuation
         "hook.nudge_message",
+        "crosspromo.session_message",
         "licence.computer_row",
         "licence.describe_other",
         "licence.replace_example",

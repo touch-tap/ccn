@@ -346,3 +346,8 @@ clap:
 # `ccn upgrade` refused a release whose SHA256SUMS isn't signed by TouchTap
 update_signature:
   invalid: "la signature de la version n'est pas valide, rien n'a donc été modifié. Réessaie plus tard ou réinstalle depuis claudecodenotifier.com/cli"
+
+crosspromo:
+  line: "Tu utilises aussi Codex ? codex-notifier envoie aussi les autorisations et les questions de Codex sur ton téléphone : %{command}  ·  %{url}"
+  # Shown in Claude Code at SessionStart; %{line} is crosspromo.line
+  session_message: "Claude Code Notifier : %{line}"
