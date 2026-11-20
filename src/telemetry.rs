@@ -3,7 +3,8 @@
 //!
 //! Sent by the install scripts and by commands people type (`ccn pair`, `ccn activate`, the
 //! pitch), by the detached background updater (`cli_updated`, `cli_update_failed`), and from one
-//! hook: SessionStart posts `cli_nudge_shown` when it shows a licence nudge, at most once a day.
+//! hook: SessionStart posts `cli_nudge_shown` when it shows a licence nudge, at most once a day,
+//! and `cli_cross_promo_shown` (where = session) the twice at most it suggests codex-notifier.
 //! Never anything about sessions, prompts or the computer's name. Each event is a name plus a few
 //! short words (the stage that failed, how ccn was installed), posted once with a short timeout
 //! and no retry: 3 s, or 1 s inside a hook, which Claude Code waits on.
