@@ -271,7 +271,13 @@ mod tests {
         assert!(!session_due(first + 29 * DAY, paired, 1, Some(first), None));
         assert!(session_due(first + 30 * DAY, paired, 1, Some(first), None));
         // Never a third
-        assert!(!session_due(first + 400 * DAY, paired, 2, Some(first), None));
+        assert!(!session_due(
+            first + 400 * DAY,
+            paired,
+            2,
+            Some(first),
+            None
+        ));
         // Never within a day of the licence nudge
         let now = paired + 10 * DAY;
         assert!(!session_due(now, paired, 0, None, Some(now - 60)));
