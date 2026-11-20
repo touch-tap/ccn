@@ -302,6 +302,16 @@ pub struct Config {
     pub pair_nudge_due: bool,
     /// Whether to suggest pairing at all (`ccn config set pair_nudges off`; default on)
     pub pair_nudges: bool,
+    /// Whether to suggest codex-notifier to people who also use Codex (`ccn config set cross_promo
+    /// off`; default on). See crosspromo.rs
+    pub cross_promo: bool,
+    /// When Claude Code last mentioned codex-notifier at SessionStart
+    pub cross_promo_last_at: Option<i64>,
+    /// How many times Claude Code has mentioned codex-notifier at SessionStart (at most 2)
+    pub cross_promo_count: u32,
+    /// The first paired SessionStart that looked, standing in for `paired_at` on installs that
+    /// paired before it was recorded
+    pub cross_promo_first_seen_at: Option<i64>,
     /// Look for a newer ccn once a day from the SessionStart hook and install it when ccn owns its
     /// own binary (`ccn config set auto_update off`, or `CCN_NO_AUTO_UPDATE=1`, turns it off)
     pub auto_update: bool,
@@ -347,6 +357,10 @@ impl Default for Config {
             pair_nudge_last_at: None,
             pair_nudge_due: false,
             pair_nudges: true,
+            cross_promo: true,
+            cross_promo_last_at: None,
+            cross_promo_count: 0,
+            cross_promo_first_seen_at: None,
             auto_update: true,
             update_checked_at: None,
             update_available: None,

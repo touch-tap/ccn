@@ -925,6 +925,10 @@ pub fn config_show() -> Result<()> {
         if cfg.pair_nudges { "on" } else { "off" }
     );
     println!(
+        "cross_promo                {} {local_only}",
+        if cfg.cross_promo { "on" } else { "off" }
+    );
+    println!(
         "hold_without_presence      {} {local_only}",
         if cfg.hold_without_presence {
             "on"
@@ -965,6 +969,14 @@ pub fn config_set(key: &str, value: &str) -> Result<()> {
     }
     if key == "pair_nudges" {
         cfg.pair_nudges = matches!(
+            value.to_ascii_lowercase().as_str(),
+            "on" | "true" | "yes" | "1"
+        );
+        cfg.save()?;
+        return config_show();
+    }
+    if key == "cross_promo" {
+        cfg.cross_promo = matches!(
             value.to_ascii_lowercase().as_str(),
             "on" | "true" | "yes" | "1"
         );
