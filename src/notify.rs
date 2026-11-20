@@ -58,13 +58,52 @@ fn disabled() -> bool {
     std::env::var("CCN_NOTIFY").is_ok_and(|v| v.eq_ignore_ascii_case("off") || v == "0")
 }
 
+/// `CCN_NOTIFY=log` writes each notification to ccn's log instead of showing it (for tests).
+fn logged() -> bool {
+    std::env::var("CCN_NOTIFY").is_ok_and(|v| v.eq_ignore_ascii_case("log"))
+}
+
+/// Whether a desktop notification would go out at all (`CCN_NOTIFY=off` says no).
+pub fn available() -> bool {
+    !disabled()
+}
+
 pub fn show(title: &str, body: &str, sound: bool) {
+    show_inner(title, body, sound, None);
+}
+
+/// A notification that opens `url` when clicked, where the platform can: the macOS notifier app
+/// and Windows toasts. Elsewhere (Linux, and macOS without the app) the URL ends the body.
+pub fn show_link(title: &str, body: &str, url: &str) {
+    show_inner(title, body, false, Some(url));
+}
+
+/// The body with the URL on its own line, for notifications that can't open it on a click.
+#[cfg_attr(windows, allow(dead_code))]
+fn body_with_url(body: &str, url: Option<&str>) -> String {
+    match url {
+        Some(url) => format!("{body}\n{url}"),
+        None => body.to_string(),
+    }
+}
+
+fn show_inner(title: &str, body: &str, sound: bool, url: Option<&str>) {
     if disabled() {
         return;
     }
-    let body = crate::session::SessionState::truncate(body, 200);
+    if logged() {
+        crate::logger::log(&format!(
+            "desktop notification (CCN_NOTIFY=log): {title} | {body} | {}",
+            url.unwrap_or("-")
+        ));
+        return;
+    }
+    // Leave room for the URL, which must never be cut
+    let room = 200usize.saturating_sub(url.map_or(0, |u| u.chars().count() + 1));
+    let body = crate::session::SessionState::truncate(body, room.max(40));
     #[cfg(target_os = "macos")]
-    if !mac::post(title, &body, sound) {
+    if !mac::post(title, &body, sound, url) {
+        let body = body_with_url(&body, url);
         let script = format!(
             "display notification {} with title {}{}",
             osa_string(&body),
@@ -82,6 +121,7 @@ pub fn show(title: &str, body: &str, sound: bool) {
     #[cfg(target_os = "linux")]
     {
         let _ = sound;
+        let body = body_with_url(&body, url);
         let mut cmd = Command::new("notify-send");
         cmd.arg("--app-name=Claude Code Notifier");
         let icon = icon_path();
@@ -98,7 +138,7 @@ pub fn show(title: &str, body: &str, sound: bool) {
     }
     #[cfg(windows)]
     {
-        if let Err(err) = win::show(&toast_xml(title, &body, sound)) {
+        if let Err(err) = win::show(&toast_xml(title, &body, sound, url)) {
             crate::logger::log(&format!("toast failed: {err}"));
         }
     }
@@ -168,14 +208,18 @@ pub fn uninstall() {
 
 /// The toast's XML. Not platform-gated so the escaping is tested everywhere.
 #[cfg_attr(not(windows), allow(dead_code))]
-pub fn toast_xml(title: &str, body: &str, sound: bool) -> String {
+pub fn toast_xml(title: &str, body: &str, sound: bool, url: Option<&str>) -> String {
     let audio = if sound {
         r#"<audio src="ms-winsoundevent:Notification.Default"/>"#
     } else {
         r#"<audio silent="true"/>"#
     };
+    // A click on a protocol-activated toast opens the URL in the default browser
+    let launch = url
+        .map(|u| format!(r#" activationType="protocol" launch="{}""#, xml_escape(u)))
+        .unwrap_or_default();
     format!(
-        r#"<toast><visual><binding template="ToastGeneric"><text>{}</text><text>{}</text></binding></visual>{audio}</toast>"#,
+        r#"<toast{launch}><visual><binding template="ToastGeneric"><text>{}</text><text>{}</text></binding></visual>{audio}</toast>"#,
         xml_escape(title),
         xml_escape(body)
     )
@@ -266,7 +310,7 @@ mod mac {
     }
 
     /// Fire and forget. The app falls back to AppleScript itself while permission was never asked.
-    pub fn post(title: &str, body: &str, sound: bool) -> bool {
+    pub fn post(title: &str, body: &str, sound: bool, url: Option<&str>) -> bool {
         if !ensure() {
             return false;
         }
@@ -274,6 +318,10 @@ mod mac {
         cmd.args(["--title", title, "--body", body]);
         if sound {
             cmd.arg("--sound");
+        }
+        // Opened on a click; the app puts it in the body when it falls back to AppleScript
+        if let Some(url) = url {
+            cmd.args(["--url", url]);
         }
         cmd.stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -434,7 +482,7 @@ mod tests {
 
     #[test]
     fn toast_xml_escapes_title_and_body() {
-        let xml = toast_xml("Fix <b> & \"quotes\"", "it's 1 < 2 > 0\u{7}", true);
+        let xml = toast_xml("Fix <b> & \"quotes\"", "it's 1 < 2 > 0\u{7}", true, None);
         assert_eq!(
             xml,
             "<toast><visual><binding template=\"ToastGeneric\"><text>Fix &lt;b&gt; &amp; &quot;quotes&quot;</text>\
@@ -445,9 +493,26 @@ mod tests {
 
     #[test]
     fn toast_xml_is_silent_without_sound() {
-        let xml = toast_xml("t", "line one\nline two", false);
+        let xml = toast_xml("t", "line one\nline two", false, None);
         assert!(xml.contains("<audio silent=\"true\"/>"));
         assert!(!xml.contains("ms-winsoundevent"));
         assert!(xml.contains("line one\nline two"));
+    }
+
+    #[test]
+    fn toast_xml_opens_the_url_on_a_click() {
+        let xml = toast_xml("t", "b", false, Some("https://example.com/?a=1&b=2"));
+        assert!(
+            xml.starts_with(
+                r#"<toast activationType="protocol" launch="https://example.com/?a=1&amp;b=2">"#
+            ),
+            "{xml}"
+        );
+    }
+
+    #[test]
+    fn the_url_ends_the_body_where_a_click_cannot_open_it() {
+        assert_eq!(body_with_url("b", Some("https://x.y")), "b\nhttps://x.y");
+        assert_eq!(body_with_url("b", None), "b");
     }
 }

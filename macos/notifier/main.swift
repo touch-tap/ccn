@@ -1,12 +1,15 @@
 // Claude Code Notifier.app: posts ccn's desktop notifications on macOS, so they carry our name and icon
 // instead of Script Editor's. ccn runs the executable inside the bundle directly:
 //
-//   ccn-notifier --title T --body B [--sound]   post one notification, exit when it is delivered
-//                                               (through AppleScript until permission has been asked)
+//   ccn-notifier --title T --body B [--sound] [--url U]
+//                                               post one notification, exit when it is delivered
+//                                               (through AppleScript until permission has been asked);
+//                                               a click on it opens U
 //   ccn-notifier --request-permission           ask for permission now (ccn setup); prints granted|denied
 //   ccn-notifier --status                       prints authorized|denied|not-determined (ccn doctor)
 //
-// Launched with no arguments (macOS does that when a notification is clicked) it just quits.
+// Launched with no arguments (macOS does that when a notification is clicked) it opens the
+// notification's URL, if it has one, and quits.
 
 import Foundation
 import UserNotifications
@@ -36,6 +39,15 @@ final class Delegate: NSObject, UNUserNotificationCenterDelegate {
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
+        if response.actionIdentifier == UNNotificationDefaultActionIdentifier,
+           let url = response.notification.request.content.userInfo["url"] as? String,
+           url.hasPrefix("https://") {
+            let open = Process()
+            open.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+            open.arguments = [url]
+            try? open.run()
+            open.waitUntilExit()
+        }
         completionHandler()
         finish()
     }
@@ -47,7 +59,10 @@ func appleScript(_ content: UNNotificationContent) -> Never {
     func quoted(_ s: String) -> String {
         "\"" + s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") + "\""
     }
-    var script = "display notification \(quoted(content.body)) with title \(quoted(content.title))"
+    // AppleScript notifications can't open anything on a click, so the URL goes in the body
+    var body = content.body
+    if let url = content.userInfo["url"] as? String { body += "\n" + url }
+    var script = "display notification \(quoted(body)) with title \(quoted(content.title))"
     if content.sound != nil { script += " sound name \"default\"" }
     let osascript = Process()
     osascript.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
@@ -81,6 +96,7 @@ if args.contains("--status") {
     if args.contains("--sound") { content.sound = .default }
     // One thread per Claude Code session keeps Notification Center tidy
     if let thread = value("--thread") { content.threadIdentifier = thread }
+    if let url = value("--url") { content.userInfo = ["url": url] }
 
     // macOS only shows the permission prompt to an app opened through Launch Services, which
     // `ccn setup` does. Until it has asked, post through AppleScript so nothing is lost; once the
