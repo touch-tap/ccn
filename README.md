@@ -74,6 +74,11 @@ pointer when a session starts.
 Before a phone is paired, the same three moments show as desktop notifications on this computer
 (no network, no waiting), and nothing is decided for you.
 
+On macOS, clicking a desktop notification brings the app the session runs in (Terminal, iTerm2,
+Ghostty, VS Code, Cursor and so on) to the front, when it was started from the Dock, Finder or
+Spotlight and is still running. Over ssh there is nothing to bring forward, and AppleScript
+notifications (before `ccn setup` has asked for permission) do nothing on a click.
+
 If you are at the keyboard (any input in the last 30 s) nothing waits: the terminal prompt appears
 at once. While you are at the terminal Claude runs in, the phone gets nothing (on macOS that means
 the terminal is also the frontmost app; elsewhere, keyboard activity alone); if you are active in
