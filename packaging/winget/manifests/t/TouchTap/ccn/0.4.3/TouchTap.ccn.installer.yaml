@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.28.0.schema.json
+PackageIdentifier: TouchTap.ccn
+PackageVersion: 0.4.3
+MinimumOSVersion: 10.0.0.0
+InstallerType: zip
+NestedInstallerType: portable
+NestedInstallerFiles:
+  - RelativeFilePath: ccn.exe
+    PortableCommandAlias: ccn.exe
+Commands:
+  - ccn
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/touch-tap/ccn/releases/download/v0.4.3/ccn-x86_64-pc-windows-msvc.zip
+    InstallerSha256: 3647044F14F9CD056C01F9AE89EF62E556818E8C4EC0796AAD544D954E1F7FE4
+  - Architecture: arm64
+    InstallerUrl: https://github.com/touch-tap/ccn/releases/download/v0.4.3/ccn-aarch64-pc-windows-msvc.zip
+    InstallerSha256: AC60ABF7339B6F99D878FB098D9A1F4D9D72711D78DC8B27A242081DC6227B18
+ManifestType: installer
+ManifestVersion: 1.28.0
