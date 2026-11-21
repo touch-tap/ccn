@@ -244,6 +244,36 @@ fn xml_escape(s: &str) -> String {
     out
 }
 
+/// The macOS notifier app's arguments. A click opens `url`; without one it brings `activate`, the
+/// bundle id of the app the session runs in, to the front. The app puts the URL in the body when it
+/// falls back to AppleScript, which can't act on a click at all. A malformed id is left out.
+/// Not platform-gated so it is tested everywhere.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn notifier_args(
+    title: &str,
+    body: &str,
+    sound: bool,
+    url: Option<&str>,
+    activate: Option<&str>,
+) -> Vec<String> {
+    let mut args = vec![
+        "--title".to_string(),
+        title.to_string(),
+        "--body".to_string(),
+        body.to_string(),
+    ];
+    if sound {
+        args.push("--sound".to_string());
+    }
+    if let Some(url) = url {
+        args.extend(["--url".to_string(), url.to_string()]);
+    }
+    if let Some(id) = activate.filter(|id| crate::presence::valid_bundle_id(id)) {
+        args.extend(["--activate".to_string(), id.to_string()]);
+    }
+    args
+}
+
 #[cfg(target_os = "macos")]
 fn osa_string(s: &str) -> String {
     format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
@@ -314,16 +344,16 @@ mod mac {
         if !ensure() {
             return false;
         }
-        let mut cmd = Command::new(exe());
-        cmd.args(["--title", title, "--body", body]);
-        if sound {
-            cmd.arg("--sound");
-        }
-        // Opened on a click; the app puts it in the body when it falls back to AppleScript
-        if let Some(url) = url {
-            cmd.args(["--url", url]);
-        }
-        cmd.stdin(Stdio::null())
+        let host = crate::presence::host_bundle_id();
+        Command::new(exe())
+            .args(super::notifier_args(
+                title,
+                body,
+                sound,
+                url,
+                host.as_deref(),
+            ))
+            .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()
@@ -508,6 +538,53 @@ mod tests {
             ),
             "{xml}"
         );
+    }
+
+    #[test]
+    fn the_notifier_brings_the_session_app_forward_on_a_click() {
+        assert_eq!(
+            notifier_args("T", "B", true, None, Some("com.googlecode.iterm2")),
+            [
+                "--title",
+                "T",
+                "--body",
+                "B",
+                "--sound",
+                "--activate",
+                "com.googlecode.iterm2"
+            ]
+        );
+        // The URL goes too; the app opens it instead when there is one
+        assert_eq!(
+            notifier_args(
+                "T",
+                "B",
+                false,
+                Some("https://x.y"),
+                Some("com.apple.Terminal")
+            ),
+            [
+                "--title",
+                "T",
+                "--body",
+                "B",
+                "--url",
+                "https://x.y",
+                "--activate",
+                "com.apple.Terminal"
+            ]
+        );
+        assert_eq!(
+            notifier_args("T", "B", false, None, None),
+            ["--title", "T", "--body", "B"]
+        );
+        // Never a malformed id, which could pass for another flag
+        for bad in ["--status", "", "com.apple Terminal", "com.apple.Terminal;x"] {
+            assert_eq!(
+                notifier_args("T", "B", false, None, Some(bad)),
+                ["--title", "T", "--body", "B"]
+            );
+        }
     }
 
     #[test]

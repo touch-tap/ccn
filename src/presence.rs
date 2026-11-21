@@ -109,14 +109,35 @@ pub fn at_terminal(threshold: f64) -> bool {
     user_present(threshold) && terminal_frontmost().unwrap_or(true)
 }
 
+/// The bundle id of the app this session runs in (Terminal, iTerm2, Ghostty, VS Code, Cursor…).
+/// macOS passes `__CFBundleIdentifier` to everything an app started from the Dock, Finder or
+/// Spotlight runs, so hooks inherit it. Over ssh, or under a launcher that drops it, there is none.
+/// Only a well-formed id counts: it ends up on another program's command line.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+pub fn host_bundle_id() -> Option<String> {
+    std::env::var("__CFBundleIdentifier")
+        .ok()
+        .filter(|id| valid_bundle_id(id))
+}
+
+/// A reverse-DNS bundle id: ASCII letters, digits, '.' and '-', starting with a letter or digit,
+/// two parts or more and none empty, 155 characters at most. The notifier app checks it the same way.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+pub fn valid_bundle_id(id: &str) -> bool {
+    (3..=155).contains(&id.len())
+        && id.starts_with(|c: char| c.is_ascii_alphanumeric())
+        && id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
+        && id.split('.').count() >= 2
+        && id.split('.').all(|part| !part.is_empty())
+}
+
 /// Whether the app hosting this session is in front. None when that can't be told.
 fn terminal_frontmost() -> Option<bool> {
     #[cfg(target_os = "macos")]
     {
-        // Apps launched from the Dock pass their bundle id to everything they start
-        let host = std::env::var("__CFBundleIdentifier")
-            .ok()
-            .filter(|s| !s.is_empty())?;
+        let host = host_bundle_id()?;
         let asn = run_bounded("lsappinfo", &["front"], PROBE_TIMEOUT)?;
         let asn = asn.trim();
         if asn.is_empty() {
@@ -167,6 +188,40 @@ mod tests {
             Some("com.apple.Terminal")
         );
         assert_eq!(super::front_bundle_id("nothing"), None);
+    }
+
+    #[test]
+    fn bundle_ids_are_checked_strictly() {
+        use super::valid_bundle_id;
+        for ok in [
+            "com.apple.Terminal",
+            "com.googlecode.iterm2",
+            "com.mitchellh.ghostty",
+            "com.microsoft.VSCode",
+            "com.todesktop.230313mzl4w4u92",
+            "dev.warp.Warp-Stable",
+            "dev.zed.Zed-Preview",
+        ] {
+            assert!(valid_bundle_id(ok), "{ok}");
+        }
+        let long = format!("com.{}", "a".repeat(152));
+        for bad in [
+            "",
+            "Terminal",
+            "-b.evil",
+            ".com.apple",
+            "com..apple",
+            "com.apple.",
+            "com.apple Terminal",
+            "com.apple/Terminal",
+            "com.apple;rm",
+            "com.apple\nTerminal",
+            "com.äpple.Terminal",
+            long.as_str(),
+        ] {
+            assert!(!valid_bundle_id(bad), "{bad:?}");
+        }
+        assert!(valid_bundle_id(&long[..155]));
     }
 
     #[test]
