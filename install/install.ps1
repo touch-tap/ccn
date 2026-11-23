@@ -39,13 +39,31 @@ $base = if ($env:CCN_DOWNLOAD_BASE) { $env:CCN_DOWNLOAD_BASE } elseif ($env:CCN_
 
 Send-SetupEvent 'cli_install_started'
 
+# Set when a download fails: timeout or error
+$reason = $null
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ("ccn-" + [Guid]::NewGuid())
 New-Item -ItemType Directory -Path $tmp | Out-Null
 try {
     $stage = 'download'
     Write-Host "Downloading ccn for $arch Windows..."
-    Invoke-WebRequest "$base/$asset" -OutFile (Join-Path $tmp $asset) -UseBasicParsing
-    Invoke-WebRequest "$base/SHA256SUMS" -OutFile (Join-Path $tmp 'SHA256SUMS') -UseBasicParsing
+    # A time limit, so a stalled GitHub download (common in mainland China) fails and says so
+    # instead of hanging forever
+    try {
+        Invoke-WebRequest "$base/$asset" -OutFile (Join-Path $tmp $asset) -UseBasicParsing -TimeoutSec 300
+        Invoke-WebRequest "$base/SHA256SUMS" -OutFile (Join-Path $tmp 'SHA256SUMS') -UseBasicParsing -TimeoutSec 300
+    } catch {
+        # Windows PowerShell: WebException with Status Timeout. PowerShell 7: TaskCanceledException,
+        # or a message about the timeout.
+        $e = $_.Exception
+        $timedOut = ($e -is [System.Net.WebException] -and $e.Status -eq [System.Net.WebExceptionStatus]::Timeout) -or
+            ($e -is [System.TimeoutException]) -or ($e -is [System.Threading.Tasks.TaskCanceledException]) -or
+            ("$($e.Message) $($e.InnerException.Message)" -match 'timed out|timeout')
+        $reason = if ($timedOut) { 'timeout' } else { 'error' }
+        if ($timedOut) {
+            Write-Host "The download timed out. In mainland China you can install with: npx --registry=https://registry.npmmirror.com @touchtap/ccn"
+        }
+        throw
+    }
 
     $stage = 'checksum'
     $expected = (Get-Content (Join-Path $tmp 'SHA256SUMS') | Where-Object { $_ -match "\s\*?$([regex]::Escape($asset))$" } | ForEach-Object { ($_ -split '\s+')[0] }) | Select-Object -First 1
@@ -80,7 +98,9 @@ try {
     }
     Write-Host "Installed $version to $target"
 } catch {
-    Send-SetupEvent 'cli_install_failed' @{ stage = $stage }
+    $failed = @{ stage = $stage }
+    if ($reason) { $failed['reason'] = $reason }
+    Send-SetupEvent 'cli_install_failed' $failed
     throw
 } finally {
     Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue

@@ -33,7 +33,9 @@ done
 dir="${CCN_INSTALL_DIR:-$HOME/.local/bin}"
 
 say() { printf '%s\n' "$*"; }
-fail() { track cli_install_failed "\"stage\":\"$stage\""; printf 'ccn install: %s\n' "$*" >&2; exit 1; }
+# Set reason before fail to send it with the stage (download: timeout or error)
+reason=""
+fail() { track cli_install_failed "\"stage\":\"$stage\"${reason:+,\"reason\":\"$reason\"}"; printf 'ccn install: %s\n' "$*" >&2; exit 1; }
 
 # One anonymous event per step, so we can see where installs fail: the event name, the stage, the
 # OS and processor. Nothing else. CCN_NO_ANALYTICS=1 or DO_NOT_TRACK=1 turns it off.
@@ -77,21 +79,42 @@ else
   base="https://github.com/$repo/releases/latest/download"
 fi
 
+# Time limits, so a stalled GitHub download (common in mainland China) fails and says so instead
+# of hanging forever. BusyBox wget has no -t, so only GNU wget gets the retry limit.
 if command -v curl >/dev/null 2>&1; then
-  fetch() { curl -fsSL "$1" -o "$2"; }
+  fetch() { curl -fsSL --connect-timeout 20 --max-time 300 "$1" -o "$2"; }
 elif command -v wget >/dev/null 2>&1; then
-  fetch() { wget -qO "$2" "$1"; }
+  if wget --version 2>/dev/null | grep -q 'GNU Wget'; then
+    fetch() { wget -nv -T 30 -t 2 -O "$2" "$1"; }
+  else
+    fetch() { wget -T 30 -O "$2" "$1"; }
+  fi
 else
   fail "needs curl or wget"
 fi
+# Download $1 to $2, or stop with "could not download $3". A timeout is curl's exit 28, or wget's
+# "timed out" message (wget's exit 4 is any network failure).
+get() {
+  rc=0
+  fetch "$1" "$2" 2>"$tmp/fetch.err" || rc=$?
+  [ "$rc" -eq 0 ] && return 0
+  cat "$tmp/fetch.err" >&2
+  if [ "$rc" -eq 28 ] || grep -qi 'timed out' "$tmp/fetch.err"; then
+    reason="timeout"
+    fail "could not download $3: the download timed out.
+In mainland China you can install with: npx --registry=https://registry.npmmirror.com @touchtap/ccn"
+  fi
+  reason="error"
+  fail "could not download $3"
+}
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 stage="download"
 say "Downloading ccn for $arch-$os..."
-fetch "$base/$asset" "$tmp/$asset" || fail "could not download $base/$asset"
-fetch "$base/SHA256SUMS" "$tmp/SHA256SUMS" || fail "could not download the checksums"
+get "$base/$asset" "$tmp/$asset" "$base/$asset"
+get "$base/SHA256SUMS" "$tmp/SHA256SUMS" "the checksums"
 
 stage="checksum"
 # `<hash>  <name>`, or `<hash> *<name>` from a binary-mode sha256sum
