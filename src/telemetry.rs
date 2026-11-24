@@ -16,7 +16,7 @@ use std::time::Duration;
 
 use crate::config::{self, Config};
 
-fn enabled() -> bool {
+pub fn enabled() -> bool {
     let set = |name: &str| {
         std::env::var(name)
             .map(|v| !v.is_empty() && v != "0")

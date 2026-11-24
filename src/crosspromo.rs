@@ -91,6 +91,30 @@ fn suggest_in(cn_dir: &Path, codex_dir: &Path, path_var: Option<&OsStr>) -> bool
     codex_present(codex_dir, path_var) && !has_codex_notifier(cn_dir, codex_dir, path_var)
 }
 
+/// What this computer is: Codex is here (`cli`), codex-notifier is here (`notifier`).
+fn codex_state_in(cn_dir: &Path, codex_dir: &Path, path_var: Option<&OsStr>) -> Value {
+    json!({
+        "cli": codex_present(codex_dir, path_var),
+        "notifier": has_codex_notifier(cn_dir, codex_dir, path_var),
+    })
+}
+
+/// What registration tells the server about Codex on this computer, so a phone paired with it can
+/// be told about Notifier for Codex: `{"cli": bool, "notifier": bool}`. `None` (sent as null, or
+/// left out) when the cross-promo is switched off here or analytics are (`CCN_NO_ANALYTICS`,
+/// `DO_NOT_TRACK`): the server then treats the computer as unknown and suggests nothing.
+/// Servers older than this field ignore it.
+pub fn codex_report(cfg: &Config) -> Option<Value> {
+    if !enabled(cfg) || !crate::telemetry::enabled() {
+        return None;
+    }
+    Some(codex_state_in(
+        &codex_notifier_dir(),
+        &codex_dir(),
+        std::env::var_os("PATH").as_deref(),
+    ))
+}
+
 /// The setting and `CCN_NO_NUDGE` allow it
 pub fn enabled(cfg: &Config) -> bool {
     cfg.cross_promo && !local::no_nudge_env()
@@ -240,6 +264,42 @@ mod tests {
         assert!(!suggest_in(&root.join("cn"), &other, Some(&path)));
         touch(&bin.join("codex"));
         assert!(suggest_in(&root.join("cn"), &other, Some(&path)));
+    }
+
+    #[test]
+    fn codex_state_reports_cli_and_notifier() {
+        let root = temp_dir("state");
+        let codex = root.join(".codex");
+        let cn = root.join("codex-notifier");
+        let bin = root.join("bin");
+        std::fs::create_dir_all(&bin).unwrap();
+        let path = path_of(&[&bin]);
+        assert_eq!(
+            codex_state_in(&cn, &codex, Some(&path)),
+            json!({"cli": false, "notifier": false})
+        );
+        std::fs::create_dir_all(&codex).unwrap();
+        assert_eq!(
+            codex_state_in(&cn, &codex, Some(&path)),
+            json!({"cli": true, "notifier": false})
+        );
+        // codex-notifier's hooks in Codex's hooks.json
+        std::fs::write(
+            codex.join("hooks.json"),
+            r#"{"hooks":"codex-notifier hook"}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            codex_state_in(&cn, &codex, Some(&path)),
+            json!({"cli": true, "notifier": true})
+        );
+    }
+
+    #[test]
+    fn codex_report_respects_the_cross_promo_setting() {
+        let mut cfg = Config::default();
+        cfg.cross_promo = false;
+        assert!(codex_report(&cfg).is_none());
     }
 
     #[test]
