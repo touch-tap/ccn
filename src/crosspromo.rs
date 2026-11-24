@@ -23,8 +23,9 @@ const WINDOWS_COMMAND: &str =
     "irm https://notifierforcodex.com/install.ps1 | iex; codex-notifier pair";
 /// The website, whose buttons take a phone to the App Store or Google Play
 pub const URL: &str = "https://notifierforcodex.com/?ref=ccn-cli";
-/// The same, from the QR code and link after `ccn pair`
-pub const PAIR_URL: &str = "https://notifierforcodex.com/?ref=ccn-pair";
+/// The QR code and link after `ccn pair`: /get sends a phone straight to the App Store or Google
+/// Play (and shows a computer both store buttons), tagged ref=ccn-pair
+pub const PAIR_URL: &str = "https://notifierforcodex.com/get?ref=ccn-pair";
 /// What a click on the SessionStart desktop notification opens
 pub const NOTIFICATION_URL: &str = "https://notifierforcodex.com/?ref=ccn-notification";
 
@@ -406,7 +407,7 @@ mod tests {
     fn the_command_installs_and_pairs_in_one_line() {
         assert!(command().contains("notifierforcodex.com/install."));
         assert!(!command().contains("npm"));
-        assert!(PAIR_URL.starts_with("https://notifierforcodex.com/"));
+        assert_eq!(PAIR_URL, "https://notifierforcodex.com/get?ref=ccn-pair");
         assert!(qr::render(PAIR_URL).is_some());
     }
 
