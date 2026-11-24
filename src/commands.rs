@@ -21,6 +21,7 @@ pub fn identity(cfg: &Config) -> Option<Value> {
         "clientKind": "cli",
         "clientVersion": config::VERSION,
         "capabilities": config::CAPABILITIES,
+        "codex": crosspromo::codex_report(cfg),
     }))
 }
 
@@ -47,6 +48,7 @@ pub fn ensure_registered(cfg: &mut Config) -> Result<Api> {
         "clientKind": "cli",
         "clientVersion": config::VERSION,
         "capabilities": config::CAPABILITIES,
+        "codex": crosspromo::codex_report(cfg),
     }))?;
     cfg.client_id = Some(client_id);
     cfg.machine_name = Some(machine_name);
@@ -175,6 +177,7 @@ fn pair_inner(
         "clientKind": "cli",
         "clientVersion": config::VERSION,
         "capabilities": config::CAPABILITIES,
+        "codex": crosspromo::codex_report(&cfg),
     });
 
     let mut code = code;
