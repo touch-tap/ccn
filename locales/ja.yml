@@ -349,11 +349,15 @@ update_signature:
   invalid: "リリースの署名を確認できなかったため、何も変更していません。しばらくしてからもう一度試すか、claudecodenotifier.com/cli から再インストールしてください"
 
 crosspromo:
-  line: "Codex も使っていますか？ codex-notifier なら Codex の承認や質問もスマートフォンに届きます: %{command}  ·  %{url}"
+  line: "Codex を検出しました。Notifier for Codex アプリ（iPhone・Android）で、Codex の承認や質問もスマートフォンに届きます。このコンピュータはコマンド 1 つで設定できます: %{command}  ·  %{url}"
   # Shown in Claude Code at SessionStart; %{line} is crosspromo.line
   session_message: "Claude Code Notifier: %{line}"
   # The SessionStart desktop notification; a click opens the website
-  notification_body: "Codex も使っていますか？ codex-notifier なら Codex の承認もスマートフォンに届きます。"
+  notification_body: "Codex を検出しました。Notifier for Codex アプリで、Codex の承認もスマートフォンに届きます。"
+  # After `ccn pair`, above a QR code (pair_scan) or without one (pair_steps), the app's link and the command
+  pair_title: "Codex を検出しました。Notifier for Codex アプリ（iPhone・Android）で、Codex の承認や質問もスマートフォンに届きます。"
+  pair_scan: "スキャンしてアプリを入手し、このコンピュータをコマンド 1 つで設定してください:"
+  pair_steps: "アプリを入手し、このコンピュータをコマンド 1 つで設定してください:"
 
 rate:
   notification_body: "Claude Code Notifier を気に入っていただけましたか？ 評価をいただけると、ほかの開発者が見つけやすくなります。"

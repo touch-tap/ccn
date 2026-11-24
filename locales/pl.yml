@@ -347,11 +347,15 @@ update_signature:
   invalid: "podpis wydania jest nieprawidłowy, więc nic nie zostało zmienione. Spróbuj później lub zainstaluj ponownie z claudecodenotifier.com/cli"
 
 crosspromo:
-  line: "Używasz też Codex? codex-notifier wysyła na telefon także zatwierdzenia i pytania z Codex: %{command}  ·  %{url}"
+  line: "Wykryto Codex — odbieraj na telefonie także zatwierdzenia i pytania z Codex, z aplikacją Notifier for Codex (iPhone i Android). Ten komputer skonfigurujesz jednym poleceniem: %{command}  ·  %{url}"
   # Shown in Claude Code at SessionStart; %{line} is crosspromo.line
   session_message: "Claude Code Notifier: %{line}"
   # The SessionStart desktop notification; a click opens the website
-  notification_body: "Używasz też Codex? codex-notifier wysyła na telefon także zatwierdzenia z Codex."
+  notification_body: "Wykryto Codex — odbieraj na telefonie także zatwierdzenia z Codex, z aplikacją Notifier for Codex."
+  # After `ccn pair`, above a QR code (pair_scan) or without one (pair_steps), the app's link and the command
+  pair_title: "Wykryto Codex — odbieraj na telefonie także zatwierdzenia i pytania z Codex, z aplikacją Notifier for Codex (iPhone i Android)."
+  pair_scan: "Zeskanuj, aby pobrać aplikację, a potem skonfiguruj ten komputer jednym poleceniem:"
+  pair_steps: "Pobierz aplikację, a potem skonfiguruj ten komputer jednym poleceniem:"
 
 rate:
   notification_body: "Podoba ci się Claude Code Notifier? Szybka ocena pomoże innym programistom go znaleźć."

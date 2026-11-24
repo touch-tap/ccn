@@ -109,8 +109,9 @@ Settings: `notify_on_done`, `notify_on_permission`, `notify_on_question`, `quiet
 `quiet_when_present` (default on), `hold_ceiling_seconds` (30–3600, default 600),
 `presence_threshold_seconds` (default 30), `stop_hold_seconds` (0–600, default 120), `sound`, and
 the local-only `desktop_notifications`, `pair_nudges` (suggest pairing while no phone is; default
-on), `cross_promo` (if you also use Codex, mention [codex-notifier](https://notifierforcodex.com),
-the same notifier for Codex; default on), `rate_prompt` (one desktop notification asking for a
+on), `cross_promo` (if you also use Codex, mention the [Notifier for Codex](https://notifierforcodex.com)
+app, the same thing for Codex, with its one-line install: after every `ccn pair` with a QR code
+for the app, in `ccn` and `ccn doctor`, and at most twice ever at SessionStart; default on), `rate_prompt` (one desktop notification asking for a
 store rating, after 20 answers from the phone; default on), `credential_store` (`keychain` or `file`) and
 `auto_update`.
 

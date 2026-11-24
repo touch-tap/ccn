@@ -1,5 +1,6 @@
-//! Suggests codex-notifier, the same notifier for OpenAI's Codex CLI, to people who also use
-//! Codex and don't have it yet. Shown once at the end of `ccn pair`, as a passive line in `ccn`
+//! Suggests Notifier for Codex, the same phone app for OpenAI's Codex CLI (its computer side is
+//! codex-notifier), to people who also use Codex and don't have it yet. Shown at the end of every
+//! `ccn pair` (with a QR code for the app: the phone is in their hand), as a passive line in `ccn`
 //! (status) and `ccn doctor`, and at most twice ever at SessionStart: a desktop notification
 //! (most people never run ccn themselves, so that is the one they see) plus a line in Claude Code.
 //!
@@ -12,11 +13,18 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use crate::config::{self, Config};
-use crate::{local, notify};
+use crate::{local, notify, qr};
 
-/// Not translated: a command and a URL
-pub const COMMAND: &str = "npm install -g @touchtap/codex-notifier";
+/// Not translated: the commands and URLs. One line installs codex-notifier, sets up Codex's hooks
+/// and pairs: the script ends in `codex-notifier pair`, whose QR code also offers the app to a
+/// phone without it. No Node needed, unlike npm.
+const UNIX_COMMAND: &str = "curl -fsSL https://notifierforcodex.com/install.sh | sh";
+const WINDOWS_COMMAND: &str =
+    "irm https://notifierforcodex.com/install.ps1 | iex; codex-notifier pair";
+/// The website, whose buttons take a phone to the App Store or Google Play
 pub const URL: &str = "https://notifierforcodex.com/?ref=ccn-cli";
+/// The same, from the QR code and link after `ccn pair`
+pub const PAIR_URL: &str = "https://notifierforcodex.com/?ref=ccn-pair";
 /// What a click on the SessionStart desktop notification opens
 pub const NOTIFICATION_URL: &str = "https://notifierforcodex.com/?ref=ccn-notification";
 
@@ -130,25 +138,52 @@ pub fn should_suggest(cfg: &Config) -> bool {
         )
 }
 
+/// The one line that sets codex-notifier up on this computer
+pub fn command() -> &'static str {
+    if cfg!(windows) {
+        WINDOWS_COMMAND
+    } else {
+        UNIX_COMMAND
+    }
+}
+
 /// The suggestion, in the user's language
 pub fn line() -> String {
-    t!("crosspromo.line", command = COMMAND, url = URL).into_owned()
+    t!("crosspromo.line", command = command(), url = URL).into_owned()
+}
+
+/// After every successful `ccn pair`, when it applies: the phone is in their hand, so a QR code
+/// for the app, its link, and the one command for this computer. Reports where it was shown.
+pub fn print_after_pair(cfg: &Config) {
+    if !should_suggest(cfg) {
+        return;
+    }
+    let code = qr::render(PAIR_URL);
+    println!();
+    println!("{}", t!("crosspromo.pair_title"));
+    match &code {
+        Some(code) => {
+            println!("{}", t!("crosspromo.pair_scan"));
+            println!();
+            print!("{code}");
+        }
+        None => println!("{}", t!("crosspromo.pair_steps")),
+    }
+    println!("  {PAIR_URL}");
+    println!("  {}", command());
+    let qr = if code.is_some() { "yes" } else { "no" };
+    crate::telemetry::event("cli_cross_promo_shown", &[("where", "pair"), ("qr", qr)]);
 }
 
 /// Prints the suggestion when it applies, after a blank line, and reports where it was shown.
-/// For `ccn pair`, `ccn` (status) and `ccn doctor`: no cap.
+/// For `ccn` (status) and `ccn doctor`: no cap. They don't wait on the network for the event.
 pub fn print_hint(cfg: &Config, place: &str) {
     if !should_suggest(cfg) {
         return;
     }
     println!();
     println!("{}", line());
-    // `ccn pair` waits on the network anyway; the hints in `ccn` and `ccn doctor` don't
-    if place == "pair" {
-        crate::telemetry::event("cli_cross_promo_shown", &[("where", place)]);
-    } else {
-        crate::telemetry::event_detached("cli_cross_promo_shown", &[("where", place)]);
-    }
+    crate::telemetry::event_detached("cli_cross_promo_shown", &[("where", place)]);
 }
 
 /// Whether a SessionStart may mention codex-notifier: at most twice ever, the first no sooner than
@@ -334,6 +369,45 @@ mod tests {
         )
         .unwrap();
         assert!(!suggest_in(&cn, &codex, Some(&path)));
+    }
+
+    #[test]
+    fn every_translation_promotes_the_app_with_one_command_and_no_one_platform() {
+        for lang in config::LOCALES {
+            let line = t!(
+                "crosspromo.line",
+                locale = lang,
+                command = command(),
+                url = URL
+            );
+            assert!(
+                line.contains(command()) && line.contains(URL),
+                "{lang}: {line}"
+            );
+            let naming_the_app = [
+                line.to_string(),
+                t!("crosspromo.notification_body", locale = lang).into_owned(),
+                t!("crosspromo.pair_title", locale = lang).into_owned(),
+            ];
+            for text in &naming_the_app {
+                assert!(text.contains("Notifier for Codex"), "{lang}: {text}");
+            }
+            let steps = [
+                t!("crosspromo.pair_scan", locale = lang).into_owned(),
+                t!("crosspromo.pair_steps", locale = lang).into_owned(),
+            ];
+            for text in naming_the_app.iter().chain(&steps) {
+                assert!(!text.contains("Mac"), "{lang}: {text}");
+            }
+        }
+    }
+
+    #[test]
+    fn the_command_installs_and_pairs_in_one_line() {
+        assert!(command().contains("notifierforcodex.com/install."));
+        assert!(!command().contains("npm"));
+        assert!(PAIR_URL.starts_with("https://notifierforcodex.com/"));
+        assert!(qr::render(PAIR_URL).is_some());
     }
 
     #[test]

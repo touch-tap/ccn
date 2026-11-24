@@ -350,11 +350,15 @@ update_signature:
   invalid: "sürümün imzası doğrulanamadı, bu yüzden hiçbir şey değiştirilmedi. Daha sonra yeniden dene veya claudecodenotifier.com/cli adresinden yeniden yükle"
 
 crosspromo:
-  line: "Codex de kullanıyor musunuz? codex-notifier, Codex'in onay isteklerini ve sorularını da telefonunuza gönderir: %{command}  ·  %{url}"
+  line: "Codex bulundu: Notifier for Codex uygulamasıyla (iPhone ve Android) Codex'in onay isteklerini ve sorularını da telefonunuza alın. Bu bilgisayarı tek komutla kurun: %{command}  ·  %{url}"
   # Shown in Claude Code at SessionStart; %{line} is crosspromo.line
   session_message: "Claude Code Notifier: %{line}"
   # The SessionStart desktop notification; a click opens the website
-  notification_body: "Codex de kullanıyor musunuz? codex-notifier, Codex'in onay isteklerini de telefonunuza gönderir."
+  notification_body: "Codex bulundu: Notifier for Codex uygulamasıyla Codex'in onay isteklerini de telefonunuza alın."
+  # After `ccn pair`, above a QR code (pair_scan) or without one (pair_steps), the app's link and the command
+  pair_title: "Codex bulundu: Notifier for Codex uygulamasıyla (iPhone ve Android) Codex'in onay isteklerini ve sorularını da telefonunuza alın."
+  pair_scan: "Uygulamayı almak için tarayın, ardından bu bilgisayarı tek komutla kurun:"
+  pair_steps: "Uygulamayı indirin, ardından bu bilgisayarı tek komutla kurun:"
 
 rate:
   notification_body: "Claude Code Notifier'ı beğendiniz mi? Kısa bir puan, diğer geliştiricilerin onu bulmasına yardımcı olur."

@@ -324,7 +324,7 @@ fn pair_inner(
     }
 
     licence_pitch(&api);
-    crosspromo::print_hint(&cfg, "pair");
+    crosspromo::print_after_pair(&cfg);
 
     println!();
     println!("{}", t!("pair.done"));

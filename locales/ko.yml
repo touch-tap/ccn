@@ -349,11 +349,15 @@ update_signature:
   invalid: "릴리스 서명을 확인할 수 없어 아무것도 변경하지 않았습니다. 나중에 다시 시도하거나 claudecodenotifier.com/cli에서 다시 설치하세요"
 
 crosspromo:
-  line: "Codex도 사용하시나요? codex-notifier를 쓰면 Codex의 승인 요청과 질문도 휴대폰으로 받을 수 있습니다: %{command}  ·  %{url}"
+  line: "Codex가 감지되었습니다. Notifier for Codex 앱(iPhone, Android)으로 Codex의 승인 요청과 질문도 휴대폰으로 받으세요. 이 컴퓨터는 명령 하나로 설정됩니다: %{command}  ·  %{url}"
   # Shown in Claude Code at SessionStart; %{line} is crosspromo.line
   session_message: "Claude Code Notifier: %{line}"
   # The SessionStart desktop notification; a click opens the website
-  notification_body: "Codex도 사용하시나요? codex-notifier를 쓰면 Codex의 승인 요청도 휴대폰으로 받을 수 있습니다."
+  notification_body: "Codex가 감지되었습니다. Notifier for Codex 앱으로 Codex의 승인 요청도 휴대폰으로 받으세요."
+  # After `ccn pair`, above a QR code (pair_scan) or without one (pair_steps), the app's link and the command
+  pair_title: "Codex가 감지되었습니다. Notifier for Codex 앱(iPhone, Android)으로 Codex의 승인 요청과 질문도 휴대폰으로 받으세요."
+  pair_scan: "스캔해서 앱을 받은 다음, 명령 하나로 이 컴퓨터를 설정하세요:"
+  pair_steps: "앱을 받은 다음, 명령 하나로 이 컴퓨터를 설정하세요:"
 
 rate:
   notification_body: "Claude Code Notifier가 마음에 드시나요? 간단한 평가가 다른 개발자들이 앱을 찾는 데 도움이 됩니다."

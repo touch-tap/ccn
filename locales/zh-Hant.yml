@@ -349,11 +349,15 @@ update_signature:
   invalid: "版本簽章驗證失敗，因此未做任何變更。請稍後再試，或從 claudecodenotifier.com/cli 重新安裝"
 
 crosspromo:
-  line: "也在用 Codex？codex-notifier 也能把 Codex 的核准請求和提問傳到你的手機：%{command}  ·  %{url}"
+  line: "偵測到 Codex：用 Notifier for Codex 應用程式（iPhone 和 Android），Codex 的核准請求和提問也能傳到你的手機。一個指令即可設定這台電腦：%{command}  ·  %{url}"
   # Shown in Claude Code at SessionStart; %{line} is crosspromo.line
   session_message: "Claude Code Notifier: %{line}"
   # The SessionStart desktop notification; a click opens the website
-  notification_body: "也在用 Codex？codex-notifier 也能把 Codex 的核准請求傳到你的手機。"
+  notification_body: "偵測到 Codex：用 Notifier for Codex 應用程式，Codex 的核准請求也能傳到你的手機。"
+  # After `ccn pair`, above a QR code (pair_scan) or without one (pair_steps), the app's link and the command
+  pair_title: "偵測到 Codex：用 Notifier for Codex 應用程式（iPhone 和 Android），Codex 的核准請求和提問也能傳到你的手機。"
+  pair_scan: "掃描以取得應用程式，然後用一個指令設定這台電腦："
+  pair_steps: "取得應用程式，然後用一個指令設定這台電腦："
 
 rate:
   notification_body: "喜歡 Claude Code Notifier 嗎？花幾秒評個分，能幫其他開發者找到它。"

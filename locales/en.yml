@@ -362,13 +362,18 @@ clap:
 update_signature:
   invalid: "the release's signature doesn't check out, so nothing was changed. Try again later, or reinstall from claudecodenotifier.com/cli"
 
-# Suggests codex-notifier to people who also use Codex. %{command} and %{url} are not translated
+# Suggests the Notifier for Codex app (and its codex-notifier CLI) to people who also use Codex.
+# "Notifier for Codex", %{command} and %{url} are not translated; never name one computer platform
 crosspromo:
-  line: "Also using Codex? codex-notifier sends Codex approvals and questions to your phone too: %{command}  ·  %{url}"
+  line: "Codex detected — get Codex approvals and questions on your phone too, with the Notifier for Codex app (iPhone and Android). Set up this computer with one command: %{command}  ·  %{url}"
   # Shown in Claude Code at SessionStart; %{line} is crosspromo.line
   session_message: "Claude Code Notifier: %{line}"
   # The SessionStart desktop notification; a click opens the website
-  notification_body: "Also using Codex? codex-notifier sends Codex approvals to your phone too."
+  notification_body: "Codex detected — get Codex approvals on your phone too, with the Notifier for Codex app."
+  # After `ccn pair`, above a QR code (pair_scan) or without one (pair_steps), the app's link and the command
+  pair_title: "Codex detected — get Codex approvals and questions on your phone too, with the Notifier for Codex app (iPhone and Android)."
+  pair_scan: "Scan for the app, then set up this computer with one command:"
+  pair_steps: "Get the app, then set up this computer with one command:"
 
 # Asked once, after 20 answers from the phone. %{url} opens the store page for the user's phone
 rate:
