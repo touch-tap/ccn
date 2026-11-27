@@ -359,6 +359,15 @@ crosspromo:
   pair_scan: "掃描以取得應用程式，然後用一個指令設定這台電腦："
   pair_steps: "取得應用程式，然後用一個指令設定這台電腦："
 
+# The same for Antigravity Notifier, to someone with Google Antigravity (`agy`) and not antigravity-notifier.
+# Its phone apps may not be in the stores yet: the QR code and links open antigravitynotifier.com, never a store.
+crosspromo_antigravity:
+  line: "偵測到 Antigravity：用 Antigravity Notifier 應用程式（iPhone 和 Android），Antigravity 的核准請求和提問也能傳到你的手機。一個指令即可設定這台電腦：%{command}  ·  %{url}"
+  notification_body: "偵測到 Antigravity：用 Antigravity Notifier 應用程式，Antigravity 的核准請求也能傳到你的手機。"
+  pair_title: "偵測到 Antigravity：用 Antigravity Notifier 應用程式（iPhone 和 Android），Antigravity 的核准請求和提問也能傳到你的手機。"
+  pair_scan: "掃描以取得應用程式，然後用一個指令設定這台電腦："
+  pair_steps: "取得應用程式，然後用一個指令設定這台電腦："
+
 rate:
   notification_body: "喜歡 Claude Code Notifier 嗎？花幾秒評個分，能幫其他開發者找到它。"
   session_message: "喜歡 Claude Code Notifier 嗎？花幾秒評個分，能幫其他開發者找到它：%{url}"

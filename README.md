@@ -111,7 +111,11 @@ Settings: `notify_on_done`, `notify_on_permission`, `notify_on_question`, `quiet
 the local-only `desktop_notifications`, `pair_nudges` (suggest pairing while no phone is; default
 on), `cross_promo` (if you also use Codex, mention the [Notifier for Codex](https://notifierforcodex.com)
 app, the same thing for Codex, with its one-line install: after every `ccn pair` with a QR code
-for the app, in `ccn` and `ccn doctor`, and at most twice ever at SessionStart; default on), `rate_prompt` (one desktop notification asking for a
+for the app, in `ccn` and `ccn doctor`, and at most twice ever at SessionStart. If you use Google
+Antigravity (`agy` on the PATH, or Antigravity's folders in `~/.gemini`) without
+[antigravity-notifier](https://antigravitynotifier.com), it mentions Antigravity Notifier the same
+way, with links to its website; only one of the two is ever suggested at a time, Notifier for
+Codex first, and the two share the limit of twice. Default on), `rate_prompt` (one desktop notification asking for a
 store rating, after 20 answers from the phone; default on), `credential_store` (`keychain` or `file`) and
 `auto_update`.
 
@@ -183,7 +187,7 @@ echo '{"hook_event_name":"Stop","session_id":"s1","cwd":"/tmp","last_assistant_m
 
 `CCN_PRESENCE=away|present|file:<path>` pins the presence check for tests, `CCN_NOTIFY=off` keeps
 desktop notifications quiet (`CCN_NOTIFY=log` writes them to ccn.log instead), and `CCN_NO_NUDGE=1` turns off every reminder to pair or to unlock,
-the codex-notifier suggestion and the rating prompt.
+the codex-notifier or antigravity-notifier suggestion and the rating prompt.
 
 Releasing: see [RELEASING.md](RELEASING.md).
 

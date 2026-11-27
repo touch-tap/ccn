@@ -360,6 +360,15 @@ crosspromo:
   pair_scan: "Uygulamayı almak için tarayın, ardından bu bilgisayarı tek komutla kurun:"
   pair_steps: "Uygulamayı indirin, ardından bu bilgisayarı tek komutla kurun:"
 
+# The same for Antigravity Notifier, to someone with Google Antigravity (`agy`) and not antigravity-notifier.
+# Its phone apps may not be in the stores yet: the QR code and links open antigravitynotifier.com, never a store.
+crosspromo_antigravity:
+  line: "Antigravity bulundu: Antigravity Notifier uygulamasıyla (iPhone ve Android) Antigravity'nin onay isteklerini ve sorularını da telefonunuza alın. Bu bilgisayarı tek komutla kurun: %{command}  ·  %{url}"
+  notification_body: "Antigravity bulundu: Antigravity Notifier uygulamasıyla Antigravity'nin onay isteklerini de telefonunuza alın."
+  pair_title: "Antigravity bulundu: Antigravity Notifier uygulamasıyla (iPhone ve Android) Antigravity'nin onay isteklerini ve sorularını da telefonunuza alın."
+  pair_scan: "Uygulamayı almak için tarayın, ardından bu bilgisayarı tek komutla kurun:"
+  pair_steps: "Uygulamayı indirin, ardından bu bilgisayarı tek komutla kurun:"
+
 rate:
   notification_body: "Claude Code Notifier'ı beğendiniz mi? Kısa bir puan, diğer geliştiricilerin onu bulmasına yardımcı olur."
   session_message: "Claude Code Notifier'ı beğendiniz mi? Kısa bir puan, diğer geliştiricilerin onu bulmasına yardımcı olur: %{url}"

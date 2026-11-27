@@ -359,6 +359,15 @@ crosspromo:
   pair_scan: "Escanea para obtener la app y prepara este ordenador con un solo comando:"
   pair_steps: "Descarga la app y prepara este ordenador con un solo comando:"
 
+# The same for Antigravity Notifier, to someone with Google Antigravity (`agy`) and not antigravity-notifier.
+# Its phone apps may not be in the stores yet: the QR code and links open antigravitynotifier.com, never a store.
+crosspromo_antigravity:
+  line: "Antigravity detectado: recibe también en el teléfono las aprobaciones y preguntas de Antigravity, con la app Antigravity Notifier (iPhone y Android). Prepara este ordenador con un solo comando: %{command}  ·  %{url}"
+  notification_body: "Antigravity detectado: recibe también en el teléfono las aprobaciones de Antigravity, con la app Antigravity Notifier."
+  pair_title: "Antigravity detectado: recibe también en el teléfono las aprobaciones y preguntas de Antigravity, con la app Antigravity Notifier (iPhone y Android)."
+  pair_scan: "Escanea para obtener la app y prepara este ordenador con un solo comando:"
+  pair_steps: "Descarga la app y prepara este ordenador con un solo comando:"
+
 rate:
   notification_body: "¿Te gusta Claude Code Notifier? Una valoración rápida ayuda a otros desarrolladores a encontrarlo."
   session_message: "¿Te gusta Claude Code Notifier? Una valoración rápida ayuda a otros desarrolladores a encontrarlo: %{url}"
