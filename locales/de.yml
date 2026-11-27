@@ -5,7 +5,7 @@ _version: 1
 cli:
   about: "Claude Code Notifier: bekomme einen Push aufs Handy, wenn Claude Code dich braucht, und antworte von dort"
   pair:
-    about: "Diesen Computer mit deinem Handy koppeln. Gib den Code aus der App an, oder starte ohne Code und bekomme einen zum Eintippen in die App"
+    about: "Diesen Computer mit deinem Handy koppeln. Gib den Code aus der App an; ohne Code wird danach gefragt, und Enter ohne Eingabe zeigt stattdessen einen QR-Code zum Scannen"
     code: "Der 6-stellige Code aus der Claude Code Notifier App"
     name: "Wie dieser Computer auf deinem Handy heißt (Standard: der Hostname)"
     replace_mac_app: "Auch die Hook-Einträge der Mac-Menüleisten-App entfernen, damit Mitteilungen nicht doppelt gesendet werden"
@@ -355,6 +355,15 @@ crosspromo:
   notification_body: "Codex erkannt – hol dir die Freigaben von Codex auch aufs Handy, mit der App Notifier for Codex."
   # After `ccn pair`, above a QR code (pair_scan) or without one (pair_steps), the app's link and the command
   pair_title: "Codex erkannt – hol dir die Freigaben und Fragen von Codex auch aufs Handy, mit der App Notifier for Codex (iPhone und Android)."
+  pair_scan: "Scanne den Code für die App und richte dann diesen Computer mit einem Befehl ein:"
+  pair_steps: "Hol dir die App und richte dann diesen Computer mit einem Befehl ein:"
+
+# The same for Antigravity Notifier, to someone with Google Antigravity (`agy`) and not antigravity-notifier.
+# Its phone apps may not be in the stores yet: the QR code and links open antigravitynotifier.com, never a store.
+crosspromo_antigravity:
+  line: "Antigravity erkannt – hol dir die Freigaben und Fragen von Antigravity auch aufs Handy, mit der App Antigravity Notifier (iPhone und Android). Diesen Computer richtest du mit einem Befehl ein: %{command}  ·  %{url}"
+  notification_body: "Antigravity erkannt – hol dir die Freigaben von Antigravity auch aufs Handy, mit der App Antigravity Notifier."
+  pair_title: "Antigravity erkannt – hol dir die Freigaben und Fragen von Antigravity auch aufs Handy, mit der App Antigravity Notifier (iPhone und Android)."
   pair_scan: "Scanne den Code für die App und richte dann diesen Computer mit einem Befehl ein:"
   pair_steps: "Hol dir die App und richte dann diesen Computer mit einem Befehl ein:"
 

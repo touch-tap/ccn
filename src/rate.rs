@@ -1,7 +1,7 @@
 //! Asks for a store rating once per install, after the phone has answered `RATE_AFTER_ANSWERS`
 //! held requests: a desktop notification that opens the server's /rate page (which sends the
 //! phone to its store), plus a line in Claude Code. Only at a SessionStart with nothing else to
-//! say, and never within a day of the licence nudge or the codex-notifier suggestion.
+//! say, and never within a day of the licence nudge or the suggestion of a sister app.
 //! `ccn config set rate_prompt off`, or `CCN_NO_NUDGE=1`, keeps it quiet.
 
 use rust_i18n::t;

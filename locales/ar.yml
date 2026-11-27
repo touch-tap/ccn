@@ -8,7 +8,7 @@ _version: 1
 cli:
   about: "Claude Code Notifier: يصلك إشعار على هاتفك عندما يحتاجك Claude Code، وتجيب من هناك"
   pair:
-    about: "اربط هذا الكمبيوتر بهاتفك. أدخل الرمز الذي يعرضه التطبيق، أو شغّل الأمر بلا رمز لتحصل على رمز تكتبه في التطبيق"
+    about: "اربط هذا الكمبيوتر بهاتفك. أدخل الرمز الذي يعرضه التطبيق؛ وبلا رمز يسألك الأمر عنه، وإذا ضغطت Enter دون كتابته عرض رمز QR لمسحه بدلًا من ذلك"
     code: "الرمز المكوّن من 6 أرقام المعروض في تطبيق Claude Code Notifier"
     name: "اسم هذا الكمبيوتر كما يظهر على هاتفك (الافتراضي: اسم المضيف)"
     replace_mac_app: "أزل أيضًا إدخالات hooks الخاصة بتطبيق شريط القوائم على Mac، كي لا تُرسل الإشعارات مرتين"
@@ -358,6 +358,15 @@ crosspromo:
   notification_body: "تم اكتشاف Codex — احصل على موافقات Codex على هاتفك أيضًا، مع تطبيق Notifier for Codex."
   # After `ccn pair`, above a QR code (pair_scan) or without one (pair_steps), the app's link and the command
   pair_title: "تم اكتشاف Codex — احصل على موافقات Codex وأسئلته على هاتفك أيضًا، مع تطبيق Notifier for Codex (iPhone وAndroid)."
+  pair_scan: "امسح الرمز لتحصل على التطبيق، ثم جهّز هذا الكمبيوتر بأمر واحد:"
+  pair_steps: "احصل على التطبيق، ثم جهّز هذا الكمبيوتر بأمر واحد:"
+
+# The same for Antigravity Notifier, to someone with Google Antigravity (`agy`) and not antigravity-notifier.
+# Its phone apps may not be in the stores yet: the QR code and links open antigravitynotifier.com, never a store.
+crosspromo_antigravity:
+  line: "تم اكتشاف Antigravity — احصل على موافقات Antigravity وأسئلته على هاتفك أيضًا، مع تطبيق Antigravity Notifier (iPhone وAndroid). جهّز هذا الكمبيوتر بأمر واحد: %{command}  ·  %{url}"
+  notification_body: "تم اكتشاف Antigravity — احصل على موافقات Antigravity على هاتفك أيضًا، مع تطبيق Antigravity Notifier."
+  pair_title: "تم اكتشاف Antigravity — احصل على موافقات Antigravity وأسئلته على هاتفك أيضًا، مع تطبيق Antigravity Notifier (iPhone وAndroid)."
   pair_scan: "امسح الرمز لتحصل على التطبيق، ثم جهّز هذا الكمبيوتر بأمر واحد:"
   pair_steps: "احصل على التطبيق، ثم جهّز هذا الكمبيوتر بأمر واحد:"
 

@@ -4,7 +4,7 @@ _version: 1
 cli:
   about: "Claude Code Notifier: receba um push no celular quando o Claude Code precisar de você e responda de lá"
   pair:
-    about: "Pareie este computador com seu celular. Passe o código que o app mostra, ou rode sem código para receber um e digitar no app"
+    about: "Pareie este computador com seu celular. Passe o código que o app mostra; sem código, ele pede o código, e pressionar Enter sem digitar mostra um código QR para escanear"
     code: "O código de 6 dígitos mostrado no app Claude Code Notifier"
     name: "Como este computador aparece no seu celular (padrão: o hostname)"
     replace_mac_app: "Remova também os hooks do app da barra de menus do Mac, para as notificações não chegarem em dobro"
@@ -354,6 +354,15 @@ crosspromo:
   notification_body: "Codex detectado: receba também no celular as aprovações do Codex, com o app Notifier for Codex."
   # After `ccn pair`, above a QR code (pair_scan) or without one (pair_steps), the app's link and the command
   pair_title: "Codex detectado: receba também no celular as aprovações e perguntas do Codex, com o app Notifier for Codex (iPhone e Android)."
+  pair_scan: "Escaneie para baixar o app e depois configure este computador com um só comando:"
+  pair_steps: "Baixe o app e depois configure este computador com um só comando:"
+
+# The same for Antigravity Notifier, to someone with Google Antigravity (`agy`) and not antigravity-notifier.
+# Its phone apps may not be in the stores yet: the QR code and links open antigravitynotifier.com, never a store.
+crosspromo_antigravity:
+  line: "Antigravity detectado: receba também no celular as aprovações e perguntas do Antigravity, com o app Antigravity Notifier (iPhone e Android). Configure este computador com um só comando: %{command}  ·  %{url}"
+  notification_body: "Antigravity detectado: receba também no celular as aprovações do Antigravity, com o app Antigravity Notifier."
+  pair_title: "Antigravity detectado: receba também no celular as aprovações e perguntas do Antigravity, com o app Antigravity Notifier (iPhone e Android)."
   pair_scan: "Escaneie para baixar o app e depois configure este computador com um só comando:"
   pair_steps: "Baixe o app e depois configure este computador com um só comando:"
 

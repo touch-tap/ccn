@@ -5,7 +5,7 @@ _version: 1
 cli:
   about: "Claude Code Notifier: Claude Code 需要你時，在手機上收到推播，並直接在手機上回覆"
   pair:
-    about: "把這台電腦與你的手機配對。傳入 App 顯示的配對碼，或不帶配對碼執行，取得一個輸入到 App 裡的配對碼"
+    about: "把這台電腦與你的手機配對。傳入 App 顯示的配對碼；不帶配對碼執行時會先詢問配對碼，不輸入直接按 Enter 則改為顯示 QR 碼供你掃描"
     code: "Claude Code Notifier App 中顯示的 6 位配對碼"
     name: "這台電腦在手機上顯示的名稱（預設：主機名稱）"
     replace_mac_app: "同時移除 Mac 選單列 App 的鉤子項目，避免通知傳送兩次"
@@ -356,6 +356,15 @@ crosspromo:
   notification_body: "偵測到 Codex：用 Notifier for Codex 應用程式，Codex 的核准請求也能傳到你的手機。"
   # After `ccn pair`, above a QR code (pair_scan) or without one (pair_steps), the app's link and the command
   pair_title: "偵測到 Codex：用 Notifier for Codex 應用程式（iPhone 和 Android），Codex 的核准請求和提問也能傳到你的手機。"
+  pair_scan: "掃描以取得應用程式，然後用一個指令設定這台電腦："
+  pair_steps: "取得應用程式，然後用一個指令設定這台電腦："
+
+# The same for Antigravity Notifier, to someone with Google Antigravity (`agy`) and not antigravity-notifier.
+# Its phone apps may not be in the stores yet: the QR code and links open antigravitynotifier.com, never a store.
+crosspromo_antigravity:
+  line: "偵測到 Antigravity：用 Antigravity Notifier 應用程式（iPhone 和 Android），Antigravity 的核准請求和提問也能傳到你的手機。一個指令即可設定這台電腦：%{command}  ·  %{url}"
+  notification_body: "偵測到 Antigravity：用 Antigravity Notifier 應用程式，Antigravity 的核准請求也能傳到你的手機。"
+  pair_title: "偵測到 Antigravity：用 Antigravity Notifier 應用程式（iPhone 和 Android），Antigravity 的核准請求和提問也能傳到你的手機。"
   pair_scan: "掃描以取得應用程式，然後用一個指令設定這台電腦："
   pair_steps: "取得應用程式，然後用一個指令設定這台電腦："
 

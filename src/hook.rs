@@ -163,7 +163,7 @@ fn run_inner(plugin: bool) -> Result<Option<Value>> {
     match announce {
         Some(message) => Ok(Some(message)),
         None => result.map(|message| {
-            // Claude Code shows one message: codex-notifier and the rating prompt are mentioned
+            // Claude Code shows one message: a sister app and the rating prompt are mentioned
             // only when nothing else is, so never beside (or on the same day as) the licence nudge
             message.or(update_message).or_else(|| {
                 (event == "SessionStart")

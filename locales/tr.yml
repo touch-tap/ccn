@@ -7,7 +7,7 @@ _version: 1
 cli:
   about: "Claude Code Notifier: Claude Code size ihtiyaç duyduğunda telefonunuza bildirim alın ve oradan yanıtlayın"
   pair:
-    about: "Bu bilgisayarı telefonunuzla eşleyin. Uygulamanın gösterdiği kodu verin ya da kod olmadan çalıştırıp uygulamaya yazacağınız bir kod alın"
+    about: "Bu bilgisayarı telefonunuzla eşleyin. Uygulamanın gösterdiği kodu verin; kod olmadan çalıştırırsanız kodu sorar, kod yazmadan Enter'a basarsanız bunun yerine taranacak bir QR kodu gösterir"
     code: "Claude Code Notifier uygulamasında gösterilen 6 haneli kod"
     name: "Bu bilgisayarın telefonunuzda görünen adı (varsayılan: ana makine adı)"
     replace_mac_app: "Bildirimler iki kez gönderilmesin diye Mac menü çubuğu uygulamasının hook girdilerini de kaldır"
@@ -357,6 +357,15 @@ crosspromo:
   notification_body: "Codex bulundu: Notifier for Codex uygulamasıyla Codex'in onay isteklerini de telefonunuza alın."
   # After `ccn pair`, above a QR code (pair_scan) or without one (pair_steps), the app's link and the command
   pair_title: "Codex bulundu: Notifier for Codex uygulamasıyla (iPhone ve Android) Codex'in onay isteklerini ve sorularını da telefonunuza alın."
+  pair_scan: "Uygulamayı almak için tarayın, ardından bu bilgisayarı tek komutla kurun:"
+  pair_steps: "Uygulamayı indirin, ardından bu bilgisayarı tek komutla kurun:"
+
+# The same for Antigravity Notifier, to someone with Google Antigravity (`agy`) and not antigravity-notifier.
+# Its phone apps may not be in the stores yet: the QR code and links open antigravitynotifier.com, never a store.
+crosspromo_antigravity:
+  line: "Antigravity bulundu: Antigravity Notifier uygulamasıyla (iPhone ve Android) Antigravity'nin onay isteklerini ve sorularını da telefonunuza alın. Bu bilgisayarı tek komutla kurun: %{command}  ·  %{url}"
+  notification_body: "Antigravity bulundu: Antigravity Notifier uygulamasıyla Antigravity'nin onay isteklerini de telefonunuza alın."
+  pair_title: "Antigravity bulundu: Antigravity Notifier uygulamasıyla (iPhone ve Android) Antigravity'nin onay isteklerini ve sorularını da telefonunuza alın."
   pair_scan: "Uygulamayı almak için tarayın, ardından bu bilgisayarı tek komutla kurun:"
   pair_steps: "Uygulamayı indirin, ardından bu bilgisayarı tek komutla kurun:"
 

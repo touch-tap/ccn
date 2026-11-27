@@ -4,7 +4,7 @@ _version: 1
 cli:
   about: "Claude Code Notifier: dostawaj push na telefon, gdy Claude Code Cię potrzebuje, i odpowiadaj stamtąd"
   pair:
-    about: "Sparuj ten komputer z telefonem. Podaj kod z aplikacji albo uruchom bez kodu, aby dostać kod do wpisania w aplikacji"
+    about: "Sparuj ten komputer z telefonem. Podaj kod z aplikacji; bez kodu polecenie o niego zapyta, a naciśnięcie Enter bez wpisywania pokaże kod QR do zeskanowania"
     code: "6-cyfrowy kod pokazany w aplikacji Claude Code Notifier"
     name: "Nazwa tego komputera na telefonie (domyślnie: nazwa hosta)"
     replace_mac_app: "Usuń też wpisy hooków aplikacji z paska menu Maca, aby powiadomienia nie szły dwa razy"
@@ -354,6 +354,15 @@ crosspromo:
   notification_body: "Wykryto Codex — odbieraj na telefonie także zatwierdzenia z Codex, z aplikacją Notifier for Codex."
   # After `ccn pair`, above a QR code (pair_scan) or without one (pair_steps), the app's link and the command
   pair_title: "Wykryto Codex — odbieraj na telefonie także zatwierdzenia i pytania z Codex, z aplikacją Notifier for Codex (iPhone i Android)."
+  pair_scan: "Zeskanuj, aby pobrać aplikację, a potem skonfiguruj ten komputer jednym poleceniem:"
+  pair_steps: "Pobierz aplikację, a potem skonfiguruj ten komputer jednym poleceniem:"
+
+# The same for Antigravity Notifier, to someone with Google Antigravity (`agy`) and not antigravity-notifier.
+# Its phone apps may not be in the stores yet: the QR code and links open antigravitynotifier.com, never a store.
+crosspromo_antigravity:
+  line: "Wykryto Antigravity — odbieraj na telefonie także zatwierdzenia i pytania z Antigravity, z aplikacją Antigravity Notifier (iPhone i Android). Ten komputer skonfigurujesz jednym poleceniem: %{command}  ·  %{url}"
+  notification_body: "Wykryto Antigravity — odbieraj na telefonie także zatwierdzenia z Antigravity, z aplikacją Antigravity Notifier."
+  pair_title: "Wykryto Antigravity — odbieraj na telefonie także zatwierdzenia i pytania z Antigravity, z aplikacją Antigravity Notifier (iPhone i Android)."
   pair_scan: "Zeskanuj, aby pobrać aplikację, a potem skonfiguruj ten komputer jednym poleceniem:"
   pair_steps: "Pobierz aplikację, a potem skonfiguruj ten komputer jednym poleceniem:"
 

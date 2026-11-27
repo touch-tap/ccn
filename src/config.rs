@@ -302,12 +302,13 @@ pub struct Config {
     pub pair_nudge_due: bool,
     /// Whether to suggest pairing at all (`ccn config set pair_nudges off`; default on)
     pub pair_nudges: bool,
-    /// Whether to suggest codex-notifier to people who also use Codex (`ccn config set cross_promo
-    /// off`; default on). See crosspromo.rs
+    /// Whether to suggest a sister app to people who also use its agent: codex-notifier for Codex,
+    /// antigravity-notifier for Google Antigravity (`ccn config set cross_promo off`; default on).
+    /// See crosspromo.rs; the three fields below count both together
     pub cross_promo: bool,
-    /// When Claude Code last mentioned codex-notifier at SessionStart
+    /// When Claude Code last mentioned a sister app at SessionStart
     pub cross_promo_last_at: Option<i64>,
-    /// How many times Claude Code has mentioned codex-notifier at SessionStart (at most 2)
+    /// How many times Claude Code has mentioned a sister app at SessionStart (at most 2)
     pub cross_promo_count: u32,
     /// The first paired SessionStart that looked, standing in for `paired_at` on installs that
     /// paired before it was recorded

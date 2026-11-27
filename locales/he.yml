@@ -8,7 +8,7 @@ _version: 1
 cli:
   about: "Claude Code Notifier: קבלו התראה בטלפון כש-Claude Code צריך אתכם, וענו משם"
   pair:
-    about: "צמדו את המחשב הזה לטלפון. העבירו את הקוד שהאפליקציה מציגה, או הריצו בלי קוד כדי לקבל קוד להקלדה באפליקציה"
+    about: "צמדו את המחשב הזה לטלפון. העבירו את הקוד שהאפליקציה מציגה; בלי קוד תתבקשו להקליד אותו, והקשה על Enter בלי קוד תציג במקום קוד QR לסריקה"
     code: "הקוד בן 6 הספרות שמוצג באפליקציית Claude Code Notifier"
     name: "השם של המחשב הזה בטלפון (ברירת המחדל: שם המארח)"
     replace_mac_app: "הסירו גם את רשומות ה-hooks של אפליקציית שורת התפריטים ב-Mac, כדי שהתראות לא יישלחו פעמיים"
@@ -358,6 +358,15 @@ crosspromo:
   notification_body: "זוהה Codex — קבלו גם את האישורים של Codex בטלפון, עם האפליקציה Notifier for Codex."
   # After `ccn pair`, above a QR code (pair_scan) or without one (pair_steps), the app's link and the command
   pair_title: "זוהה Codex — קבלו גם את האישורים והשאלות של Codex בטלפון, עם האפליקציה Notifier for Codex (iPhone ו-Android)."
+  pair_scan: "סרקו כדי להוריד את האפליקציה, ואז הגדירו את המחשב הזה בפקודה אחת:"
+  pair_steps: "הורידו את האפליקציה, ואז הגדירו את המחשב הזה בפקודה אחת:"
+
+# The same for Antigravity Notifier, to someone with Google Antigravity (`agy`) and not antigravity-notifier.
+# Its phone apps may not be in the stores yet: the QR code and links open antigravitynotifier.com, never a store.
+crosspromo_antigravity:
+  line: "זוהה Antigravity — קבלו גם את האישורים והשאלות של Antigravity בטלפון, עם האפליקציה Antigravity Notifier (iPhone ו-Android). הגדירו את המחשב הזה בפקודה אחת: %{command}  ·  %{url}"
+  notification_body: "זוהה Antigravity — קבלו גם את האישורים של Antigravity בטלפון, עם האפליקציה Antigravity Notifier."
+  pair_title: "זוהה Antigravity — קבלו גם את האישורים והשאלות של Antigravity בטלפון, עם האפליקציה Antigravity Notifier (iPhone ו-Android)."
   pair_scan: "סרקו כדי להוריד את האפליקציה, ואז הגדירו את המחשב הזה בפקודה אחת:"
   pair_steps: "הורידו את האפליקציה, ואז הגדירו את המחשב הזה בפקודה אחת:"
 

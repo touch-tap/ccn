@@ -6,7 +6,7 @@ _version: 1
 cli:
   about: "Claude Code Notifier: get a push on your phone when Claude Code needs you, and answer from there"
   pair:
-    about: "Pair this computer with your phone. Pass the code the app shows, or run with no code to get one to type into the app"
+    about: "Pair this computer with your phone. Pass the code the app shows; with no code it asks for that code, and pressing Enter without one shows a QR code to scan instead"
     code: "The 6-digit code shown in the Claude Code Notifier app"
     name: "What this computer is called on your phone (default: the hostname)"
     replace_mac_app: "Also remove the Mac menu bar app's hook entries, so notifications are not sent twice"
@@ -372,6 +372,15 @@ crosspromo:
   notification_body: "Codex detected — get Codex approvals on your phone too, with the Notifier for Codex app."
   # After `ccn pair`, above a QR code (pair_scan) or without one (pair_steps), the app's link and the command
   pair_title: "Codex detected — get Codex approvals and questions on your phone too, with the Notifier for Codex app (iPhone and Android)."
+  pair_scan: "Scan for the app, then set up this computer with one command:"
+  pair_steps: "Get the app, then set up this computer with one command:"
+
+# The same for Antigravity Notifier, to someone with Google Antigravity (`agy`) and not antigravity-notifier.
+# Its phone apps may not be in the stores yet: the QR code and links open antigravitynotifier.com, never a store.
+crosspromo_antigravity:
+  line: "Antigravity detected — get Antigravity approvals and questions on your phone too, with the Antigravity Notifier app (iPhone and Android). Set up this computer with one command: %{command}  ·  %{url}"
+  notification_body: "Antigravity detected — get Antigravity approvals on your phone too, with the Antigravity Notifier app."
+  pair_title: "Antigravity detected — get Antigravity approvals and questions on your phone too, with the Antigravity Notifier app (iPhone and Android)."
   pair_scan: "Scan for the app, then set up this computer with one command:"
   pair_steps: "Get the app, then set up this computer with one command:"
 

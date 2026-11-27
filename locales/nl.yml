@@ -4,7 +4,7 @@ _version: 1
 cli:
   about: "Claude Code Notifier: krijg een push op je telefoon wanneer Claude Code je nodig heeft, en antwoord van daar"
   pair:
-    about: "Koppel deze computer aan je telefoon. Geef de code op die de app toont, of start zonder code om er een te krijgen die je in de app typt"
+    about: "Koppel deze computer aan je telefoon. Geef de code op die de app toont; zonder code wordt erom gevraagd, en Enter zonder code toont in plaats daarvan een QR-code om te scannen"
     code: "De 6-cijferige code die de Claude Code Notifier-app toont"
     name: "Hoe deze computer op je telefoon heet (standaard: de hostnaam)"
     replace_mac_app: "Verwijder ook de hook-regels van de Mac-menubalkapp, zodat meldingen niet dubbel worden verstuurd"
@@ -354,6 +354,15 @@ crosspromo:
   notification_body: "Codex gevonden: krijg ook de goedkeuringen van Codex op je telefoon, met de app Notifier for Codex."
   # After `ccn pair`, above a QR code (pair_scan) or without one (pair_steps), the app's link and the command
   pair_title: "Codex gevonden: krijg ook de goedkeuringen en vragen van Codex op je telefoon, met de app Notifier for Codex (iPhone en Android)."
+  pair_scan: "Scan voor de app en stel daarna deze computer in met één opdracht:"
+  pair_steps: "Download de app en stel daarna deze computer in met één opdracht:"
+
+# The same for Antigravity Notifier, to someone with Google Antigravity (`agy`) and not antigravity-notifier.
+# Its phone apps may not be in the stores yet: the QR code and links open antigravitynotifier.com, never a store.
+crosspromo_antigravity:
+  line: "Antigravity gevonden: krijg ook de goedkeuringen en vragen van Antigravity op je telefoon, met de app Antigravity Notifier (iPhone en Android). Stel deze computer in met één opdracht: %{command}  ·  %{url}"
+  notification_body: "Antigravity gevonden: krijg ook de goedkeuringen van Antigravity op je telefoon, met de app Antigravity Notifier."
+  pair_title: "Antigravity gevonden: krijg ook de goedkeuringen en vragen van Antigravity op je telefoon, met de app Antigravity Notifier (iPhone en Android)."
   pair_scan: "Scan voor de app en stel daarna deze computer in met één opdracht:"
   pair_steps: "Download de app en stel daarna deze computer in met één opdracht:"
 
