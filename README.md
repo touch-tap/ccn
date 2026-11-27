@@ -12,7 +12,7 @@ computer, and on your phone as soon as you pair one.
 ## Install
 
 ```sh
-# macOS / Linux: installs the hooks, then shows a QR code to pair your phone
+# macOS / Linux: installs the hooks, then asks for the code your phone shows (Enter: a QR code to scan)
 curl -fsSL https://claudecodenotifier.com/install.sh | sh
 # or pair in the same step with the code your phone shows
 curl -fsSL https://claudecodenotifier.com/install.sh | sh -s 482913
@@ -37,13 +37,15 @@ needs permission, Claude has a question. To get them on your phone too, and appr
 there, pair with the [Claude Code Notifier](https://claudecodenotifier.com) app whenever you like:
 
 ```sh
-ccn                    # show a QR code here and scan it with the phone's camera
-ccn pair 482913        # or type the code the app shows under Computers > Add a computer
+ccn                    # asks for the code the app shows; press Enter for a QR code to scan instead
+ccn pair 482913        # or pass the code the app shows under Computers > Add a computer
 ccn pair --no-wait     # print the QR code and return at once (for scripts)
 ```
 
 `ccn` on its own (and so `npx @touchtap/ccn`) installs the hooks and pairs a computer that has no
-phone yet. The QR code opens the app, or the App Store / Google Play when it isn't installed, and
+phone yet: in a terminal it asks for the 6-digit code the app shows, and pressing Enter without one
+shows a QR code to scan instead (where nothing can be typed, and with `--no-wait`, it shows the QR
+code straight away). The QR code opens the app, or the App Store / Google Play when it isn't installed, and
 lasts a day; you can leave `ccn` waiting or press Ctrl+C, the pairing completes on its own when the
 phone connects. Once paired, the phone gets a test notification it can answer, and `ccn` shows the
 answer. Until a phone is paired, the first desktop notification and the tenth point at `ccn pair`,
@@ -90,7 +92,7 @@ answer, up to a ceiling you choose, and releases the moment you touch the keyboa
 
 ```
 ccn                     install the hooks, pair if no phone is paired yet, otherwise show the status
-ccn pair [CODE]         pair with a phone; without a code, shows a QR code (--no-wait returns at once)
+ccn pair [CODE]         pair with a phone; without a code, asks for it (Enter: a QR code; --no-wait shows it and returns)
 ccn doctor              check hooks, credentials, server, presence detection
 ccn test                send a test notification
 ccn devices             list paired phones; ccn devices revoke <name>

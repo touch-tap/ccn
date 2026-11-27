@@ -5,7 +5,7 @@ _version: 1
 cli:
   about: "Claude Code Notifier: Claude Code가 당신을 필요로 할 때 휴대폰으로 푸시 알림을 받고, 거기서 바로 답해요"
   pair:
-    about: "이 컴퓨터를 휴대폰과 연결해요. 앱에 표시된 코드를 넘기거나, 코드 없이 실행해 앱에 입력할 코드를 받으세요"
+    about: "이 컴퓨터를 휴대폰과 연결해요. 앱에 표시된 코드를 넘기세요. 코드 없이 실행하면 코드를 물어보고, 입력하지 않고 Enter를 누르면 스캔할 QR 코드가 대신 표시돼요"
     code: "Claude Code Notifier 앱에 표시된 6자리 코드"
     name: "휴대폰에 표시되는 이 컴퓨터의 이름 (기본값: 호스트 이름)"
     replace_mac_app: "Mac 메뉴 막대 앱의 훅 항목도 제거해서 알림이 두 번 가지 않게 해요"

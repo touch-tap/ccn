@@ -5,7 +5,7 @@ _version: 1
 cli:
   about: "Claude Code Notifier: Claude Code 需要你時，在手機上收到推播，並直接在手機上回覆"
   pair:
-    about: "把這台電腦與你的手機配對。傳入 App 顯示的配對碼，或不帶配對碼執行，取得一個輸入到 App 裡的配對碼"
+    about: "把這台電腦與你的手機配對。傳入 App 顯示的配對碼；不帶配對碼執行時會先詢問配對碼，不輸入直接按 Enter 則改為顯示 QR 碼供你掃描"
     code: "Claude Code Notifier App 中顯示的 6 位配對碼"
     name: "這台電腦在手機上顯示的名稱（預設：主機名稱）"
     replace_mac_app: "同時移除 Mac 選單列 App 的鉤子項目，避免通知傳送兩次"

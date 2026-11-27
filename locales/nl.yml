@@ -4,7 +4,7 @@ _version: 1
 cli:
   about: "Claude Code Notifier: krijg een push op je telefoon wanneer Claude Code je nodig heeft, en antwoord van daar"
   pair:
-    about: "Koppel deze computer aan je telefoon. Geef de code op die de app toont, of start zonder code om er een te krijgen die je in de app typt"
+    about: "Koppel deze computer aan je telefoon. Geef de code op die de app toont; zonder code wordt erom gevraagd, en Enter zonder code toont in plaats daarvan een QR-code om te scannen"
     code: "De 6-cijferige code die de Claude Code Notifier-app toont"
     name: "Hoe deze computer op je telefoon heet (standaard: de hostnaam)"
     replace_mac_app: "Verwijder ook de hook-regels van de Mac-menubalkapp, zodat meldingen niet dubbel worden verstuurd"

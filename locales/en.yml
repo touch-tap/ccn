@@ -6,7 +6,7 @@ _version: 1
 cli:
   about: "Claude Code Notifier: get a push on your phone when Claude Code needs you, and answer from there"
   pair:
-    about: "Pair this computer with your phone. Pass the code the app shows, or run with no code to get one to type into the app"
+    about: "Pair this computer with your phone. Pass the code the app shows; with no code it asks for that code, and pressing Enter without one shows a QR code to scan instead"
     code: "The 6-digit code shown in the Claude Code Notifier app"
     name: "What this computer is called on your phone (default: the hostname)"
     replace_mac_app: "Also remove the Mac menu bar app's hook entries, so notifications are not sent twice"

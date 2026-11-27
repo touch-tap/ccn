@@ -5,7 +5,7 @@ _version: 1
 cli:
   about: "Claude Code Notifier: bekomme einen Push aufs Handy, wenn Claude Code dich braucht, und antworte von dort"
   pair:
-    about: "Diesen Computer mit deinem Handy koppeln. Gib den Code aus der App an, oder starte ohne Code und bekomme einen zum Eintippen in die App"
+    about: "Diesen Computer mit deinem Handy koppeln. Gib den Code aus der App an; ohne Code wird danach gefragt, und Enter ohne Eingabe zeigt stattdessen einen QR-Code zum Scannen"
     code: "Der 6-stellige Code aus der Claude Code Notifier App"
     name: "Wie dieser Computer auf deinem Handy heißt (Standard: der Hostname)"
     replace_mac_app: "Auch die Hook-Einträge der Mac-Menüleisten-App entfernen, damit Mitteilungen nicht doppelt gesendet werden"
